@@ -1,0 +1,13 @@
+package com.example.demo.dispute.domain;
+
+public enum EvidenceType {
+    ORDER_RECEIPT,
+    CUSTOMER_DETAILS,
+    CUSTOMER_COMMUNICATION,
+    POLICIES,
+    FULFILLMENT_DELIVERY,
+    DIGITAL_USAGE_LOGS,
+    REFUND_CANCELLATION,
+    OTHER_SUPPORTING
+}
+
