@@ -313,3 +313,60 @@
    산출물: 결제/다운로드 플로우, 로그, 삭제 정책, 소스 링크 검증일 표시 확인.
 
 진행 원칙: 정책 충돌이 생기면 코드 수정보다 Rulebook 버전 갱신을 우선한다.
+
+## 24. Dev Handoff (2026-03-03)
+### 24.1 오늘 완료한 개발 작업
+1. Backend case workflow API 구현 완료
+   - create/upload/list/reclassify/validate/validate-stored/report/delete
+2. Validation history 영속화 완료
+   - `validation_runs`, `validation_issues` 저장 및 report 노출
+3. Auto-fix job 파이프라인 구현 완료
+   - endpoint: `POST /api/cases/{caseId}/fix`, `GET /api/cases/{caseId}/fix/{jobId}`
+   - state: `QUEUED -> RUNNING -> SUCCEEDED/FAILED`
+   - 현재 지원 fix: 타입별 다중 파일 업로드 시 최신 1개만 유지
+4. Audit log + retention cleanup 스케줄러 구현 완료
+5. DB migration 추가 완료
+   - `V1`~`V5` (cases, evidence_files, validation, audit_logs, fix_jobs)
+6. 테스트 확장 완료
+   - 총 27개 테스트
+   - 실행 검증: `./gradlew.bat clean test` 성공
+
+### 24.2 현재 코드 기준 주의사항
+1. Shopify PDF/A 정책 방향은 문서 버전 간 충돌 이력이 있음.
+2. 현재 구현은 `PDF/A required` 기준(`ERR_SHPFY_PDF_NOT_PDFA`)으로 동작함.
+3. 정책 확정 전에는 룰/에러코드/Auto-fix 문구를 단일 기준으로 재정렬해야 함.
+
+### 24.3 다음 작업 (Frontend 이전, Backend 우선)
+1. Deliverable generator 구현
+   - Evidence Upload Kit ZIP
+   - Master Binder PDF
+   - Checklist PDF
+2. Download control and pre-payment flow 구현
+   - READY 이후 토큰 기반 다운로드 제어
+   - 만료/재발급 정책
+3. Auto-fix 확장
+   - dedupe 외의 용량/페이지 관련 fix 시나리오 단계적 추가
+   - 실패 시 단일 원인(One reason) 반환 강제
+4. 운영 안정화
+   - webhook/idempotency 강화
+   - structured logging + trace id
+
+### 24.4 다른 로컬에서 작업 이어받기
+1. clone
+```powershell
+git clone https://github.com/ichbinhyeok/chargeback.git
+cd chargeback
+git checkout main
+```
+2. JDK 21 설정 후 테스트
+```powershell
+$env:JAVA_HOME="C:\Path\To\JDK21"
+.\gradlew.bat clean test
+```
+3. 앱 실행
+```powershell
+$env:JAVA_HOME="C:\Path\To\JDK21"
+.\gradlew.bat bootRun
+```
+4. 참고 문서
+   - `HANDOFF_2026-03-03_KOR.md` (상세 핸드오프)
