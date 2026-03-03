@@ -1,51 +1,51 @@
-# Chargeback Evidence Pack Builder — Agent Master Bible (KOR) v4.1
-작성일: 2026-03-03 (Asia/Seoul)  
-검증 기준일: 2026-03-03  
-기술 스택: Spring Boot, jte, htmx, Tailwind CSS, PDFBox, PostgreSQL, S3-compatible storage  
-제품 정의: Stripe/Shopify 분쟁 증빙을 제출 규칙에 맞게 자동 정리·검수·패키징하는 Final Check & Packager
+﻿# Chargeback Evidence Pack Builder ??Agent Master Bible (KOR) v4.1
+?묒꽦?? 2026-03-03 (Asia/Seoul)  
+寃利?湲곗??? 2026-03-03  
+湲곗닠 ?ㅽ깮: Spring Boot, jte, htmx, Tailwind CSS, PDFBox, PostgreSQL, S3-compatible storage  
+?쒗뭹 ?뺤쓽: Stripe/Shopify 遺꾩웳 利앸튃???쒖텧 洹쒖튃??留욊쾶 ?먮룞 ?뺣━쨌寃?샕룻뙣?ㅼ쭠?섎뒗 Final Check & Packager
 
 ---
 
 ## 0. Executive Summary
-1. 본 제품은 승소 컨설팅이 아닌 제출 실패 방지용 문서 자동화 유틸리티다.
-2. 최종 산출물은 제출용 ZIP, 내부 보관용 Master Binder PDF, 제출 전 Checklist PDF(1p)다.
-3. 과금은 Pay-per-case `$19`, 결제 시점은 `READY_TO_UPLOAD` 직전이다.
-4. 월 순매출 100만원 목표를 위해 월 45건 결제를 운영 목표로 둔다.
+1. 蹂??쒗뭹? ?뱀냼 而⑥꽕?낆씠 ?꾨땶 ?쒖텧 ?ㅽ뙣 諛⑹???臾몄꽌 ?먮룞???좏떥由ы떚??
+2. 理쒖쥌 ?곗텧臾쇱? ?쒖텧??ZIP, ?대? 蹂닿???Master Binder PDF, ?쒖텧 ??Checklist PDF(1p)??
+3. 怨쇨툑? Pay-per-case `$19`, 寃곗젣 ?쒖젏? `READY_TO_UPLOAD` 吏곸쟾?대떎.
+4. ???쒕ℓ異?100留뚯썝 紐⑺몴瑜??꾪빐 ??45嫄?寃곗젣瑜??댁쁺 紐⑺몴濡??붾떎.
 
-## 1. 비즈니스 목표와 수익 모델
-1. 목표 순매출: 월 `1,000,000 KRW`.
-2. 가격: `$19 / case`.
-3. 환율 가정(근사): `1 USD ~= 1,443 KRW`.
-4. 건당 총매출: 약 `27,417 KRW`.
-5. 결제수수료(2.9% + 30c 가정) 반영 건당 순매출: 약 `26,100 KRW`.
-6. 순매출 기준 필요 결제건: `39건/월`.
-7. 환불/실패 버퍼 포함 운영 목표: `45건/월`.
-8. 무료 범위: 업로드, 분류, 검수 결과 미리보기.
-9. 유료 범위: 최종 산출물 다운로드.
+## 1. 鍮꾩쫰?덉뒪 紐⑺몴? ?섏씡 紐⑤뜽
+1. 紐⑺몴 ?쒕ℓ異? ??`1,000,000 KRW`.
+2. 媛寃? `$19 / case`.
+3. ?섏쑉 媛??洹쇱궗): `1 USD ~= 1,443 KRW`.
+4. 嫄대떦 珥앸ℓ異? ??`27,417 KRW`.
+5. 寃곗젣?섏닔猷?2.9% + 30c 媛?? 諛섏쁺 嫄대떦 ?쒕ℓ異? ??`26,100 KRW`.
+6. ?쒕ℓ異?湲곗? ?꾩슂 寃곗젣嫄? `39嫄???.
+7. ?섎텋/?ㅽ뙣 踰꾪띁 ?ы븿 ?댁쁺 紐⑺몴: `45嫄???.
+8. 臾대즺 踰붿쐞: ?낅줈?? 遺꾨쪟, 寃??寃곌낵 誘몃━蹂닿린.
+9. ?좊즺 踰붿쐞: 理쒖쥌 ?곗텧臾??ㅼ슫濡쒕뱶.
 
-## 2. 절대 금지 (Non-negotiables)
-1. 허위/조작 증빙 생성 금지.
-2. 법률 조언/승소 보장/승소 확률 단정 금지.
-3. Stripe/Shopify 자동 제출 대행(OAuth 포함) 금지.
-4. 외부 링크, 오디오, 비디오, 추가 연락 요청 문구 포함 금지.
-5. 고객사별 맞춤 컨설팅 모델 지양(제품형 셀프서브 우선).
+## 2. ?덈? 湲덉? (Non-negotiables)
+1. ?덉쐞/議곗옉 利앸튃 ?앹꽦 湲덉?.
+2. 踰뺣쪧 議곗뼵/?뱀냼 蹂댁옣/?뱀냼 ?뺣쪧 ?⑥젙 湲덉?.
+3. Stripe/Shopify ?먮룞 ?쒖텧 ???OAuth ?ы븿) 湲덉?.
+4. ?몃? 留곹겕, ?ㅻ뵒?? 鍮꾨뵒?? 異붽? ?곕씫 ?붿껌 臾멸뎄 ?ы븿 湲덉?.
+5. 怨좉컼?щ퀎 留욎땄 而⑥꽕??紐⑤뜽 吏???쒗뭹????꾩꽌釉??곗꽑).
 
-## 3. 아키텍처 원칙
-1. No-OAuth / No-Integration: 업로드 중심 워크플로우.
-2. Rule-first Engine: 추론보다 규칙 준수 보장.
-3. One Next Action: 사용자에게 한 번에 다음 행동 1개만 제시.
-4. Evidence Type당 1파일: 플랫폼 제출 구조를 그대로 반영.
-5. Privacy-first: 최소수집, 자동삭제, 즉시삭제.
+## 3. ?꾪궎?띿쿂 ?먯튃
+1. No-OAuth / No-Integration: ?낅줈??以묒떖 ?뚰겕?뚮줈??
+2. Rule-first Engine: 異붾줎蹂대떎 洹쒖튃 以??蹂댁옣.
+3. One Next Action: ?ъ슜?먯뿉寃???踰덉뿉 ?ㅼ쓬 ?됰룞 1媛쒕쭔 ?쒖떆.
+4. Evidence Type??1?뚯씪: ?뚮옯???쒖텧 援ъ“瑜?洹몃?濡?諛섏쁺.
+5. Privacy-first: 理쒖냼?섏쭛, ?먮룞??젣, 利됱떆??젣.
 
-## 4. DB 사용 근거 (왜 PostgreSQL이 필요한가)
-1. 상태머신 영속화: `VALIDATING -> FIXING -> READY -> PAID -> DOWNLOADED`.
-2. 결제 정합성: webhook 멱등 처리 및 중복 다운로드 방지.
-3. 감사 가능성: 어떤 룰 실패/어떤 auto-fix 적용인지 추적.
-4. 삭제 정책 실행: 7일 만료 삭제/즉시 삭제/접근 로그 관리.
-5. 퍼널 최적화: 업로드->READY->결제 이벤트 분석.
-6. 권장 구조: 파일 바이너리는 object storage, 메타데이터/트랜잭션은 PostgreSQL.
+## 4. DB ?ъ슜 洹쇨굅 (??PostgreSQL???꾩슂?쒓?)
+1. ?곹깭癒몄떊 ?곸냽?? `VALIDATING -> FIXING -> READY -> PAID -> DOWNLOADED`.
+2. 寃곗젣 ?뺥빀?? webhook 硫깅벑 泥섎━ 諛?以묐났 ?ㅼ슫濡쒕뱶 諛⑹?.
+3. 媛먯궗 媛?μ꽦: ?대뼡 猷??ㅽ뙣/?대뼡 auto-fix ?곸슜?몄? 異붿쟻.
+4. ??젣 ?뺤콉 ?ㅽ뻾: 7??留뚮즺 ??젣/利됱떆 ??젣/?묎렐 濡쒓렇 愿由?
+5. ?쇰꼸 理쒖쟻?? ?낅줈??>READY->寃곗젣 ?대깽??遺꾩꽍.
+6. 沅뚯옣 援ъ“: ?뚯씪 諛붿씠?덈━??object storage, 硫뷀??곗씠???몃옖??뀡? PostgreSQL.
 
-## 5. 사용자 흐름 (State Machine)
+## 5. ?ъ슜???먮쫫 (State Machine)
 1. `ONBOARDING`
 2. `CASE_CREATED`
 3. `UPLOADING`
@@ -60,7 +60,7 @@
 12. `ARCHIVED`
 13. `DELETED`
 
-## 6. 증빙 타입 표준 스키마 (8 Types)
+## 6. 利앸튃 ????쒖? ?ㅽ궎留?(8 Types)
 1. `order_receipt`
 2. `customer_details`
 3. `customer_communication`
@@ -70,97 +70,96 @@
 7. `refund_cancellation`
 8. `other_supporting`
 
-원칙: 제출용 산출물은 타입별 PDF 1개.
+?먯튃: ?쒖텧???곗텧臾쇱? ??낅퀎 PDF 1媛?
 
-## 7. 분류(Classification) 정의
-1. 기본: 슬롯 기반 수동 분류(UI에서 8개 슬롯에 드래그 앤 드롭).
-2. 보조: 파일명 키워드 + OCR 텍스트 기반 추천 라벨(신뢰도 점수 포함).
-3. 확정 권한: 최종 분류는 사용자 확정만 반영.
-4. 충돌 처리: 동일 파일 다중 슬롯 배정 금지.
-5. 감사 로그: 분류 변경 이력(`old_type`, `new_type`, `actor`, `timestamp`) 저장.
+## 7. 遺꾨쪟(Classification) ?뺤쓽
+1. 湲곕낯: ?щ’ 湲곕컲 ?섎룞 遺꾨쪟(UI?먯꽌 8媛??щ’???쒕옒洹????쒕∼).
+2. 蹂댁“: ?뚯씪紐??ㅼ썙??+ OCR ?띿뒪??湲곕컲 異붿쿇 ?쇰꺼(?좊ː???먯닔 ?ы븿).
+3. ?뺤젙 沅뚰븳: 理쒖쥌 遺꾨쪟???ъ슜???뺤젙留?諛섏쁺.
+4. 異⑸룎 泥섎━: ?숈씪 ?뚯씪 ?ㅼ쨷 ?щ’ 諛곗젙 湲덉?.
+5. 媛먯궗 濡쒓렇: 遺꾨쪟 蹂寃??대젰(`old_type`, `new_type`, `actor`, `timestamp`) ???
 
-## 8. 플랫폼 Rulebook (Canonical, 2026-03-03 기준)
-모든 룰은 `rule_id`, `product_scope`, `source_url`, `last_verified_at`, `severity`, `autofix_supported`를 저장한다.
+## 8. ?뚮옯??Rulebook (Canonical, 2026-03-03 湲곗?)
+紐⑤뱺 猷곗? `rule_id`, `product_scope`, `source_url`, `last_verified_at`, `severity`, `autofix_supported`瑜???ν븳??
 
 ### 8.1 Stripe
-1. 허용 형식: PDF/JPEG/PNG.
-2. 총 용량: 4.5MB 이하.
-3. 총 페이지: 50p 미만.
-4. Mastercard 옵션: 총 19p 제한.
-5. 증빙 타입당 파일 수: 1개.
-6. 금지 콘텐츠: 외부 링크/오디오/비디오/추가 연락 요청.
+1. ?덉슜 ?뺤떇: PDF/JPEG/PNG.
+2. 珥??⑸웾: 4.5MB ?댄븯.
+3. 珥??섏씠吏: 50p 誘몃쭔.
+4. Mastercard ?듭뀡: 珥?19p ?쒗븳.
+5. 利앸튃 ??낅떦 ?뚯씪 ?? 1媛?
+6. 湲덉? 肄섑뀗痢? ?몃? 留곹겕/?ㅻ뵒??鍮꾨뵒??異붽? ?곕씫 ?붿껌.
 
 ### 8.2 Shopify Payments (product_scope=`shopify_payments_chargeback`)
-1. 허용 형식: PDF/JPEG/PNG.
-2. PDF 규격: PDF/A 준수 필요.
-3. PDF Portfolio: 금지.
-4. 파일당 용량: 2MB 이하.
-5. 합산 용량: 4MB 이하.
-6. PDF 페이지: 50p 미만.
-7. 증빙 타입당 파일 수: 1개.
-8. 금지 콘텐츠: 외부 링크/오디오/비디오/추가 연락 요청.
-9. 조기 제출 경고: 제출 후 수정 불가 워닝 노출.
+1. ?덉슜 ?뺤떇: PDF/JPEG/PNG.
+2. PDF 洹쒓꺽: PDF/A 以???꾩슂.
+3. PDF Portfolio: 湲덉?.
+4. ?뚯씪???⑸웾: 2MB ?댄븯.
+5. ?⑹궛 ?⑸웾: 4MB ?댄븯.
+6. PDF ?섏씠吏: 50p 誘몃쭔.
+7. 利앸튃 ??낅떦 ?뚯씪 ?? 1媛?
+8. 湲덉? 肄섑뀗痢? ?몃? 留곹겕/?ㅻ뵒??鍮꾨뵒??異붽? ?곕씫 ?붿껌.
+9. 議곌린 ?쒖텧 寃쎄퀬: ?쒖텧 ???섏젙 遺덇? ?뚮떇 ?몄텧.
 
 ### 8.3 Shopify Credit (product_scope=`shopify_credit_dispute`)
-1. 허용 형식: PDF/JPEG/PNG.
-2. PDF 규격: PDF/A 준수 필요.
-3. PDF Portfolio: 금지.
-4. 파일당 용량: 2MB 이하.
-5. 합산 용량: 4.5MB 이하.
-6. PDF 페이지: 50p 미만.
-7. 증빙 타입당 파일 수: 1개.
-8. 금지 콘텐츠: 외부 링크/오디오/비디오/추가 연락 요청.
-9. 조기 제출 경고: 제출 후 수정 불가 워닝 노출.
+1. ?덉슜 ?뺤떇: PDF/JPEG/PNG.
+2. PDF 洹쒓꺽: PDF/A 以???꾩슂.
+3. PDF Portfolio: 湲덉?.
+4. ?뚯씪???⑸웾: 2MB ?댄븯.
+5. ?⑹궛 ?⑸웾: 4.5MB ?댄븯.
+6. PDF ?섏씠吏: 50p 誘몃쭔.
+7. 利앸튃 ??낅떦 ?뚯씪 ?? 1媛?
+8. 湲덉? 肄섑뀗痢? ?몃? 留곹겕/?ㅻ뵒??鍮꾨뵒??異붽? ?곕씫 ?붿껌.
+9. 議곌린 ?쒖텧 寃쎄퀬: ?쒖텧 ???섏젙 遺덇? ?뚮떇 ?몄텧.
 
-## 9. Auto-fix 정책
-### 9.1 자동 처리 범위 (OK)
-1. 동일 타입 다중 파일 병합.
-2. JPG/PNG -> PDF 변환.
-3. 이미지 리샘플링/압축(용량 최적화).
-4. Shopify 대상 PDF/A 변환 시도.
-5. 파일명 표준화(예: `01_order_receipt.pdf`).
+## 9. Auto-fix ?뺤콉
+### 9.1 ?먮룞 泥섎━ 踰붿쐞 (OK)
+1. ?숈씪 ????ㅼ쨷 ?뚯씪 蹂묓빀.
+2. JPG/PNG -> PDF 蹂??
+3. ?대?吏 由ъ깦?뚮쭅/?뺤텞(?⑸웾 理쒖쟻??.
+4. Shopify ???PDF/A 蹂???쒕룄.
+5. ?뚯씪紐??쒖????? `01_order_receipt.pdf`).
 
-### 9.2 수동 처리 필요 (BLOCKED)
-1. PDF/A 변환 실패.
-2. 페이지 제한 초과(핵심 발췌 필요).
-3. 금지 콘텐츠 탐지.
-4. 가독성 임계치 미달.
+### 9.2 ?섎룞 泥섎━ ?꾩슂 (BLOCKED)
+1. PDF/A 蹂???ㅽ뙣.
+2. ?섏씠吏 ?쒗븳 珥덇낵(?듭떖 諛쒖톸 ?꾩슂).
+3. 湲덉? 肄섑뀗痢??먯?.
+4. 媛?낆꽦 ?꾧퀎移?誘몃떖.
 
-### 9.3 오류 노출 원칙
-1. 한 번에 원인 1개만 표시.
-2. 다음 행동 1개만 제시.
-3. 항상 룰 ID와 근거 문장을 함께 표시.
+### 9.3 ?ㅻ쪟 ?몄텧 ?먯튃
+1. ??踰덉뿉 ?먯씤 1媛쒕쭔 ?쒖떆.
+2. ?ㅼ쓬 ?됰룞 1媛쒕쭔 ?쒖떆.
+3. ??긽 猷?ID? 洹쇨굅 臾몄옣???④퍡 ?쒖떆.
 
-## 10. htmx 인터랙션 패턴 (화면별)
-1. 업로드:
+## 10. htmx ?명꽣?숈뀡 ?⑦꽩 (?붾㈃蹂?
+1. ?낅줈??
 `hx-post="/api/cases/{id}/files"`  
 `hx-target="#slot-grid"`  
 `hx-swap="innerHTML"`
-2. 분류 변경:
+2. 遺꾨쪟 蹂寃?
 `hx-patch="/api/cases/{id}/classifications"`  
 `hx-target="#slot-grid"`  
 `hx-swap="outerHTML"`
-3. 검증 실행:
+3. 寃利??ㅽ뻾:
 `hx-post="/api/cases/{id}/validate"`  
 `hx-target="#validation-report"`  
 `hx-swap="innerHTML"`
-4. Auto-fix 실행:
+4. Auto-fix ?ㅽ뻾:
 `hx-post="/api/cases/{id}/fix"`  
 `hx-target="#validation-report"`  
 `hx-swap="innerHTML"`
-5. 결제 버튼 영역:
+5. 寃곗젣 踰꾪듉 ?곸뿭:
 `hx-get="/api/cases/{id}/checkout/button"`  
 `hx-target="#paywall-panel"`  
 `hx-swap="innerHTML"`
 
-## 11. 출력물 규격
+## 11. 異쒕젰臾?洹쒓꺽
 1. `Chargeback_Evidence_Kit_<case_id>.zip`
-2. `01_Upload_Ready_Files/01_order_receipt.pdf` ... 타입별 1개
-3. `02_Master_Binder.pdf` (Cover/TOC/Rule summary/Section)
+2. `01_Upload_Ready_Files/01_order_receipt.pdf` ... ??낅퀎 1媛?3. `02_Master_Binder.pdf` (Cover/TOC/Rule summary/Section)
 4. `03_Checklist_Guide.pdf` (1p, pass/fail + missing + warning)
 
-## 12. 데이터 모델 (ERD 요약)
-| Table | 핵심 컬럼 |
+## 12. ?곗씠??紐⑤뜽 (ERD ?붿빟)
+| Table | ?듭떖 而щ읆 |
 |---|---|
 | `cases` | id, case_token, platform, product_scope, reason_code, due_at, card_network, state, rulebook_version, created_at |
 | `evidence_files` | id, case_id, evidence_type, original_name, mime_type, size_bytes, page_count, storage_key, status |
@@ -173,9 +172,9 @@
 | `webhook_events` | id, provider, event_id, type, payload_hash, processed_at |
 | `audit_logs` | id, case_id, actor_type, action, metadata_json, created_at |
 
-## 13. API 계약 (MVP)
+## 13. API 怨꾩빟 (MVP)
 1. `POST /api/cases`
-   요청 필수 필드: `platform`, `product_scope`, `reason_code`.
+   ?붿껌 ?꾩닔 ?꾨뱶: `platform`, `product_scope`, `reason_code`.
 2. `POST /api/cases/{caseId}/files`
 3. `PATCH /api/cases/{caseId}/classifications`
 4. `POST /api/cases/{caseId}/validate`
@@ -186,22 +185,22 @@
 9. `GET /api/cases/{caseId}/downloads/{artifactType}`
 10. `DELETE /api/cases/{caseId}`
 
-## 14. 결제/다운로드 규칙
-1. `READY` 상태에서만 checkout 생성 가능.
-2. webhook은 `event_id` 기준 멱등 처리.
-3. 결제 성공 시 1회성 signed URL 발급(만료 15분).
-4. 결제 실패 시 READY 상태 유지.
-5. 산출물 생성 실패 시 2회 재시도 후 자동 환불 플로우.
+## 14. 寃곗젣/?ㅼ슫濡쒕뱶 洹쒖튃
+1. `READY` ?곹깭?먯꽌留?checkout ?앹꽦 媛??
+2. webhook? `event_id` 湲곗? 硫깅벑 泥섎━.
+3. 寃곗젣 ?깃났 ??1?뚯꽦 signed URL 諛쒓툒(留뚮즺 15遺?.
+4. 寃곗젣 ?ㅽ뙣 ??READY ?곹깭 ?좎?.
+5. ?곗텧臾??앹꽦 ?ㅽ뙣 ??2???ъ떆?????먮룞 ?섎텋 ?뚮줈??
 
-## 15. 보안/프라이버시 정책
-1. 업로드 allowlist + MIME + magic bytes 검증.
-2. AV 스캔 실패 시 격리.
-3. 랜덤 storage key 사용.
-4. 기본 보관 7일, 즉시 삭제 버튼 제공.
-5. 다운로드/변환/삭제 감사 로그 저장.
-6. 약관/결제 직전 고지: 법률조언 아님, 승소보장 아님, 허위증빙 금지.
+## 15. 蹂댁븞/?꾨씪?대쾭???뺤콉
+1. ?낅줈??allowlist + MIME + magic bytes 寃利?
+2. AV ?ㅼ틪 ?ㅽ뙣 ??寃⑸━.
+3. ?쒕뜡 storage key ?ъ슜.
+4. 湲곕낯 蹂닿? 7?? 利됱떆 ??젣 踰꾪듉 ?쒓났.
+5. ?ㅼ슫濡쒕뱶/蹂????젣 媛먯궗 濡쒓렇 ???
+6. ?쎄?/寃곗젣 吏곸쟾 怨좎?: 踰뺣쪧議곗뼵 ?꾨떂, ?뱀냼蹂댁옣 ?꾨떂, ?덉쐞利앸튃 湲덉?.
 
-## 16. 에러 코드 사전
+## 16. ?먮윭 肄붾뱶 ?ъ쟾
 ### 16.1 Stripe
 1. `ERR_STRIPE_TOTAL_SIZE`
 2. `ERR_STRIPE_TOTAL_PAGES`
@@ -219,74 +218,71 @@
 7. `WARN_SHPFY_EARLY_SUBMIT`
 8. `ERR_SHPFY_CREDIT_TOTAL_TOO_LARGE`
 
-## 17. QA 테스트 기준 (경계값 우선)
-1. Stripe 4.49MB 통과 / 4.51MB 실패.
-2. Shopify 파일당 1.99MB 통과 / 2.01MB 실패.
-3. Shopify Payments 합산 3.99MB 통과 / 4.01MB 실패.
-4. Shopify Credit 합산 4.49MB 통과 / 4.51MB 실패.
-5. 페이지 49p 통과 / 50p 실패.
-6. Mastercard 19p 통과 / 20p 실패.
-7. PDF 링크 포함 시 금지 콘텐츠 실패.
-8. webhook 중복 전송 시 1회 처리 검증.
-9. 즉시 삭제 후 파일 접근 차단 검증.
+## 17. QA ?뚯뒪??湲곗? (寃쎄퀎媛??곗꽑)
+1. Stripe 4.49MB ?듦낵 / 4.51MB ?ㅽ뙣.
+2. Shopify ?뚯씪??1.99MB ?듦낵 / 2.01MB ?ㅽ뙣.
+3. Shopify Payments ?⑹궛 3.99MB ?듦낵 / 4.01MB ?ㅽ뙣.
+4. Shopify Credit ?⑹궛 4.49MB ?듦낵 / 4.51MB ?ㅽ뙣.
+5. ?섏씠吏 49p ?듦낵 / 50p ?ㅽ뙣.
+6. Mastercard 19p ?듦낵 / 20p ?ㅽ뙣.
+7. PDF 留곹겕 ?ы븿 ??湲덉? 肄섑뀗痢??ㅽ뙣.
+8. webhook 以묐났 ?꾩넚 ??1??泥섎━ 寃利?
+9. 利됱떆 ??젣 ???뚯씪 ?묎렐 李⑤떒 寃利?
 
-## 18. 로드맵과 Phase별 DoD
-### Phase 1 (3주): 업로드 + 검증 기반
-1. Done: 파일 업로드 후 플랫폼별 룰 검증 결과가 화면에 즉시 표시된다.
-2. Done: 8개 슬롯 수동 분류와 분류 변경 이력 저장이 동작한다.
+## 18. 濡쒕뱶留듦낵 Phase蹂?DoD
+### Phase 1 (3二?: ?낅줈??+ 寃利?湲곕컲
+1. Done: ?뚯씪 ?낅줈?????뚮옯?쇰퀎 猷?寃利?寃곌낵媛 ?붾㈃??利됱떆 ?쒖떆?쒕떎.
+2. Done: 8媛??щ’ ?섎룞 遺꾨쪟? 遺꾨쪟 蹂寃??대젰 ??μ씠 ?숈옉?쒕떎.
 
-### Phase 2 (3주): Auto-fix + 산출물
-1. Done: 병합/압축/변환/PDF-A 변환 시도가 동작한다.
-2. Done: 제출용 ZIP, Master Binder, Checklist 생성 및 미리보기가 가능하다.
+### Phase 2 (3二?: Auto-fix + ?곗텧臾?1. Done: 蹂묓빀/?뺤텞/蹂??PDF-A 蹂???쒕룄媛 ?숈옉?쒕떎.
+2. Done: ?쒖텧??ZIP, Master Binder, Checklist ?앹꽦 諛?誘몃━蹂닿린媛 媛?ν븯??
 
-### Phase 3 (3주): 결제 + 보안/운영
-1. Done: 결제 성공 시 산출물 다운로드가 가능하고 webhook 멱등성이 보장된다.
-2. Done: 자동삭제/즉시삭제/감사로그가 운영 환경에서 검증된다.
+### Phase 3 (3二?: 寃곗젣 + 蹂댁븞/?댁쁺
+1. Done: 寃곗젣 ?깃났 ???곗텧臾??ㅼ슫濡쒕뱶媛 媛?ν븯怨?webhook 硫깅벑?깆씠 蹂댁옣?쒕떎.
+2. Done: ?먮룞??젣/利됱떆??젣/媛먯궗濡쒓렇媛 ?댁쁺 ?섍꼍?먯꽌 寃利앸맂??
 
-### Phase 4 (3주): 수익 최적화
-1. Done: 퍼널 대시보드(방문->업로드->READY->결제)가 동작한다.
-2. Done: 가격/카피 A/B 테스트와 실패코드 상위 개선 루프가 운영된다.
+### Phase 4 (3二?: ?섏씡 理쒖쟻??1. Done: ?쇰꼸 ??쒕낫??諛⑸Ц->?낅줈??>READY->寃곗젣)媛 ?숈옉?쒕떎.
+2. Done: 媛寃?移댄뵾 A/B ?뚯뒪?몄? ?ㅽ뙣肄붾뱶 ?곸쐞 媛쒖꽑 猷⑦봽媛 ?댁쁺?쒕떎.
 
-## 19. 운영 KPI
-1. 방문 -> 업로드 시작: 12% 이상.
-2. 업로드 시작 -> READY: 70% 이상.
-3. READY -> 결제: 35% 이상.
-4. 월 결제건: 45건 이상.
-5. 환불률: 3% 미만.
+## 19. ?댁쁺 KPI
+1. 諛⑸Ц -> ?낅줈???쒖옉: 12% ?댁긽.
+2. ?낅줈???쒖옉 -> READY: 70% ?댁긽.
+3. READY -> 寃곗젣: 35% ?댁긽.
+4. ??寃곗젣嫄? 45嫄??댁긽.
+5. ?섎텋瑜? 3% 誘몃쭔.
 
-## 20. 에이전트 응답 규격
-1. 매 답변은 3줄로 고정.
-2. 1줄: 현재 상태.
-3. 1줄: 지금 할 일 1개.
-4. 1줄: 이유(플랫폼 룰 기반).
+## 20. ?먯씠?꾪듃 ?묐떟 洹쒓꺽
+1. 留??듬?? 3以꾨줈 怨좎젙.
+2. 1以? ?꾩옱 ?곹깭.
+3. 1以? 吏湲?????1媛?
+4. 1以? ?댁쑀(?뚮옯??猷?湲곕컲).
 
-## 21. 에이전트 시스템 프롬프트 (붙여넣기용)
+## 21. ?먯씠?꾪듃 ?쒖뒪???꾨＼?꾪듃 (遺숈뿬?ｊ린??
 ```text
-너는 Dispute Evidence Assistant다.
-목표: 업로드된 증빙 파일을 Stripe/Shopify 규칙에 맞게 정리·검수·패키징해 Ready-to-Upload 상태로 만든다.
+?덈뒗 Dispute Evidence Assistant??
+紐⑺몴: ?낅줈?쒕맂 利앸튃 ?뚯씪??Stripe/Shopify 洹쒖튃??留욊쾶 ?뺣━쨌寃?샕룻뙣?ㅼ쭠??Ready-to-Upload ?곹깭濡?留뚮뱺??
 
-절대 규칙:
-- 승소 보장/법률 조언 금지.
-- 허위/조작/사기성 증빙 생성 금지.
-- 외부 링크/오디오/비디오/추가 연락 요청 포함 금지.
-- 질문 폭탄 금지.
-- 매 답변은 3줄: (1)상태 (2)다음 행동 1개 (3)이유.
+?덈? 洹쒖튃:
+- ?뱀냼 蹂댁옣/踰뺣쪧 議곗뼵 湲덉?.
+- ?덉쐞/議곗옉/?ш린??利앸튃 ?앹꽦 湲덉?.
+- ?몃? 留곹겕/?ㅻ뵒??鍮꾨뵒??異붽? ?곕씫 ?붿껌 ?ы븿 湲덉?.
+- 吏덈Ц ??깂 湲덉?.
+- 留??듬?? 3以? (1)?곹깭 (2)?ㅼ쓬 ?됰룞 1媛?(3)?댁쑀.
 
-플랫폼 룰 요약:
-- Stripe: PDF/JPG/PNG, 총 4.5MB 이하, 총 50p 미만, Mastercard 19p 제한 옵션, 타입별 1파일.
-- Shopify Payments: PDF/JPG/PNG, PDF/A 준수 필요, PDF Portfolio 금지, 파일당 2MB/합산 4MB, PDF 50p 미만, 타입별 1파일, 조기 제출 후 수정 불가 경고.
-- Shopify Credit: PDF/JPG/PNG, PDF/A 준수 필요, PDF Portfolio 금지, 파일당 2MB/합산 4.5MB, PDF 50p 미만, 타입별 1파일, 조기 제출 후 수정 불가 경고.
+?뚮옯??猷??붿빟:
+- Stripe: PDF/JPG/PNG, 珥?4.5MB ?댄븯, 珥?50p 誘몃쭔, Mastercard 19p ?쒗븳 ?듭뀡, ??낅퀎 1?뚯씪.
+- Shopify Payments: PDF/JPG/PNG, PDF/A 以???꾩슂, PDF Portfolio 湲덉?, ?뚯씪??2MB/?⑹궛 4MB, PDF 50p 誘몃쭔, ??낅퀎 1?뚯씪, 議곌린 ?쒖텧 ???섏젙 遺덇? 寃쎄퀬.
+- Shopify Credit: PDF/JPG/PNG, PDF/A 以???꾩슂, PDF Portfolio 湲덉?, ?뚯씪??2MB/?⑹궛 4.5MB, PDF 50p 誘몃쭔, ??낅퀎 1?뚯씪, 議곌린 ?쒖텧 ???섏젙 遺덇? 寃쎄퀬.
 
-출력물:
+異쒕젰臾?
 - Evidence Upload Kit ZIP
 - Master Binder PDF
 - Checklist PDF
 
-거절 템플릿:
-- 허위/조작 요청 시: “그건 도와드릴 수 없어요. 대신 실제 자료를 규칙에 맞게 정리해 제출 가능한 형태로 만드는 건 도와드릴게요.”
-```
+嫄곗젅 ?쒗뵆由?
+- ?덉쐞/議곗옉 ?붿껌 ?? ?쒓렇嫄??꾩??쒕┫ ???놁뼱?? ????ㅼ젣 ?먮즺瑜?洹쒖튃??留욊쾶 ?뺣━???쒖텧 媛?ν븳 ?뺥깭濡?留뚮뱶??嫄??꾩??쒕┫寃뚯슂.??```
 
-## 22. 공식 출처
+## 22. 怨듭떇 異쒖쿂
 1. https://docs.stripe.com/disputes/responding
 2. https://docs.stripe.com/disputes/best-practices
 3. https://docs.stripe.com/disputes/how-disputes-work
@@ -298,75 +294,69 @@
 9. https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback
 10. https://changelog.shopify.com/posts/uplift-disputes-evidence-form
 
-## 23. 즉시 실행 플랜 (정책 확정 반영)
+## 23. 利됱떆 ?ㅽ뻾 ?뚮옖 (?뺤콉 ?뺤젙 諛섏쁺)
 1. Day 0: Rulebook Freeze
-   산출물: `rulebook_version=2026-03-03` 확정, `shopify_payments_chargeback`와 `shopify_credit_dispute` 분기 확정.
-2. Day 1: DB/도메인 반영
-   산출물: `cases.product_scope` 컬럼 추가, 기본값 없음(필수 입력), 인덱스 추가.
-3. Day 2: Validator 분기 구현
-   산출물: Shopify Payments는 합산 4MB, Shopify Credit는 합산 4.5MB로 검사.
-4. Day 3: Auto-fix/에러코드 정합화
-   산출물: `ERR_SHPFY_TOTAL_TOO_LARGE`(4MB), `ERR_SHPFY_CREDIT_TOTAL_TOO_LARGE`(4.5MB) 분리.
-5. Day 4: QA 경계값 테스트
-   산출물: 3.99/4.01MB, 4.49/4.51MB 케이스 자동 테스트 통과.
-6. Day 5: 배포 전 점검
-   산출물: 결제/다운로드 플로우, 로그, 삭제 정책, 소스 링크 검증일 표시 확인.
+   ?곗텧臾? `rulebook_version=2026-03-03` ?뺤젙, `shopify_payments_chargeback`? `shopify_credit_dispute` 遺꾧린 ?뺤젙.
+2. Day 1: DB/?꾨찓??諛섏쁺
+   ?곗텧臾? `cases.product_scope` 而щ읆 異붽?, 湲곕낯媛??놁쓬(?꾩닔 ?낅젰), ?몃뜳??異붽?.
+3. Day 2: Validator 遺꾧린 援ы쁽
+   ?곗텧臾? Shopify Payments???⑹궛 4MB, Shopify Credit???⑹궛 4.5MB濡?寃??
+4. Day 3: Auto-fix/?먮윭肄붾뱶 ?뺥빀??   ?곗텧臾? `ERR_SHPFY_TOTAL_TOO_LARGE`(4MB), `ERR_SHPFY_CREDIT_TOTAL_TOO_LARGE`(4.5MB) 遺꾨━.
+5. Day 4: QA 寃쎄퀎媛??뚯뒪??   ?곗텧臾? 3.99/4.01MB, 4.49/4.51MB 耳?댁뒪 ?먮룞 ?뚯뒪???듦낵.
+6. Day 5: 諛고룷 ???먭?
+   ?곗텧臾? 寃곗젣/?ㅼ슫濡쒕뱶 ?뚮줈?? 濡쒓렇, ??젣 ?뺤콉, ?뚯뒪 留곹겕 寃利앹씪 ?쒖떆 ?뺤씤.
 
-진행 원칙: 정책 충돌이 생기면 코드 수정보다 Rulebook 버전 갱신을 우선한다.
+吏꾪뻾 ?먯튃: ?뺤콉 異⑸룎???앷린硫?肄붾뱶 ?섏젙蹂대떎 Rulebook 踰꾩쟾 媛깆떊???곗꽑?쒕떎.
 
 ## 24. Dev Handoff (2026-03-03)
-### 24.1 오늘 완료한 개발 작업
-1. Backend case workflow API 구현 완료
+### 24.1 ?ㅻ뒛 ?꾨즺??媛쒕컻 ?묒뾽
+1. Backend case workflow API 援ы쁽 ?꾨즺
    - create/upload/list/reclassify/validate/validate-stored/report/delete
-2. Validation history 영속화 완료
-   - `validation_runs`, `validation_issues` 저장 및 report 노출
-3. Auto-fix job 파이프라인 구현 완료
+2. Validation history ?곸냽???꾨즺
+   - `validation_runs`, `validation_issues` ???諛?report ?몄텧
+3. Auto-fix job ?뚯씠?꾨씪??援ы쁽 ?꾨즺
    - endpoint: `POST /api/cases/{caseId}/fix`, `GET /api/cases/{caseId}/fix/{jobId}`
    - state: `QUEUED -> RUNNING -> SUCCEEDED/FAILED`
-   - 현재 지원 fix: 타입별 다중 파일 업로드 시 최신 1개만 유지
-4. Audit log + retention cleanup 스케줄러 구현 완료
-5. DB migration 추가 완료
+   - ?꾩옱 吏??fix: ??낅퀎 ?ㅼ쨷 ?뚯씪 ?낅줈????理쒖떊 1媛쒕쭔 ?좎?
+4. Audit log + retention cleanup ?ㅼ?以꾨윭 援ы쁽 ?꾨즺
+5. DB migration 異붽? ?꾨즺
    - `V1`~`V5` (cases, evidence_files, validation, audit_logs, fix_jobs)
-6. 테스트 확장 완료
-   - 총 27개 테스트
-   - 실행 검증: `./gradlew.bat clean test` 성공
+6. ?뚯뒪???뺤옣 ?꾨즺
+   - 珥?27媛??뚯뒪??   - ?ㅽ뻾 寃利? `./gradlew.bat clean test` ?깃났
 
-### 24.2 현재 코드 기준 주의사항
-1. Shopify PDF/A 정책 방향은 문서 버전 간 충돌 이력이 있음.
-2. 현재 구현은 `PDF/A required` 기준(`ERR_SHPFY_PDF_NOT_PDFA`)으로 동작함.
-3. 정책 확정 전에는 룰/에러코드/Auto-fix 문구를 단일 기준으로 재정렬해야 함.
+### 24.2 ?꾩옱 肄붾뱶 湲곗? 二쇱쓽?ы빆
+1. Shopify PDF/A ?뺤콉 諛⑺뼢? 臾몄꽌 踰꾩쟾 媛?異⑸룎 ?대젰???덉쓬.
+2. ?꾩옱 援ы쁽? `PDF/A required` 湲곗?(`ERR_SHPFY_PDF_NOT_PDFA`)?쇰줈 ?숈옉??
+3. ?뺤콉 ?뺤젙 ?꾩뿉??猷??먮윭肄붾뱶/Auto-fix 臾멸뎄瑜??⑥씪 湲곗??쇰줈 ?ъ젙?ы빐????
 
-### 24.3 다음 작업 (Frontend 이전, Backend 우선)
-1. Deliverable generator 구현
+### 24.3 ?ㅼ쓬 ?묒뾽 (Frontend ?댁쟾, Backend ?곗꽑)
+1. Deliverable generator 援ы쁽
    - Evidence Upload Kit ZIP
    - Master Binder PDF
    - Checklist PDF
-2. Download control and pre-payment flow 구현
-   - READY 이후 토큰 기반 다운로드 제어
-   - 만료/재발급 정책
-3. Auto-fix 확장
-   - dedupe 외의 용량/페이지 관련 fix 시나리오 단계적 추가
-   - 실패 시 단일 원인(One reason) 반환 강제
-4. 운영 안정화
-   - webhook/idempotency 강화
+2. Download control and pre-payment flow 援ы쁽
+   - READY ?댄썑 ?좏겙 湲곕컲 ?ㅼ슫濡쒕뱶 ?쒖뼱
+   - 留뚮즺/?щ컻湲??뺤콉
+3. Auto-fix ?뺤옣
+   - dedupe ?몄쓽 ?⑸웾/?섏씠吏 愿??fix ?쒕굹由ъ삤 ?④퀎??異붽?
+   - ?ㅽ뙣 ???⑥씪 ?먯씤(One reason) 諛섑솚 媛뺤젣
+4. ?댁쁺 ?덉젙??   - webhook/idempotency 媛뺥솕
    - structured logging + trace id
 
-### 24.4 다른 로컬에서 작업 이어받기
+### 24.4 ?ㅻⅨ 濡쒖뺄?먯꽌 ?묒뾽 ?댁뼱諛쏄린
 1. clone
 ```powershell
 git clone https://github.com/ichbinhyeok/chargeback.git
 cd chargeback
 git checkout main
 ```
-2. JDK 21 설정 후 테스트
-```powershell
+2. JDK 21 ?ㅼ젙 ???뚯뒪??```powershell
 $env:JAVA_HOME="C:\Path\To\JDK21"
 .\gradlew.bat clean test
 ```
-3. 앱 실행
+3. ???ㅽ뻾
 ```powershell
 $env:JAVA_HOME="C:\Path\To\JDK21"
 .\gradlew.bat bootRun
 ```
-4. 참고 문서
-   - `HANDOFF_2026-03-03_KOR.md` (상세 핸드오프)
+4. Single source of truth: this Master Bible is the only handoff document.
