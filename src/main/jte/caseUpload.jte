@@ -9,6 +9,16 @@
 @param PaymentEntity latestPayment
 @param String message
 @param String error
+@param Integer caseMaxFiles
+@param Integer uploadedFileCount
+@param Integer remainingFileSlots
+@param Long uploadedSizeBytes
+@param Long totalSizeLimitBytes
+@param Long remainingSizeBytes
+@param Integer totalPagesUsed
+@param Integer stripePagesRemaining
+@param Integer mastercardPagesRemaining
+@param String sizeLimitLabel
 
 @template.layout(
     title = "Upload | " + report.caseToken(),
@@ -57,6 +67,43 @@
         </nav>
     </div>
 
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+        <div class="cb-card">
+            <div class="text-xs uppercase tracking-wide text-gray-500 font-semibold mb-1">File Slots</div>
+            <div id="budget-files" class="text-lg font-bold text-gray-900">${uploadedFileCount} / ${caseMaxFiles}</div>
+            <div id="budget-files-remaining" class="text-sm text-gray-600">Remaining: ${remainingFileSlots}</div>
+        </div>
+        <div class="cb-card">
+            <div class="text-xs uppercase tracking-wide text-gray-500 font-semibold mb-1">Total Size Budget</div>
+            <div id="budget-size" class="text-lg font-bold text-gray-900">${String.format("%.2f", uploadedSizeBytes / 1048576.0)} MB / ${sizeLimitLabel}</div>
+            <div id="budget-size-remaining" class="text-sm text-gray-600">Remaining: ${String.format("%.2f", remainingSizeBytes / 1048576.0)} MB</div>
+        </div>
+        <div class="cb-card">
+            <div class="text-xs uppercase tracking-wide text-gray-500 font-semibold mb-1">Current Pages</div>
+            <div class="text-lg font-bold text-gray-900">${totalPagesUsed}</div>
+            <div class="text-sm text-gray-600">Across all uploaded files</div>
+        </div>
+        <div class="cb-card">
+            @if(report.productScope().name().equals("STRIPE_DISPUTE"))
+                <div class="text-xs uppercase tracking-wide text-gray-500 font-semibold mb-1">Stripe Page Headroom</div>
+                <div class="text-lg font-bold text-gray-900">+${stripePagesRemaining} before 50-page block</div>
+                @if(mastercardPagesRemaining >= 0)
+                    <div class="text-sm text-gray-600">Mastercard extra pages left: ${mastercardPagesRemaining}</div>
+                @else
+                    <div class="text-sm text-gray-600">Card-specific limit applies only to Mastercard</div>
+                @endif
+            @else
+                <div class="text-xs uppercase tracking-wide text-gray-500 font-semibold mb-1">Scope Rule</div>
+                <div class="text-lg font-bold text-gray-900">Per-platform limits active</div>
+                @if(report.productScope().name().equals("SHOPIFY_PAYMENTS_CHARGEBACK"))
+                    <div class="text-sm text-gray-600">Each file &lt;= 2MB, total &lt;= 4MB.</div>
+                @else
+                    <div class="text-sm text-gray-600">Total &lt;= 4.5MB, each PDF &lt; 50 pages.</div>
+                @endif
+            @endif
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div class="lg:col-span-1 border border-dashed border-gray-300 rounded-xl bg-gray-50 flex flex-col items-center justify-center p-8 text-center"
              id="dropzone"
@@ -82,7 +129,7 @@
             <div class="cb-card h-full flex flex-col">
                 <div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
                     <h2 class="text-lg font-bold text-gray-900">Your Evidence Files</h2>
-                    <span class="text-sm font-medium text-gray-500"><span id="file-count">${report.files().size()}</span> files uploaded</span>
+                    <span class="text-sm font-medium text-gray-500"><span id="file-count">${uploadedFileCount}</span> files uploaded</span>
                 </div>
 
                 <div id="file-list-container" class="flex-1 overflow-y-auto max-h-[400px]">
@@ -187,8 +234,17 @@
         const evidenceTypeSelectTemplate = document.getElementById('evidence-type-select-template');
         const clientErrorAlert = document.getElementById('client-error-alert');
         const clientErrorMessage = document.getElementById('client-error-message');
+        const fileCountElement = document.getElementById('file-count');
+        const budgetFilesElement = document.getElementById('budget-files');
+        const budgetFilesRemainingElement = document.getElementById('budget-files-remaining');
+        const budgetSizeElement = document.getElementById('budget-size');
+        const budgetSizeRemainingElement = document.getElementById('budget-size-remaining');
         const caseId = '${report.caseId().toString()}';
         const caseToken = '${report.caseToken()}';
+        const caseMaxFiles = ${caseMaxFiles};
+        let uploadedFileCount = ${uploadedFileCount};
+        let currentTotalSizeBytes = ${uploadedSizeBytes};
+        const totalSizeLimitBytes = ${totalSizeLimitBytes};
         const defaultUploadBtnText = mappingStartUploadBtn.textContent;
 
         let pendingFiles = [];
@@ -268,6 +324,7 @@
                 return;
             }
             hideClientError();
+            const errors = [];
             const selectedFiles = Array.from(fileList);
             const accepted = [];
             const rejected = [];
@@ -281,14 +338,48 @@
                 }
             }
             if (rejected.length > 0) {
-                showClientError(
-                    'Unsupported file type (allowed: PDF, PNG, JPG, JPEG):\n- ' + rejected.join('\n- ')
-                );
+                errors.push('Unsupported file type (allowed: PDF, PNG, JPG, JPEG):\n- ' + rejected.join('\n- '));
             }
             if (accepted.length === 0) {
+                if (errors.length > 0) {
+                    showClientError(errors.join('\n\n'));
+                }
                 return;
             }
-            pendingFiles = accepted;
+
+            const remainingSlots = caseMaxFiles - uploadedFileCount;
+            if (remainingSlots <= 0) {
+                errors.push('Case file limit reached (' + caseMaxFiles + '). Delete or merge files before adding more.');
+                showClientError(errors.join('\n\n'));
+                return;
+            }
+
+            let cappedAccepted = accepted;
+            if (accepted.length > remainingSlots) {
+                cappedAccepted = accepted.slice(0, remainingSlots);
+                const dropped = accepted.slice(remainingSlots).map((file) => file.name);
+                errors.push(
+                    'Only ' + remainingSlots + ' more file(s) can be added now. Skipped:\n- ' + dropped.join('\n- ')
+                );
+            }
+
+            const selectedBytes = cappedAccepted.reduce((sum, file) => sum + file.size, 0);
+            if (currentTotalSizeBytes + selectedBytes > totalSizeLimitBytes) {
+                errors.push(
+                    'This selection exceeds your current policy total size budget ('
+                    + formatBytes(totalSizeLimitBytes)
+                    + '). Validation will fail until files are removed or compressed.'
+                );
+            }
+
+            if (errors.length > 0) {
+                showClientError(errors.join('\n\n'));
+            }
+
+            pendingFiles = cappedAccepted;
+            if (pendingFiles.length === 0) {
+                return;
+            }
             renderMappingRows();
             openMappingModal();
         }
@@ -369,11 +460,16 @@
                 const uploadResult = await uploadSingleFileWithRetry(mapping, 3);
                 if (!uploadResult.ok) {
                     failures.push(mapping.file.name + ': ' + uploadResult.reason);
+                } else {
+                    uploadedFileCount += 1;
+                    currentTotalSizeBytes += mapping.file.size;
                 }
 
                 completed++;
                 progressBar.style.width = ((completed / mappings.length) * 100) + '%';
             }
+
+            updateBudgetIndicators();
 
             if (failures.length > 0) {
                 showClientError('Some files failed to upload:\n- ' + failures.join('\n- '));
@@ -457,6 +553,20 @@
 
         function sleep(ms) {
             return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+
+        function updateBudgetIndicators() {
+            const remainingSlots = Math.max(0, caseMaxFiles - uploadedFileCount);
+            const remainingBytes = Math.max(0, totalSizeLimitBytes - currentTotalSizeBytes);
+            fileCountElement.textContent = uploadedFileCount.toString();
+            budgetFilesElement.textContent = uploadedFileCount + ' / ' + caseMaxFiles;
+            budgetFilesRemainingElement.textContent = 'Remaining: ' + remainingSlots;
+            budgetSizeElement.textContent = formatBytes(currentTotalSizeBytes) + ' / ' + formatBytes(totalSizeLimitBytes);
+            budgetSizeRemainingElement.textContent = 'Remaining: ' + formatBytes(remainingBytes);
+        }
+
+        function formatBytes(bytes) {
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
         }
 
         function showClientError(message) {

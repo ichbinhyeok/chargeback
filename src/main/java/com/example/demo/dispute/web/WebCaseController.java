@@ -1,6 +1,7 @@
 package com.example.demo.dispute.web;
 
 import com.example.demo.dispute.api.CaseReportResponse;
+import com.example.demo.dispute.api.EvidenceFileReportResponse;
 import com.example.demo.dispute.api.CreateCaseRequest;
 import com.example.demo.dispute.api.ValidateCaseResponse;
 import com.example.demo.dispute.api.ValidationIssueResponse;
@@ -47,6 +48,11 @@ import org.springframework.web.multipart.MultipartFile;
 @Controller
 public class WebCaseController {
 
+    private static final long MB = 1024L * 1024L;
+    private static final long STRIPE_TOTAL_SIZE_LIMIT_BYTES = (long) (4.5d * MB);
+    private static final long SHOPIFY_PAYMENTS_TOTAL_SIZE_LIMIT_BYTES = 4L * MB;
+    private static final long SHOPIFY_CREDIT_TOTAL_SIZE_LIMIT_BYTES = (long) (4.5d * MB);
+
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm z")
             .withZone(ZoneId.systemDefault());
     private static final Pattern CASE_TOKEN_PATTERN = Pattern.compile("(case_[A-Za-z0-9]+)");
@@ -59,6 +65,7 @@ public class WebCaseController {
     private final AutoFixService autoFixService;
     private final SubmissionExportService submissionExportService;
     private final PaymentService paymentService;
+    private final int caseMaxFiles;
     private final int retentionDays;
     private final String publicBaseUrl;
 
@@ -71,6 +78,7 @@ public class WebCaseController {
             AutoFixService autoFixService,
             SubmissionExportService submissionExportService,
             PaymentService paymentService,
+            @Value("${app.case.max-files:100}") int caseMaxFiles,
             @Value("${app.retention.days:7}") int retentionDays,
             @Value("${app.public-base-url:http://localhost:8080}") String publicBaseUrl
     ) {
@@ -82,6 +90,7 @@ public class WebCaseController {
         this.autoFixService = autoFixService;
         this.submissionExportService = submissionExportService;
         this.paymentService = paymentService;
+        this.caseMaxFiles = caseMaxFiles;
         this.retentionDays = retentionDays;
         this.publicBaseUrl = trimTrailingSlash(publicBaseUrl);
     }
@@ -271,7 +280,7 @@ public class WebCaseController {
         return "caseExport";
     }
 
-    @GetMapping("/c/{caseToken}/pay")
+    @PostMapping("/c/{caseToken}/pay")
     public String pay(@PathVariable String caseToken) {
         try {
             CheckoutStartResult checkout = paymentService.startCheckout(caseToken);
@@ -286,7 +295,12 @@ public class WebCaseController {
 
     @GetMapping("/c/{caseToken}/download/submission.zip")
     public void downloadSubmissionZip(@PathVariable String caseToken, HttpServletResponse response) throws Exception {
-        if (!paymentService.isPaid(caseToken)) {
+        DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
+        if (!isExportableState(disputeCase.getState())) {
+            response.sendRedirect("/c/" + caseToken + "/export?error=" + encode("Run validation and resolve blocked issues before export."));
+            return;
+        }
+        if (!paymentService.isPaid(disputeCase.getId())) {
             response.sendRedirect("/c/" + caseToken + "/export?error=" + encode("Payment required to download."));
             return;
         }
@@ -299,7 +313,13 @@ public class WebCaseController {
 
     @GetMapping("/c/{caseToken}/download/summary.pdf")
     public void downloadSummaryPdf(@PathVariable String caseToken, HttpServletResponse response) throws Exception {
-        boolean paid = paymentService.isPaid(caseToken);
+        DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
+        if (!isExportableState(disputeCase.getState())) {
+            response.sendRedirect("/c/" + caseToken + "/export?error=" + encode("Run validation before downloading the summary guide."));
+            return;
+        }
+
+        boolean paid = paymentService.isPaid(disputeCase.getId());
         response.setContentType("application/pdf");
         if (paid) {
             response.setHeader("Content-Disposition", "attachment; filename=\"Chargeback_Submission_Guide_" + caseToken + ".pdf\"");
@@ -352,6 +372,19 @@ public class WebCaseController {
         CaseReportResponse report = caseReportService.getReport(disputeCase.getId());
         ReadinessSummary readiness = computeReadiness(report);
         Instant expiresAt = disputeCase.getCreatedAt().plus(retentionDays, ChronoUnit.DAYS);
+        int uploadedFileCount = report.files().size();
+        int remainingFileSlots = Math.max(0, caseMaxFiles - uploadedFileCount);
+        long uploadedSizeBytes = report.files().stream().mapToLong(EvidenceFileReportResponse::sizeBytes).sum();
+        long totalSizeLimitBytes = totalSizeLimitFor(report.productScope());
+        long remainingSizeBytes = Math.max(0, totalSizeLimitBytes - uploadedSizeBytes);
+        int totalPagesUsed = report.files().stream().mapToInt(EvidenceFileReportResponse::pageCount).sum();
+        int stripePagesRemaining = report.productScope() == ProductScope.STRIPE_DISPUTE
+                ? Math.max(0, 49 - totalPagesUsed)
+                : -1;
+        int mastercardPagesRemaining = report.productScope() == ProductScope.STRIPE_DISPUTE
+                && disputeCase.getCardNetwork() == CardNetwork.MASTERCARD
+                ? Math.max(0, 19 - totalPagesUsed)
+                : -1;
 
         model.addAttribute("disputeCase", disputeCase);
         model.addAttribute("report", report);
@@ -367,6 +400,17 @@ public class WebCaseController {
         model.addAttribute("retentionDays", retentionDays);
         model.addAttribute("expiresAtText", DATE_TIME_FORMAT.format(expiresAt));
         model.addAttribute("casePublicUrl", publicBaseUrl + "/c/" + report.caseToken());
+        model.addAttribute("exportReady", isExportableState(report.state()));
+        model.addAttribute("caseMaxFiles", caseMaxFiles);
+        model.addAttribute("uploadedFileCount", uploadedFileCount);
+        model.addAttribute("remainingFileSlots", remainingFileSlots);
+        model.addAttribute("uploadedSizeBytes", uploadedSizeBytes);
+        model.addAttribute("totalSizeLimitBytes", totalSizeLimitBytes);
+        model.addAttribute("remainingSizeBytes", remainingSizeBytes);
+        model.addAttribute("totalPagesUsed", totalPagesUsed);
+        model.addAttribute("stripePagesRemaining", stripePagesRemaining);
+        model.addAttribute("mastercardPagesRemaining", mastercardPagesRemaining);
+        model.addAttribute("sizeLimitLabel", formatSizeLabel(totalSizeLimitBytes));
     }
 
     private ReadinessSummary computeReadiness(CaseReportResponse report) {
@@ -430,6 +474,10 @@ public class WebCaseController {
         }
     }
 
+    private boolean isExportableState(CaseState state) {
+        return state == CaseState.READY || state == CaseState.PAID || state == CaseState.DOWNLOADED;
+    }
+
     private String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
@@ -456,6 +504,18 @@ public class WebCaseController {
         }
 
         throw new IllegalArgumentException("Invalid case token format.");
+    }
+
+    private long totalSizeLimitFor(ProductScope productScope) {
+        return switch (productScope) {
+            case STRIPE_DISPUTE -> STRIPE_TOTAL_SIZE_LIMIT_BYTES;
+            case SHOPIFY_PAYMENTS_CHARGEBACK -> SHOPIFY_PAYMENTS_TOTAL_SIZE_LIMIT_BYTES;
+            case SHOPIFY_CREDIT_DISPUTE -> SHOPIFY_CREDIT_TOTAL_SIZE_LIMIT_BYTES;
+        };
+    }
+
+    private String formatSizeLabel(long bytes) {
+        return String.format("%.1f MB", bytes / (double) MB);
     }
 
     private record ReadinessSummary(

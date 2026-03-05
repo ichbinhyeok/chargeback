@@ -10,9 +10,34 @@ Core flow:
 5. Pay (Stripe Checkout)
 6. Download submission ZIP and one-page guide PDF
 
+## Policy Baseline (as implemented)
+
+- Stripe disputes:
+  - Accepted format: PDF, JPEG, PNG
+  - One file per evidence type
+  - No external links in evidence files
+  - Total upload size <= 4.5 MB
+  - Total pages < 50
+  - Mastercard: total pages <= 19
+
+- Shopify Payments chargebacks:
+  - Accepted format: PDF, JPEG, PNG
+  - One file per evidence type
+  - No external links
+  - Each file <= 2 MB
+  - Total upload size <= 4 MB
+  - Each PDF < 50 pages
+  - No PDF portfolio
+  - PDF/A required for PDF files
+
+- Shopify Credit disputes:
+  - Accepted format: PDF, JPEG, PNG
+  - Total upload size <= 4.5 MB
+  - Each PDF < 50 pages
+
 No-login access model:
 - Access control is case-token based (`/c/{caseToken}`).
-- Recent cases are stored in browser localStorage for quick return.
+- Recent case links are stored only when users opt in on trusted devices (browser localStorage, 30-day TTL).
 - Users can download an access key text file and rotate token if a link is exposed.
 
 ## Local Run (Dev Profile)
@@ -59,6 +84,7 @@ Output:
 
 General:
 - `APP_STORAGE_ROOT` (default `./data/evidence`)
+- `APP_CASE_MAX_FILES` (default `100`)
 - `APP_RETENTION_DAYS` (default `7`)
 - `APP_RETENTION_CRON` (default `0 30 3 * * *`)
 - `APP_API_ENFORCE_CASE_TOKEN` (default `true`)
@@ -116,6 +142,7 @@ Prod defaults:
 - `/c/{caseToken}/validate` validation result
 - `/c/{caseToken}/report` case report
 - `/c/{caseToken}/export` paywall + download
+- `POST /c/{caseToken}/pay` start Stripe Checkout
 - `/c/{caseToken}/download/submission.zip` paid only
 - `/c/{caseToken}/download/summary.pdf` free with watermark, paid without watermark
 - `/c/{caseToken}/access-key.txt` case recovery key download
@@ -164,3 +191,4 @@ Prod defaults:
 - It does not provide legal advice and does not guarantee dispute outcomes.
 - All API/web responses include trace id header (`X-Trace-Id` by default) for support and incident tracing.
 - Case pages (`/c/*`), API (`/api/*`), and webhook (`/webhooks/*`) responses include `X-Robots-Tag: noindex, nofollow, noarchive`.
+- Case/API/webhook responses also send `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.

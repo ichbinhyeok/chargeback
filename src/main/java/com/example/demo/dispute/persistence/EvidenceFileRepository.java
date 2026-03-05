@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface EvidenceFileRepository extends JpaRepository<EvidenceFileEntity, UUID> {
     List<EvidenceFileEntity> findByDisputeCaseId(UUID caseId);
     Optional<EvidenceFileEntity> findByIdAndDisputeCaseId(UUID fileId, UUID caseId);
+    long countByDisputeCaseId(UUID caseId);
 
     void deleteByDisputeCaseId(UUID caseId);
 }

@@ -34,19 +34,22 @@ public class EvidenceFileService {
     private final PdfMetadataExtractor pdfMetadataExtractor;
     private final AuditLogService auditLogService;
     private final Path storageRoot;
+    private final int caseMaxFiles;
 
     public EvidenceFileService(
             CaseService caseService,
             EvidenceFileRepository evidenceFileRepository,
             PdfMetadataExtractor pdfMetadataExtractor,
             AuditLogService auditLogService,
-            @Value("${app.storage.root:./data/evidence}") String storageRoot
+            @Value("${app.storage.root:./data/evidence}") String storageRoot,
+            @Value("${app.case.max-files:100}") int caseMaxFiles
     ) {
         this.caseService = caseService;
         this.evidenceFileRepository = evidenceFileRepository;
         this.pdfMetadataExtractor = pdfMetadataExtractor;
         this.auditLogService = auditLogService;
         this.storageRoot = Path.of(storageRoot);
+        this.caseMaxFiles = caseMaxFiles;
     }
 
     public UploadFileResponse upload(UUID caseId, EvidenceType evidenceType, MultipartFile file) {
@@ -55,6 +58,12 @@ public class EvidenceFileService {
 
         if (file.isEmpty()) {
             throw new IllegalArgumentException("uploaded file is empty");
+        }
+        long uploadedFileCount = evidenceFileRepository.countByDisputeCaseId(caseId);
+        if (uploadedFileCount >= caseMaxFiles) {
+            throw new IllegalArgumentException(
+                    "file limit reached for this case (" + caseMaxFiles + "). Delete unused files before uploading more."
+            );
         }
 
         FileFormat format = detectFormat(file.getOriginalFilename(), file.getContentType());

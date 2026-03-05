@@ -41,10 +41,10 @@ public class ValidationService {
         List<ValidationIssueResponse> issues = new ArrayList<>();
 
         validateAllowedFormats(disputeCase.getPlatform(), files, issues);
-        validateSingleFilePerType(disputeCase.getPlatform(), files, issues);
-        validateExternalLinks(disputeCase.getPlatform(), files, issues);
 
         if (disputeCase.getPlatform() == Platform.STRIPE) {
+            validateSingleFilePerType(disputeCase.getPlatform(), files, issues);
+            validateExternalLinks(disputeCase.getPlatform(), files, issues);
             validateStripeRules(disputeCase, files, issues);
         } else if (disputeCase.getPlatform() == Platform.SHOPIFY) {
             validateShopifyRules(disputeCase, files, earlySubmit, issues);
@@ -184,60 +184,33 @@ public class ValidationService {
             boolean earlySubmit,
             List<ValidationIssueResponse> issues
     ) {
+        validateShopifyPdfPageLimit(files, issues);
+
         long totalSizeBytes = files.stream().mapToLong(EvidenceFileInput::sizeBytes).sum();
 
-        boolean hasLargeSingleFile = files.stream().anyMatch(file -> file.sizeBytes() > LIMIT_2_MB);
-        if (hasLargeSingleFile) {
-            issues.add(issue(
-                    "ERR_SHPFY_FILE_TOO_LARGE",
-                    "SHP_SIZE_001",
-                    IssueSeverity.FIXABLE,
-                    "Each Shopify evidence file must be 2MB or smaller."
-            ));
-        }
+        if (disputeCase.getProductScope() == ProductScope.SHOPIFY_PAYMENTS_CHARGEBACK) {
+            validateSingleFilePerType(disputeCase.getPlatform(), files, issues);
+            validateExternalLinks(disputeCase.getPlatform(), files, issues);
+            validateShopifyPaymentsFileRules(files, issues);
 
-        for (EvidenceFileInput file : files) {
-            if (file.format() != FileFormat.PDF) {
-                continue;
-            }
-
-            if (file.pageCount() >= 50) {
+            if (totalSizeBytes > LIMIT_4_MB) {
                 issues.add(issue(
-                        "ERR_SHPFY_PDF_PAGES_EXCEEDED",
-                        "SHP_PAGE_001",
-                        IssueSeverity.BLOCKED,
-                        "Each Shopify PDF must be below 50 pages."
-                ));
-                break;
-            }
-        }
-
-        for (EvidenceFileInput file : files) {
-            if (file.format() != FileFormat.PDF) {
-                continue;
-            }
-
-            if (file.pdfPortfolio()) {
-                issues.add(issue(
-                        "ERR_SHPFY_PDF_PORTFOLIO",
-                        "SHP_PDF_002",
-                        IssueSeverity.BLOCKED,
-                        "PDF Portfolio is not accepted by Shopify."
-                ));
-                break;
-            }
-        }
-
-        for (EvidenceFileInput file : files) {
-            if (file.format() == FileFormat.PDF && !file.pdfACompliant()) {
-                issues.add(issue(
-                        "ERR_SHPFY_PDF_NOT_PDFA",
-                        "SHP_PDF_001",
+                        "ERR_SHPFY_TOTAL_TOO_LARGE",
+                        "SHP_SIZE_002",
                         IssueSeverity.FIXABLE,
-                        "Shopify requires PDF/A compliant documents."
+                        "Shopify Payments total evidence size must be 4MB or less."
                 ));
-                break;
             }
+
+            if (earlySubmit) {
+                issues.add(issue(
+                        "WARN_SHPFY_EARLY_SUBMIT",
+                        "SHP_FLOW_001",
+                        IssueSeverity.WARNING,
+                        "Early submission warning: you cannot edit evidence after submit."
+                ));
+            }
+            return;
         }
 
         if (disputeCase.getProductScope() == ProductScope.SHOPIFY_CREDIT_DISPUTE) {
@@ -249,24 +222,75 @@ public class ValidationService {
                         "Shopify Credit total evidence size must be 4.5MB or less."
                 ));
             }
-        } else {
-            if (totalSizeBytes > LIMIT_4_MB) {
+            return;
+        }
+
+        if (totalSizeBytes > LIMIT_4_MB) {
+            issues.add(issue(
+                    "ERR_SHPFY_TOTAL_TOO_LARGE",
+                    "SHP_SIZE_002",
+                    IssueSeverity.FIXABLE,
+                    "Shopify total evidence size must be 4MB or less."
+            ));
+        }
+    }
+
+    private void validateShopifyPdfPageLimit(
+            List<EvidenceFileInput> files,
+            List<ValidationIssueResponse> issues
+    ) {
+        for (EvidenceFileInput file : files) {
+            if (file.format() == FileFormat.PDF && file.pageCount() >= 50) {
                 issues.add(issue(
-                        "ERR_SHPFY_TOTAL_TOO_LARGE",
-                        "SHP_SIZE_002",
-                        IssueSeverity.FIXABLE,
-                        "Shopify Payments total evidence size must be 4MB or less."
+                        "ERR_SHPFY_PDF_PAGES_EXCEEDED",
+                        "SHP_PAGE_001",
+                        IssueSeverity.BLOCKED,
+                        "Each Shopify PDF must be below 50 pages."
                 ));
+                break;
+            }
+        }
+    }
+
+    private void validateShopifyPaymentsFileRules(
+            List<EvidenceFileInput> files,
+            List<ValidationIssueResponse> issues
+    ) {
+        boolean hasLargeSingleFile = files.stream().anyMatch(file -> file.sizeBytes() > LIMIT_2_MB);
+        if (hasLargeSingleFile) {
+            issues.add(issue(
+                    "ERR_SHPFY_FILE_TOO_LARGE",
+                    "SHP_SIZE_001",
+                    IssueSeverity.FIXABLE,
+                    "Each Shopify Payments evidence file must be 2MB or smaller."
+            ));
+        }
+
+        for (EvidenceFileInput file : files) {
+            if (file.format() != FileFormat.PDF) {
+                continue;
+            }
+            if (file.pdfPortfolio()) {
+                issues.add(issue(
+                        "ERR_SHPFY_PDF_PORTFOLIO",
+                        "SHP_PDF_002",
+                        IssueSeverity.BLOCKED,
+                        "PDF Portfolio is not accepted by Shopify Payments."
+                ));
+                break;
             }
         }
 
-        if (earlySubmit) {
-            issues.add(issue(
-                    "WARN_SHPFY_EARLY_SUBMIT",
-                    "SHP_FLOW_001",
-                    IssueSeverity.WARNING,
-                    "Early submission warning: you cannot edit evidence after submit."
-            ));
+        for (EvidenceFileInput file : files) {
+            if (file.format() == FileFormat.PDF && !file.pdfACompliant()) {
+                issues.add(issue(
+                        "ERR_SHPFY_PDF_NOT_PDFA",
+                        "SHP_PDF_001",
+                        IssueSeverity.FIXABLE,
+                        "Shopify Payments requires PDF/A compliant documents."
+                ));
+                break;
+            }
         }
     }
 

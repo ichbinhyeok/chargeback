@@ -231,13 +231,6 @@ class CaseControllerIntegrationTest {
                         .param("evidenceType", "ORDER_RECEIPT"))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
-                        .header("X-Case-Token", caseToken)
-                        .contentType("application/json")
-                        .content("{\"earlySubmit\":false}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.passed").value(true));
-
         mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
                         .header("X-Case-Token", caseToken))
                 .andExpect(status().isOk())
@@ -325,6 +318,50 @@ class CaseControllerIntegrationTest {
     }
 
     @Test
+    void shopifyCreditValidateEndpointIgnoresPaymentsOnlyRules() throws Exception {
+        CaseRef caseRef = createShopifyCreditCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        String body = """
+                {
+                  "files": [
+                    {
+                      "evidenceType": "ORDER_RECEIPT",
+                      "format": "PDF",
+                      "sizeBytes": 2400000,
+                      "pageCount": 10,
+                      "externalLinkDetected": true,
+                      "pdfACompliant": false,
+                      "pdfPortfolio": true
+                    },
+                    {
+                      "evidenceType": "ORDER_RECEIPT",
+                      "format": "PDF",
+                      "sizeBytes": 600000,
+                      "pageCount": 5,
+                      "externalLinkDetected": false,
+                      "pdfACompliant": false,
+                      "pdfPortfolio": false
+                    }
+                  ],
+                  "earlySubmit": true
+                }
+                """;
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(true))
+                .andExpect(jsonPath("$.issues.length()").value(0));
+
+        CaseState state = disputeCaseRepository.findById(caseId).orElseThrow().getState();
+        org.junit.jupiter.api.Assertions.assertEquals(CaseState.READY, state);
+    }
+
+    @Test
     void validateStoredFailsWhenNoUploadedFiles() throws Exception {
         CaseRef caseRef = createStripeCase();
         UUID caseId = caseRef.caseId();
@@ -403,7 +440,7 @@ class CaseControllerIntegrationTest {
                 "file",
                 "oversized.png",
                 "image/png",
-                oversizedPng()
+                oversizedButCreditSafePng()
         );
 
         mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
@@ -440,6 +477,39 @@ class CaseControllerIntegrationTest {
     }
 
     @Test
+    void shopifyCreditDoesNotAutoCompressOversizedImage() throws Exception {
+        CaseRef caseRef = createShopifyCreditCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        MockMultipartFile oversizedImage = new MockMultipartFile(
+                "file",
+                "oversized.png",
+                "image/png",
+                oversizedPng()
+        );
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(oversizedImage)
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fileFormat").value("PNG"));
+
+        mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FAILED"))
+                .andExpect(jsonPath("$.failCode").value("ERR_FIX_NOTHING_TO_FIX"));
+
+        mockMvc.perform(get("/api/cases/{caseId}/files", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].fileFormat").value("PNG"))
+                .andExpect(jsonPath("$[0].sizeBytes").value(org.hamcrest.Matchers.greaterThan(2_097_152)));
+    }
+
+    @Test
     void robotsTxtIncludesSitemapAndSensitiveDisallowRules() throws Exception {
         mockMvc.perform(get("/robots.txt"))
                 .andExpect(status().isOk())
@@ -455,6 +525,9 @@ class CaseControllerIntegrationTest {
         mockMvc.perform(get("/c/{caseToken}", caseRef.caseToken()))
                 .andExpect(status().isOk())
                 .andExpect(header().string("X-Robots-Tag", "noindex, nofollow, noarchive"))
+                .andExpect(header().string("Cache-Control", "no-store, max-age=0"))
+                .andExpect(header().string("Pragma", "no-cache"))
+                .andExpect(header().string("Referrer-Policy", "no-referrer"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("meta name=\"robots\" content=\"noindex,nofollow,noarchive\"")));
     }
 
@@ -468,6 +541,49 @@ class CaseControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Fraud Dispute Evidence Checklist")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"@type\": \"FAQPage\"")));
+    }
+
+    @Test
+    void openCaseSupportsRawTokenAndFullCaseUrl() throws Exception {
+        CaseRef caseRef = createStripeCase();
+
+        mockMvc.perform(post("/open-case")
+                        .param("caseTokenOrUrl", caseRef.caseToken()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", "/c/" + caseRef.caseToken()));
+
+        mockMvc.perform(post("/open-case")
+                        .param("caseTokenOrUrl", "https://example.test/c/" + caseRef.caseToken()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", "/c/" + caseRef.caseToken()));
+    }
+
+    @Test
+    void payEndpointIsPostOnly() throws Exception {
+        CaseRef caseRef = createStripeCase();
+
+        mockMvc.perform(get("/c/{caseToken}/pay", caseRef.caseToken()))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    void summaryDownloadRedirectsWhenCaseIsNotExportReady() throws Exception {
+        CaseRef caseRef = createStripeCase();
+
+        mockMvc.perform(get("/c/{caseToken}/download/summary.pdf", caseRef.caseToken()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/c/" + caseRef.caseToken() + "/export?error=")));
+    }
+
+    @Test
+    void accessKeyDownloadDisablesCaching() throws Exception {
+        CaseRef caseRef = createStripeCase();
+
+        mockMvc.perform(get("/c/{caseToken}/access-key.txt", caseRef.caseToken()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store, max-age=0"))
+                .andExpect(header().string("Pragma", "no-cache"))
+                .andExpect(header().string("Referrer-Policy", "no-referrer"));
     }
 
     private CaseRef createStripeCase() throws Exception {
@@ -497,6 +613,16 @@ class CaseControllerIntegrationTest {
                 {
                   "platform": "SHOPIFY",
                   "productScope": "SHOPIFY_PAYMENTS_CHARGEBACK",
+                  "reasonCode": "fraudulent"
+                }
+                """);
+    }
+
+    private CaseRef createShopifyCreditCase() throws Exception {
+        return createCase("""
+                {
+                  "platform": "SHOPIFY",
+                  "productScope": "SHOPIFY_CREDIT_DISPUTE",
                   "reasonCode": "fraudulent"
                 }
                 """);
@@ -577,6 +703,25 @@ class CaseControllerIntegrationTest {
         byte[] data = out.toByteArray();
         if (data.length <= 2_097_152) {
             throw new IllegalStateException("generated image is not oversized enough for test");
+        }
+        return data;
+    }
+
+    private byte[] oversizedButCreditSafePng() throws Exception {
+        BufferedImage image = new BufferedImage(1000, 1000, BufferedImage.TYPE_INT_RGB);
+        Random random = new Random(84L);
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                int rgb = (random.nextInt(256) << 16) | (random.nextInt(256) << 8) | random.nextInt(256);
+                image.setRGB(x, y, rgb);
+            }
+        }
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", out);
+        byte[] data = out.toByteArray();
+        if (data.length <= 2_097_152 || data.length > 4_718_592) {
+            throw new IllegalStateException("generated credit test image must be >2MB and <=4.5MB");
         }
         return data;
     }

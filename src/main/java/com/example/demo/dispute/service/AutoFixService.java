@@ -8,6 +8,7 @@ import com.example.demo.dispute.domain.EvidenceType;
 import com.example.demo.dispute.domain.FileFormat;
 import com.example.demo.dispute.domain.FixJobStatus;
 import com.example.demo.dispute.domain.Platform;
+import com.example.demo.dispute.domain.ProductScope;
 import com.example.demo.dispute.domain.ValidationSource;
 import com.example.demo.dispute.persistence.DisputeCase;
 import com.example.demo.dispute.persistence.EvidenceFileEntity;
@@ -242,7 +243,8 @@ public class AutoFixService {
     }
 
     private int compressOversizedShopifyImages(DisputeCase disputeCase) {
-        if (disputeCase.getPlatform() != Platform.SHOPIFY) {
+        if (disputeCase.getPlatform() != Platform.SHOPIFY
+                || disputeCase.getProductScope() != ProductScope.SHOPIFY_PAYMENTS_CHARGEBACK) {
             return 0;
         }
 

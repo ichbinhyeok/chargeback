@@ -171,6 +171,37 @@ class ValidationServiceTest {
     }
 
     @Test
+    void shopifyCreditDoesNotApplyPaymentsOnlyFileRules() {
+        DisputeCase disputeCase = newShopifyCase(ProductScope.SHOPIFY_CREDIT_DISPUTE);
+        ValidateCaseResponse response = validate(
+                disputeCase,
+                List.of(
+                        pdf(EvidenceType.ORDER_RECEIPT, mb(2.3), 10, true, false, true),
+                        pdf(EvidenceType.ORDER_RECEIPT, mb(0.5), 5, false, false, false)
+                ),
+                true
+        );
+
+        assertTrue(response.passed());
+        assertTrue(response.issues().isEmpty());
+    }
+
+    @Test
+    void shopifyCreditStillBlocksPdfWith50Pages() {
+        DisputeCase disputeCase = newShopifyCase(ProductScope.SHOPIFY_CREDIT_DISPUTE);
+        ValidateCaseResponse response = validate(
+                disputeCase,
+                List.of(
+                        pdf(EvidenceType.ORDER_RECEIPT, mb(1.0), 50, false, true, false)
+                ),
+                false
+        );
+
+        assertFalse(response.passed());
+        assertContainsCode(response, "ERR_SHPFY_PDF_PAGES_EXCEEDED");
+    }
+
+    @Test
     void shopifyFailsWhenSingleFileExceeds2Mb() {
         DisputeCase disputeCase = newShopifyCase(ProductScope.SHOPIFY_PAYMENTS_CHARGEBACK);
         ValidateCaseResponse response = validate(
