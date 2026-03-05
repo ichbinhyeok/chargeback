@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -68,8 +69,10 @@ public class CaseController {
     @PostMapping("/{caseId}/validate")
     public ResponseEntity<ValidateCaseResponse> validate(
             @PathVariable UUID caseId,
+            @RequestHeader(value = "X-Case-Token", required = false) String caseToken,
             @Valid @RequestBody ValidateCaseRequest request
     ) {
+        caseService.assertCaseToken(caseId, caseToken);
         DisputeCase disputeCase = caseService.getCase(caseId);
         caseService.transitionState(disputeCase, CaseState.VALIDATING);
         ValidateCaseResponse response = validationService.validate(disputeCase, request);
@@ -81,15 +84,21 @@ public class CaseController {
     @PostMapping("/{caseId}/files")
     public ResponseEntity<UploadFileResponse> uploadFile(
             @PathVariable UUID caseId,
+            @RequestHeader(value = "X-Case-Token", required = false) String caseToken,
             @RequestParam("evidenceType") EvidenceType evidenceType,
             @RequestParam("file") MultipartFile file
     ) {
+        caseService.assertCaseToken(caseId, caseToken);
         UploadFileResponse response = evidenceFileService.upload(caseId, evidenceType, file);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{caseId}/files")
-    public ResponseEntity<List<UploadFileResponse>> files(@PathVariable UUID caseId) {
+    public ResponseEntity<List<UploadFileResponse>> files(
+            @PathVariable UUID caseId,
+            @RequestHeader(value = "X-Case-Token", required = false) String caseToken
+    ) {
+        caseService.assertCaseToken(caseId, caseToken);
         return ResponseEntity.ok(evidenceFileService.listFiles(caseId));
     }
 
@@ -97,16 +106,20 @@ public class CaseController {
     public ResponseEntity<UploadFileResponse> reclassifyFile(
             @PathVariable UUID caseId,
             @PathVariable UUID fileId,
+            @RequestHeader(value = "X-Case-Token", required = false) String caseToken,
             @Valid @RequestBody ReclassifyFileRequest request
     ) {
+        caseService.assertCaseToken(caseId, caseToken);
         return ResponseEntity.ok(evidenceFileService.reclassify(caseId, fileId, request));
     }
 
     @PostMapping("/{caseId}/validate-stored")
     public ResponseEntity<ValidateCaseResponse> validateStored(
             @PathVariable UUID caseId,
+            @RequestHeader(value = "X-Case-Token", required = false) String caseToken,
             @RequestBody(required = false) ValidateStoredCaseRequest request
     ) {
+        caseService.assertCaseToken(caseId, caseToken);
         DisputeCase disputeCase = caseService.getCase(caseId);
         List<EvidenceFileInput> files = evidenceFileService.listAsValidationInputs(caseId);
         if (files.isEmpty()) {
@@ -122,25 +135,39 @@ public class CaseController {
     }
 
     @GetMapping("/{caseId}/report")
-    public ResponseEntity<CaseReportResponse> report(@PathVariable UUID caseId) {
+    public ResponseEntity<CaseReportResponse> report(
+            @PathVariable UUID caseId,
+            @RequestHeader(value = "X-Case-Token", required = false) String caseToken
+    ) {
+        caseService.assertCaseToken(caseId, caseToken);
         return ResponseEntity.ok(caseReportService.getReport(caseId));
     }
 
     @PostMapping("/{caseId}/fix")
-    public ResponseEntity<FixJobResponse> requestFix(@PathVariable UUID caseId) {
+    public ResponseEntity<FixJobResponse> requestFix(
+            @PathVariable UUID caseId,
+            @RequestHeader(value = "X-Case-Token", required = false) String caseToken
+    ) {
+        caseService.assertCaseToken(caseId, caseToken);
         return ResponseEntity.ok(autoFixService.requestAutoFix(caseId));
     }
 
     @GetMapping("/{caseId}/fix/{jobId}")
     public ResponseEntity<FixJobResponse> getFixJob(
             @PathVariable UUID caseId,
-            @PathVariable UUID jobId
+            @PathVariable UUID jobId,
+            @RequestHeader(value = "X-Case-Token", required = false) String caseToken
     ) {
+        caseService.assertCaseToken(caseId, caseToken);
         return ResponseEntity.ok(autoFixService.getFixJob(caseId, jobId));
     }
 
     @DeleteMapping("/{caseId}")
-    public ResponseEntity<Void> deleteCase(@PathVariable UUID caseId) {
+    public ResponseEntity<Void> deleteCase(
+            @PathVariable UUID caseId,
+            @RequestHeader(value = "X-Case-Token", required = false) String caseToken
+    ) {
+        caseService.assertCaseToken(caseId, caseToken);
         caseService.deleteCase(caseId);
         return ResponseEntity.noContent().build();
     }

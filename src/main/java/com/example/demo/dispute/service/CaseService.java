@@ -8,6 +8,7 @@ import com.example.demo.dispute.persistence.DisputeCase;
 import com.example.demo.dispute.persistence.DisputeCaseRepository;
 import com.example.demo.dispute.persistence.EvidenceFileRepository;
 import com.example.demo.dispute.persistence.FixJobRepository;
+import com.example.demo.dispute.persistence.PaymentRepository;
 import com.example.demo.dispute.persistence.ValidationIssueRepository;
 import com.example.demo.dispute.persistence.ValidationRunRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -29,9 +30,11 @@ public class CaseService {
     private final FixJobRepository fixJobRepository;
     private final ValidationIssueRepository validationIssueRepository;
     private final ValidationRunRepository validationRunRepository;
+    private final PaymentRepository paymentRepository;
     private final AuditLogRepository auditLogRepository;
     private final AuditLogService auditLogService;
     private final Path storageRoot;
+    private final boolean enforceCaseToken;
 
     public CaseService(
             DisputeCaseRepository disputeCaseRepository,
@@ -39,18 +42,22 @@ public class CaseService {
             FixJobRepository fixJobRepository,
             ValidationIssueRepository validationIssueRepository,
             ValidationRunRepository validationRunRepository,
+            PaymentRepository paymentRepository,
             AuditLogRepository auditLogRepository,
             AuditLogService auditLogService,
-            @Value("${app.storage.root:./data/evidence}") String storageRoot
+            @Value("${app.storage.root:./data/evidence}") String storageRoot,
+            @Value("${app.api.enforce-case-token:true}") boolean enforceCaseToken
     ) {
         this.disputeCaseRepository = disputeCaseRepository;
         this.evidenceFileRepository = evidenceFileRepository;
         this.fixJobRepository = fixJobRepository;
         this.validationIssueRepository = validationIssueRepository;
         this.validationRunRepository = validationRunRepository;
+        this.paymentRepository = paymentRepository;
         this.auditLogRepository = auditLogRepository;
         this.auditLogService = auditLogService;
         this.storageRoot = Path.of(storageRoot);
+        this.enforceCaseToken = enforceCaseToken;
     }
 
     public DisputeCase createCase(CreateCaseRequest request) {
@@ -109,6 +116,7 @@ public class CaseService {
         validationIssueRepository.deleteByValidationRunDisputeCaseId(caseId);
         validationRunRepository.deleteByDisputeCaseId(caseId);
         fixJobRepository.deleteByDisputeCaseId(caseId);
+        paymentRepository.deleteAll(paymentRepository.findByDisputeCaseId(caseId));
         auditLogRepository.deleteByDisputeCaseId(caseId);
         evidenceFileRepository.deleteByDisputeCaseId(caseId);
         disputeCaseRepository.delete(disputeCase);
@@ -118,6 +126,27 @@ public class CaseService {
     public DisputeCase getCase(UUID caseId) {
         return disputeCaseRepository.findById(caseId)
                 .orElseThrow(() -> new EntityNotFoundException("case not found: " + caseId));
+    }
+
+    @Transactional(readOnly = true)
+    public DisputeCase getCaseByToken(String caseToken) {
+        return disputeCaseRepository.findByCaseToken(caseToken)
+                .orElseThrow(() -> new EntityNotFoundException("case not found for token: " + caseToken));
+    }
+
+    @Transactional(readOnly = true)
+    public void assertCaseToken(UUID caseId, String caseToken) {
+        if (!enforceCaseToken) {
+            return;
+        }
+        if (caseToken == null || caseToken.isBlank()) {
+            throw new IllegalArgumentException("missing X-Case-Token header");
+        }
+
+        DisputeCase disputeCase = getCase(caseId);
+        if (!caseToken.equals(disputeCase.getCaseToken())) {
+            throw new IllegalArgumentException("invalid case token for case: " + caseId);
+        }
     }
 
     private void deletePathQuietly(Path path) {

@@ -44,3 +44,10 @@ out/
 
 ### Runtime temp ###
 data/
+compile.txt
+error.log
+test.log
+tmp/
+
+### Frontend ###
+node_modules/

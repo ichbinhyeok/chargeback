@@ -1,1 +1,48 @@
-services: {}
+services:
+  postgres:
+    image: postgres:16
+    container_name: chargeback-postgres
+    environment:
+      POSTGRES_DB: chargeback
+      POSTGRES_USER: chargeback
+      POSTGRES_PASSWORD: chargeback
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chargeback -d chargeback"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chargeback-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/chargeback
+      SPRING_DATASOURCE_USERNAME: chargeback
+      SPRING_DATASOURCE_PASSWORD: chargeback
+      APP_STORAGE_ROOT: /data/evidence
+      APP_RETENTION_DAYS: 7
+      APP_BILLING_AMOUNT_CENTS: 1900
+      APP_BILLING_CURRENCY: usd
+      APP_BILLING_SUCCESS_URL_TEMPLATE: http://localhost:8080/c/{caseToken}/export?paid=1
+      APP_BILLING_CANCEL_URL_TEMPLATE: http://localhost:8080/c/{caseToken}/export?payment=cancelled
+      APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-http://localhost:8080}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    ports:
+      - "8080:8080"
+    volumes:
+      - evidence_data:/data/evidence
+
+volumes:
+  postgres_data:
+  evidence_data:

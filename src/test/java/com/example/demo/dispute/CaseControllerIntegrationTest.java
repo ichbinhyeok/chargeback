@@ -6,12 +6,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 import com.example.demo.dispute.domain.CaseState;
 import com.example.demo.dispute.persistence.DisputeCaseRepository;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Random;
 import java.util.UUID;
+import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,7 +38,9 @@ class CaseControllerIntegrationTest {
 
     @Test
     void uploadedStripeEvidenceCanBeValidatedAndMovesToReady() throws Exception {
-        UUID caseId = createStripeCase();
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
 
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -43,6 +51,7 @@ class CaseControllerIntegrationTest {
 
         MvcResult uploadResult = mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
                         .file(file)
+                        .header("X-Case-Token", caseToken)
                         .param("evidenceType", "ORDER_RECEIPT"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.fileFormat").value("PDF"))
@@ -50,23 +59,27 @@ class CaseControllerIntegrationTest {
 
         UUID fileId = extractUuid(uploadResult.getResponse().getContentAsString(StandardCharsets.UTF_8), "fileId");
 
-        mockMvc.perform(get("/api/cases/{caseId}/files", caseId))
+        mockMvc.perform(get("/api/cases/{caseId}/files", caseId)
+                        .header("X-Case-Token", caseToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].evidenceType").value("ORDER_RECEIPT"));
 
         mockMvc.perform(patch("/api/cases/{caseId}/files/{fileId}/classification", caseId, fileId)
+                        .header("X-Case-Token", caseToken)
                         .contentType("application/json")
                         .content("{\"evidenceType\":\"POLICIES\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.evidenceType").value("POLICIES"));
 
         mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
                         .contentType("application/json")
                         .content("{\"earlySubmit\":false}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.passed").value(true));
 
-        mockMvc.perform(get("/api/cases/{caseId}/report", caseId))
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", caseToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.latestValidation.runNo").value(1))
                 .andExpect(jsonPath("$.latestValidation.source").value("STORED_FILES"))
@@ -77,8 +90,36 @@ class CaseControllerIntegrationTest {
     }
 
     @Test
+    void uploadRejectsCorruptedImagePayload() throws Exception {
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        MockMultipartFile corruptedImage = new MockMultipartFile(
+                "file",
+                "broken.png",
+                "image/png",
+                "not-a-real-image".getBytes(StandardCharsets.UTF_8)
+        );
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(corruptedImage)
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("invalid image file: unreadable image content"));
+
+        mockMvc.perform(get("/api/cases/{caseId}/files", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
     void stripeExternalLinkEvidenceBecomesBlocked() throws Exception {
-        UUID caseId = createStripeCase();
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
 
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -89,10 +130,12 @@ class CaseControllerIntegrationTest {
 
         mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
                         .file(file)
+                        .header("X-Case-Token", caseToken)
                         .param("evidenceType", "POLICIES"))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
                         .contentType("application/json")
                         .content("{\"earlySubmit\":false}"))
                 .andExpect(status().isOk())
@@ -105,7 +148,9 @@ class CaseControllerIntegrationTest {
 
     @Test
     void autoFixDedupesFilesPerTypeAndRevalidatesCase() throws Exception {
-        UUID caseId = createStripeCase();
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
 
         MockMultipartFile first = new MockMultipartFile(
                 "file",
@@ -122,36 +167,43 @@ class CaseControllerIntegrationTest {
 
         mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
                         .file(first)
+                        .header("X-Case-Token", caseToken)
                         .param("evidenceType", "ORDER_RECEIPT"))
                 .andExpect(status().isOk());
         mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
                         .file(second)
+                        .header("X-Case-Token", caseToken)
                         .param("evidenceType", "ORDER_RECEIPT"))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
                         .contentType("application/json")
                         .content("{\"earlySubmit\":false}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.passed").value(false))
                 .andExpect(jsonPath("$.issues[0].code").value("ERR_STRIPE_MULTI_FILE_PER_TYPE"));
 
-        MvcResult fixResult = mockMvc.perform(post("/api/cases/{caseId}/fix", caseId))
+        MvcResult fixResult = mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
+                        .header("X-Case-Token", caseToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SUCCEEDED"))
                 .andReturn();
         UUID jobId = extractUuid(fixResult.getResponse().getContentAsString(StandardCharsets.UTF_8), "jobId");
 
-        mockMvc.perform(get("/api/cases/{caseId}/fix/{jobId}", caseId, jobId))
+        mockMvc.perform(get("/api/cases/{caseId}/fix/{jobId}", caseId, jobId)
+                        .header("X-Case-Token", caseToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SUCCEEDED"));
 
-        mockMvc.perform(get("/api/cases/{caseId}/files", caseId))
+        mockMvc.perform(get("/api/cases/{caseId}/files", caseId)
+                        .header("X-Case-Token", caseToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].evidenceType").value("ORDER_RECEIPT"));
 
-        mockMvc.perform(get("/api/cases/{caseId}/report", caseId))
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", caseToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.latestValidation.source").value("AUTO_FIX"))
                 .andExpect(jsonPath("$.latestValidation.passed").value(true));
@@ -162,7 +214,9 @@ class CaseControllerIntegrationTest {
 
     @Test
     void autoFixWithNoSupportedIssueKeepsReadyState() throws Exception {
-        UUID caseId = createStripeCase();
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
 
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -173,21 +227,25 @@ class CaseControllerIntegrationTest {
 
         mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
                         .file(file)
+                        .header("X-Case-Token", caseToken)
                         .param("evidenceType", "ORDER_RECEIPT"))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
                         .contentType("application/json")
                         .content("{\"earlySubmit\":false}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.passed").value(true));
 
-        mockMvc.perform(post("/api/cases/{caseId}/fix", caseId))
+        mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
+                        .header("X-Case-Token", caseToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FAILED"))
                 .andExpect(jsonPath("$.failCode").value("ERR_FIX_NOTHING_TO_FIX"));
 
-        mockMvc.perform(get("/api/cases/{caseId}/report", caseId))
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", caseToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.latestValidation.source").value("AUTO_FIX"))
                 .andExpect(jsonPath("$.latestValidation.passed").value(true));
@@ -198,7 +256,9 @@ class CaseControllerIntegrationTest {
 
     @Test
     void validateEndpointBlocksMastercardWhenPagesExceed19() throws Exception {
-        UUID caseId = createStripeMastercardCase();
+        CaseRef caseRef = createStripeMastercardCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
 
         String body = """
                 {
@@ -218,6 +278,7 @@ class CaseControllerIntegrationTest {
                 """;
 
         mockMvc.perform(post("/api/cases/{caseId}/validate", caseId)
+                        .header("X-Case-Token", caseToken)
                         .contentType("application/json")
                         .content(body))
                 .andExpect(status().isOk())
@@ -230,7 +291,9 @@ class CaseControllerIntegrationTest {
 
     @Test
     void shopifyValidateEndpointCanPassWithEarlySubmitWarning() throws Exception {
-        UUID caseId = createShopifyPaymentsCase();
+        CaseRef caseRef = createShopifyPaymentsCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
 
         String body = """
                 {
@@ -250,6 +313,7 @@ class CaseControllerIntegrationTest {
                 """;
 
         mockMvc.perform(post("/api/cases/{caseId}/validate", caseId)
+                        .header("X-Case-Token", caseToken)
                         .contentType("application/json")
                         .content(body))
                 .andExpect(status().isOk())
@@ -262,9 +326,12 @@ class CaseControllerIntegrationTest {
 
     @Test
     void validateStoredFailsWhenNoUploadedFiles() throws Exception {
-        UUID caseId = createStripeCase();
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
 
         mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
                         .contentType("application/json")
                         .content("{\"earlySubmit\":false}"))
                 .andExpect(status().isBadRequest())
@@ -273,10 +340,13 @@ class CaseControllerIntegrationTest {
 
     @Test
     void getFixJobReturnsNotFoundWhenJobDoesNotExist() throws Exception {
-        UUID caseId = createStripeCase();
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
         UUID unknownJobId = UUID.randomUUID();
 
-        mockMvc.perform(get("/api/cases/{caseId}/fix/{jobId}", caseId, unknownJobId))
+        mockMvc.perform(get("/api/cases/{caseId}/fix/{jobId}", caseId, unknownJobId)
+                        .header("X-Case-Token", caseToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("fix job not found: " + unknownJobId));
     }
@@ -300,16 +370,107 @@ class CaseControllerIntegrationTest {
 
     @Test
     void deleteCaseRemovesCaseRecord() throws Exception {
-        UUID caseId = createStripeCase();
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
 
-        mockMvc.perform(delete("/api/cases/{caseId}", caseId))
+        mockMvc.perform(delete("/api/cases/{caseId}", caseId)
+                        .header("X-Case-Token", caseToken))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/api/cases/{caseId}/report", caseId))
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", caseToken))
                 .andExpect(status().isNotFound());
     }
 
-    private UUID createStripeCase() throws Exception {
+    @Test
+    void caseApiRequiresCaseTokenHeader() throws Exception {
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("missing X-Case-Token header"));
+    }
+
+    @Test
+    void shopifyAutoFixCompressesOversizedImage() throws Exception {
+        CaseRef caseRef = createShopifyPaymentsCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        MockMultipartFile oversizedImage = new MockMultipartFile(
+                "file",
+                "oversized.png",
+                "image/png",
+                oversizedPng()
+        );
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(oversizedImage)
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fileFormat").value("PNG"));
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(false))
+                .andExpect(jsonPath("$.issues[0].code").value("ERR_SHPFY_FILE_TOO_LARGE"));
+
+        mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+
+        mockMvc.perform(get("/api/cases/{caseId}/files", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].fileFormat").value("JPEG"))
+                .andExpect(jsonPath("$[0].sizeBytes").value(org.hamcrest.Matchers.lessThanOrEqualTo(2_097_152)));
+
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latestValidation.source").value("AUTO_FIX"))
+                .andExpect(jsonPath("$.latestValidation.passed").value(true));
+    }
+
+    @Test
+    void robotsTxtIncludesSitemapAndSensitiveDisallowRules() throws Exception {
+        mockMvc.perform(get("/robots.txt"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Disallow: /c/")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Disallow: /api/")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Sitemap: http://localhost:8080/sitemap.xml")));
+    }
+
+    @Test
+    void casePageHasNoIndexMetaAndHeader() throws Exception {
+        CaseRef caseRef = createStripeCase();
+
+        mockMvc.perform(get("/c/{caseToken}", caseRef.caseToken()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Robots-Tag", "noindex, nofollow, noarchive"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("meta name=\"robots\" content=\"noindex,nofollow,noarchive\"")));
+    }
+
+    @Test
+    void guidesPlatformAndDetailPagesRenderSeoContent() throws Exception {
+        mockMvc.perform(get("/guides/stripe"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Evidence Guides")));
+
+        mockMvc.perform(get("/guides/stripe/fraud"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Fraud Dispute Evidence Checklist")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"@type\": \"FAQPage\"")));
+    }
+
+    private CaseRef createStripeCase() throws Exception {
         return createCase("""
                 {
                   "platform": "STRIPE",
@@ -320,7 +481,7 @@ class CaseControllerIntegrationTest {
                 """);
     }
 
-    private UUID createStripeMastercardCase() throws Exception {
+    private CaseRef createStripeMastercardCase() throws Exception {
         return createCase("""
                 {
                   "platform": "STRIPE",
@@ -331,7 +492,7 @@ class CaseControllerIntegrationTest {
                 """);
     }
 
-    private UUID createShopifyPaymentsCase() throws Exception {
+    private CaseRef createShopifyPaymentsCase() throws Exception {
         return createCase("""
                 {
                   "platform": "SHOPIFY",
@@ -341,17 +502,25 @@ class CaseControllerIntegrationTest {
                 """);
     }
 
-    private UUID createCase(String body) throws Exception {
+    private CaseRef createCase(String body) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/cases")
                         .contentType("application/json")
                         .content(body.getBytes(StandardCharsets.UTF_8)))
                 .andExpect(status().isOk())
                 .andReturn();
 
-        return extractUuid(result.getResponse().getContentAsString(StandardCharsets.UTF_8), "caseId");
+        String response = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        return new CaseRef(
+                extractUuid(response, "caseId"),
+                extractText(response, "caseToken")
+        );
     }
 
     private UUID extractUuid(String content, String fieldName) {
+        return UUID.fromString(extractText(content, fieldName));
+    }
+
+    private String extractText(String content, String fieldName) {
         String marker = "\"" + fieldName + "\":\"";
         int start = content.indexOf(marker);
         if (start < 0) {
@@ -360,7 +529,7 @@ class CaseControllerIntegrationTest {
 
         int from = start + marker.length();
         int end = content.indexOf('"', from);
-        return UUID.fromString(content.substring(from, end));
+        return content.substring(from, end);
     }
 
     private byte[] simplePdf() throws Exception {
@@ -391,5 +560,27 @@ class CaseControllerIntegrationTest {
                 trailer << /Root 1 0 R >>
                 %%EOF
                 """.getBytes(StandardCharsets.ISO_8859_1);
+    }
+
+    private byte[] oversizedPng() throws Exception {
+        BufferedImage image = new BufferedImage(1300, 1300, BufferedImage.TYPE_INT_RGB);
+        Random random = new Random(42L);
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                int rgb = (random.nextInt(256) << 16) | (random.nextInt(256) << 8) | random.nextInt(256);
+                image.setRGB(x, y, rgb);
+            }
+        }
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", out);
+        byte[] data = out.toByteArray();
+        if (data.length <= 2_097_152) {
+            throw new IllegalStateException("generated image is not oversized enough for test");
+        }
+        return data;
+    }
+
+    private record CaseRef(UUID caseId, String caseToken) {
     }
 }

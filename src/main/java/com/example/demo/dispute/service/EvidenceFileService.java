@@ -19,6 +19,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import javax.imageio.ImageIO;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,32 +61,39 @@ public class EvidenceFileService {
         String extension = extensionFor(format);
         Path savedPath = saveFile(disputeCase.getId(), file, extension);
 
-        PdfMetadata pdfMetadata = format == FileFormat.PDF
-                ? pdfMetadataExtractor.extract(savedPath)
-                : new PdfMetadata(1, false, true, false);
+        try {
+            validateBinaryContent(format, savedPath);
 
-        EvidenceFileEntity entity = new EvidenceFileEntity();
-        entity.setDisputeCase(disputeCase);
-        entity.setEvidenceType(evidenceType);
-        entity.setOriginalName(defaultString(file.getOriginalFilename(), "uploaded" + extension));
-        entity.setContentType(file.getContentType());
-        entity.setStoragePath(savedPath.toString());
-        entity.setSizeBytes(file.getSize());
-        entity.setPageCount(pdfMetadata.pageCount());
-        entity.setFileFormat(format);
-        entity.setPdfACompliant(pdfMetadata.pdfACompliant());
-        entity.setPdfPortfolio(pdfMetadata.pdfPortfolio());
-        entity.setExternalLinkDetected(pdfMetadata.externalLinkDetected());
+            PdfMetadata pdfMetadata = format == FileFormat.PDF
+                    ? pdfMetadataExtractor.extract(savedPath)
+                    : new PdfMetadata(1, false, true, false);
 
-        EvidenceFileEntity saved = evidenceFileRepository.save(entity);
-        auditLogService.log(
-                disputeCase,
-                "SYSTEM",
-                "FILE_UPLOADED",
-                "fileId=" + saved.getId() + ",evidenceType=" + saved.getEvidenceType() + ",format=" + saved.getFileFormat()
-        );
+            EvidenceFileEntity entity = new EvidenceFileEntity();
+            entity.setDisputeCase(disputeCase);
+            entity.setEvidenceType(evidenceType);
+            entity.setOriginalName(defaultString(file.getOriginalFilename(), "uploaded" + extension));
+            entity.setContentType(file.getContentType());
+            entity.setStoragePath(savedPath.toString());
+            entity.setSizeBytes(file.getSize());
+            entity.setPageCount(pdfMetadata.pageCount());
+            entity.setFileFormat(format);
+            entity.setPdfACompliant(pdfMetadata.pdfACompliant());
+            entity.setPdfPortfolio(pdfMetadata.pdfPortfolio());
+            entity.setExternalLinkDetected(pdfMetadata.externalLinkDetected());
 
-        return toUploadResponse(saved);
+            EvidenceFileEntity saved = evidenceFileRepository.save(entity);
+            auditLogService.log(
+                    disputeCase,
+                    "SYSTEM",
+                    "FILE_UPLOADED",
+                    "fileId=" + saved.getId() + ",evidenceType=" + saved.getEvidenceType() + ",format=" + saved.getFileFormat()
+            );
+
+            return toUploadResponse(saved);
+        } catch (RuntimeException ex) {
+            deleteStoredFileQuietly(savedPath);
+            throw ex;
+        }
     }
 
     @Transactional(readOnly = true)
@@ -170,6 +178,29 @@ public class EvidenceFileService {
 
     private String defaultString(String value, String defaultValue) {
         return value == null || value.isBlank() ? defaultValue : value;
+    }
+
+    private void validateBinaryContent(FileFormat format, Path savedPath) {
+        if (format != FileFormat.JPEG && format != FileFormat.PNG) {
+            return;
+        }
+
+        try (InputStream in = Files.newInputStream(savedPath)) {
+            var image = ImageIO.read(in);
+            if (image == null || image.getWidth() <= 0 || image.getHeight() <= 0) {
+                throw new IllegalArgumentException("invalid image file: unreadable image content");
+            }
+        } catch (IOException ex) {
+            throw new IllegalArgumentException("invalid image file: unreadable image content", ex);
+        }
+    }
+
+    private void deleteStoredFileQuietly(Path savedPath) {
+        try {
+            Files.deleteIfExists(savedPath);
+        } catch (IOException ignored) {
+            // best-effort cleanup only
+        }
     }
 
     private UploadFileResponse toUploadResponse(EvidenceFileEntity saved) {

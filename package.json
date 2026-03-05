@@ -1,0 +1,13 @@
+{
+  "name": "chargeback-web",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Frontend asset pipeline for Chargeback Evidence Builder",
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.js -i ./src/main/resources/static/css/input.css -o ./src/main/resources/static/css/app.css --minify",
+    "watch:css": "tailwindcss -c tailwind.config.js -i ./src/main/resources/static/css/input.css -o ./src/main/resources/static/css/app.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}

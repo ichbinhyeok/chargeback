@@ -2,9 +2,16 @@ package com.example.demo.dispute.service.pdf;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDDocumentCatalog;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -17,7 +24,31 @@ public class PdfMetadataExtractor {
 
     public PdfMetadata extract(Path path) {
         try {
-            byte[] raw = java.nio.file.Files.readAllBytes(path);
+            return extractWithPdfBox(path);
+        } catch (RuntimeException ignored) {
+            // Fall back to regex-based extraction for malformed/minimal PDFs.
+        }
+
+        return extractWithRegex(path);
+    }
+
+    private PdfMetadata extractWithPdfBox(Path path) {
+        try {
+            try (PDDocument document = Loader.loadPDF(path.toFile())) {
+                int pageCount = Math.max(document.getNumberOfPages(), 1);
+                boolean externalLinkDetected = hasExternalLink(document) || hasExternalLinkRaw(path);
+                boolean pdfACompliant = hasPdfAFlag(document);
+                boolean pdfPortfolio = isPortfolio(document);
+                return new PdfMetadata(pageCount, externalLinkDetected, pdfACompliant, pdfPortfolio);
+            }
+        } catch (IOException e) {
+            throw new IllegalArgumentException("failed to read pdf metadata: " + e.getMessage(), e);
+        }
+    }
+
+    private PdfMetadata extractWithRegex(Path path) {
+        try {
+            byte[] raw = Files.readAllBytes(path);
             String content = new String(raw, StandardCharsets.ISO_8859_1);
 
             int pageCount = countPages(content);
@@ -37,5 +68,40 @@ public class PdfMetadataExtractor {
             count++;
         }
         return Math.max(count, 1);
+    }
+
+    private boolean hasExternalLink(PDDocument document) throws IOException {
+        for (PDPage page : document.getPages()) {
+            for (PDAnnotation annotation : page.getAnnotations()) {
+                if (annotation.getCOSObject().toString().contains("/URI")) {
+                    return true;
+                }
+            }
+        }
+
+        return document.getDocumentCatalog() != null
+                && document.getDocumentCatalog().getCOSObject().toString().contains("/URI");
+    }
+
+    private boolean hasExternalLinkRaw(Path path) throws IOException {
+        String content = new String(Files.readAllBytes(path), StandardCharsets.ISO_8859_1);
+        return EXTERNAL_LINK_PATTERN.matcher(content).find();
+    }
+
+    private boolean hasPdfAFlag(PDDocument document) throws IOException {
+        PDDocumentCatalog catalog = document.getDocumentCatalog();
+        if (catalog == null || catalog.getMetadata() == null) {
+            return false;
+        }
+
+        try (var metadataStream = catalog.getMetadata().createInputStream()) {
+            String xmp = new String(metadataStream.readAllBytes(), StandardCharsets.UTF_8);
+            return PDFA_PATTERN.matcher(xmp).find();
+        }
+    }
+
+    private boolean isPortfolio(PDDocument document) {
+        PDDocumentCatalog catalog = document.getDocumentCatalog();
+        return catalog != null && catalog.getCOSObject().containsKey(COSName.COLLECTION);
     }
 }
