@@ -2,6 +2,7 @@
 @import com.example.demo.dispute.api.CaseReportResponse
 @import com.example.demo.dispute.domain.EvidenceType
 @import com.example.demo.dispute.persistence.PaymentEntity
+@import java.util.List
 @param DisputeCase disputeCase
 @param CaseReportResponse report
 @param EvidenceType[] evidenceTypes
@@ -9,8 +10,23 @@
 @param PaymentEntity latestPayment
 @param String message
 @param String error
+@param Integer readinessScore
+@param String readinessLabel
+@param Integer readinessBlocked
+@param Integer readinessFixable
+@param Integer readinessWarning
+@param List<String> missingEvidenceTypes
+@param Integer retentionDays
+@param String expiresAtText
+@param String casePublicUrl
 
-@template.layout(title = "Case " + report.caseToken(), robotsMeta = "noindex,nofollow,noarchive", content = @`
+@template.layout(
+    title = "Case " + report.caseToken(),
+    robotsMeta = "noindex,nofollow,noarchive",
+    caseTokenForVault = report.caseToken(),
+    casePlatformForVault = report.platform().name(),
+    caseStateForVault = report.state().name(),
+    content = @`
     <!-- Alerts -->
     @if(message != null && !message.isBlank())
         <div class="mb-6 p-4 rounded-lg bg-green-50 text-green-800 border border-green-200 flex items-center gap-3 shadow-sm">
@@ -60,6 +76,47 @@
             <a href="/c/${report.caseToken()}/validate" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Validate & Fix</a>
             <a href="/c/${report.caseToken()}/export" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Export Pack</a>
         </nav>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <section class="cb-card">
+            <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Submission Readiness</h2>
+            <div class="flex items-end justify-between mb-3">
+                <p class="text-4xl font-bold text-gray-900">${readinessScore}%</p>
+                <span class="cb-badge ${(readinessScore >= 90) ? "cb-badge-green" : (readinessScore >= 70 ? "cb-badge-blue" : (readinessScore >= 50 ? "cb-badge-amber" : "cb-badge-red"))}">
+                    ${readinessLabel}
+                </span>
+            </div>
+            <div class="space-y-1 text-sm text-gray-600">
+                <div>Blocked: <strong class="text-gray-900">${readinessBlocked}</strong></div>
+                <div>Fixable: <strong class="text-gray-900">${readinessFixable}</strong></div>
+                <div>Warnings: <strong class="text-gray-900">${readinessWarning}</strong></div>
+                <div>Missing Types: <strong class="text-gray-900">${missingEvidenceTypes.size()}</strong></div>
+            </div>
+            @if(!missingEvidenceTypes.isEmpty())
+                <p class="mt-3 text-xs text-gray-500">Missing: ${String.join(", ", missingEvidenceTypes.subList(0, Math.min(4, missingEvidenceTypes.size())))}@if(missingEvidenceTypes.size() > 4), ...@endif</p>
+            @endif
+        </section>
+
+        <section class="cb-card">
+            <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Access & Recovery</h2>
+            <div class="space-y-2">
+                <button type="button" class="cb-btn cb-btn-secondary w-full" onclick="navigator.clipboard.writeText('${casePublicUrl}')">Copy Case Link</button>
+                <button type="button" class="cb-btn cb-btn-secondary w-full" onclick="navigator.clipboard.writeText('${report.caseToken()}')">Copy Case Token</button>
+                <a href="/c/${report.caseToken()}/access-key.txt" class="cb-btn cb-btn-secondary w-full">Download Access Key</a>
+                <form method="post" action="/c/${report.caseToken()}/rotate-token" onsubmit="return confirm('Rotate token now? Old link will stop working immediately.');">
+                    <button type="submit" class="cb-btn cb-btn-danger w-full">Rotate Access Token</button>
+                </form>
+            </div>
+            <p class="mt-3 text-xs text-gray-500">Anyone with this token can access your case. Rotate if you suspect link sharing.</p>
+        </section>
+
+        <section class="cb-card">
+            <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Retention</h2>
+            <p class="text-sm text-gray-700">Automatic deletion after <strong>${retentionDays} days</strong>.</p>
+            <p class="text-sm text-gray-700 mt-1">Scheduled deletion: <strong>${expiresAtText}</strong></p>
+            <p class="mt-3 text-xs text-gray-500">Use Delete Case now for immediate removal of files and metadata.</p>
+        </section>
     </div>
 
     <!-- Main Content -->

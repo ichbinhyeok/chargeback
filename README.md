@@ -10,6 +10,11 @@ Core flow:
 5. Pay (Stripe Checkout)
 6. Download submission ZIP and one-page guide PDF
 
+No-login access model:
+- Access control is case-token based (`/c/{caseToken}`).
+- Recent cases are stored in browser localStorage for quick return.
+- Users can download an access key text file and rotate token if a link is exposed.
+
 ## Local Run (Dev Profile)
 
 Requirements:
@@ -99,6 +104,7 @@ Prod defaults:
 ## User Flow URLs
 
 - `/` landing
+- `/open-case` token/url resume endpoint
 - `/guides` public evidence guides (indexable)
 - `/guides/{platform}` platform guide hub pages (indexable)
 - `/guides/{platform}/{reasonCode}` public guide detail pages (indexable)
@@ -112,6 +118,8 @@ Prod defaults:
 - `/c/{caseToken}/export` paywall + download
 - `/c/{caseToken}/download/submission.zip` paid only
 - `/c/{caseToken}/download/summary.pdf` free with watermark, paid without watermark
+- `/c/{caseToken}/access-key.txt` case recovery key download
+- `/c/{caseToken}/rotate-token` rotate token and invalidate old URL
 - `/robots.txt` crawler policy
 - `/sitemap.xml` public sitemap
 

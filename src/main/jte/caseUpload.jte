@@ -10,7 +10,13 @@
 @param String message
 @param String error
 
-@template.layout(title = "Upload | " + report.caseToken(), robotsMeta = "noindex,nofollow,noarchive", content = @`
+@template.layout(
+    title = "Upload | " + report.caseToken(),
+    robotsMeta = "noindex,nofollow,noarchive",
+    caseTokenForVault = report.caseToken(),
+    casePlatformForVault = report.platform().name(),
+    caseStateForVault = report.state().name(),
+    content = @`
     @if(message != null && !message.isBlank())
         <div class="mb-6 p-4 rounded-lg bg-green-50 text-green-800 border border-green-200 flex items-center gap-3">
             <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
@@ -360,28 +366,9 @@
 
             for (const mapping of mappings) {
                 statusText.innerText = 'Uploading ' + (completed + 1) + ' of ' + mappings.length + '...';
-                const formData = new FormData();
-                formData.append('file', mapping.file);
-
-                try {
-                    const response = await fetch('/api/cases/' + caseId + '/files?evidenceType=' + encodeURIComponent(mapping.evidenceType), {
-                        method: 'POST',
-                        headers: { 'X-Case-Token': caseToken },
-                        body: formData
-                    });
-
-                    if (!response.ok) {
-                        let reason = 'Upload failed';
-                        try {
-                            const json = await response.json();
-                            if (json && json.error) {
-                                reason = json.error;
-                            }
-                        } catch (_) {}
-                        failures.push(mapping.file.name + ': ' + reason);
-                    }
-                } catch (error) {
-                    failures.push(mapping.file.name + ': Network error');
+                const uploadResult = await uploadSingleFileWithRetry(mapping, 3);
+                if (!uploadResult.ok) {
+                    failures.push(mapping.file.name + ': ' + uploadResult.reason);
                 }
 
                 completed++;
@@ -417,6 +404,59 @@
             }
 
             window.location.href = '/c/' + caseToken + '/validate?message=' + encodeURIComponent('Files uploaded and validation completed.');
+        }
+
+        async function uploadSingleFileWithRetry(mapping, maxAttempts) {
+            let attempt = 0;
+            while (attempt < maxAttempts) {
+                attempt++;
+                const formData = new FormData();
+                formData.append('file', mapping.file);
+
+                try {
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 45000);
+                    const response = await fetch('/api/cases/' + caseId + '/files?evidenceType=' + encodeURIComponent(mapping.evidenceType), {
+                        method: 'POST',
+                        headers: { 'X-Case-Token': caseToken },
+                        body: formData,
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeout);
+
+                    if (response.ok) {
+                        return { ok: true };
+                    }
+
+                    let reason = 'Upload failed';
+                    try {
+                        const json = await response.json();
+                        if (json && json.error) {
+                            reason = json.error;
+                        }
+                    } catch (_) {}
+
+                    const retryable = response.status >= 500 || response.status === 429;
+                    if (!retryable || attempt >= maxAttempts) {
+                        return { ok: false, reason: reason + ' (status ' + response.status + ')' };
+                    }
+                } catch (error) {
+                    if (attempt >= maxAttempts) {
+                        const reason = error && error.name === 'AbortError'
+                            ? 'Request timed out'
+                            : 'Network error';
+                        return { ok: false, reason: reason };
+                    }
+                }
+
+                await sleep(500 * attempt);
+            }
+
+            return { ok: false, reason: 'Upload failed after retries' };
+        }
+
+        function sleep(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
         }
 
         function showClientError(message) {

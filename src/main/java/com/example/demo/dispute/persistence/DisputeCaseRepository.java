@@ -10,4 +10,6 @@ public interface DisputeCaseRepository extends JpaRepository<DisputeCase, UUID> 
     List<DisputeCase> findByCreatedAtBefore(Instant cutoff);
 
     Optional<DisputeCase> findByCaseToken(String caseToken);
+
+    boolean existsByCaseToken(String caseToken);
 }

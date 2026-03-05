@@ -10,7 +10,13 @@
 @param String message
 @param String error
 
-@template.layout(title = "Validate | " + report.caseToken(), robotsMeta = "noindex,nofollow,noarchive", content = @`
+@template.layout(
+    title = "Validate | " + report.caseToken(),
+    robotsMeta = "noindex,nofollow,noarchive",
+    caseTokenForVault = report.caseToken(),
+    casePlatformForVault = report.platform().name(),
+    caseStateForVault = report.state().name(),
+    content = @`
     <!-- Alerts -->
     @if(message != null && !message.isBlank())
         <div class="mb-6 p-4 rounded-lg bg-green-50 text-green-800 border border-green-200 flex items-center gap-3">

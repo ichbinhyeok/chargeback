@@ -3,6 +3,9 @@
 @param String metaDescription = "Chargeback evidence validation and export workflows for Stripe and Shopify disputes."
 @param String canonicalUrl = ""
 @param String robotsMeta = "index,follow"
+@param String caseTokenForVault = ""
+@param String casePlatformForVault = ""
+@param String caseStateForVault = ""
 
 <!DOCTYPE html>
 <html lang="en">
@@ -26,6 +29,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/app.css">
+    <script src="/js/case-vault.js" defer></script>
     <style>
         body { background-color: #F6F9FC; color: #1A1F36; font-family: 'Inter', sans-serif; }
     </style>
@@ -91,5 +95,21 @@
         .cb-table td { padding: 16px; font-size: 14px; border-bottom: 1px solid #e5e7eb; color: #374151; background: white; }
         .cb-table tr:hover td { background-color: #f9fafb; }
     </style>
+    @if(caseTokenForVault != null && !caseTokenForVault.isBlank())
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                if (!window.cbCaseVault) {
+                    return;
+                }
+                window.cbCaseVault.save({
+                    token: '${caseTokenForVault}',
+                    path: '/c/${caseTokenForVault}',
+                    platform: '${casePlatformForVault}',
+                    state: '${caseStateForVault}',
+                    touchedAt: new Date().toISOString()
+                });
+            });
+        </script>
+    @endif
 </body>
 </html>

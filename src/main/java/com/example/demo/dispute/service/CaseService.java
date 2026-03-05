@@ -69,7 +69,7 @@ public class CaseService {
         }
 
         DisputeCase disputeCase = new DisputeCase();
-        disputeCase.setCaseToken(generateCaseToken());
+        disputeCase.setCaseToken(generateUniqueCaseToken());
         disputeCase.setPlatform(request.platform());
         disputeCase.setProductScope(request.productScope());
         disputeCase.setReasonCode(request.reasonCode());
@@ -79,6 +79,22 @@ public class CaseService {
 
         DisputeCase saved = disputeCaseRepository.save(disputeCase);
         auditLogService.log(saved, "SYSTEM", "CASE_CREATED", "platform=" + saved.getPlatform() + ",scope=" + saved.getProductScope());
+        return saved;
+    }
+
+    public DisputeCase rotateCaseToken(String caseToken) {
+        DisputeCase disputeCase = getCaseByToken(caseToken);
+        String previousToken = disputeCase.getCaseToken();
+        String rotatedToken = generateUniqueCaseToken();
+        disputeCase.setCaseToken(rotatedToken);
+        DisputeCase saved = disputeCaseRepository.save(disputeCase);
+
+        auditLogService.log(
+                saved,
+                "SYSTEM",
+                "CASE_TOKEN_ROTATED",
+                "from=" + previousToken + ",to=" + rotatedToken
+        );
         return saved;
     }
 
@@ -158,6 +174,14 @@ public class CaseService {
     }
 
     private String generateCaseToken() {
-        return "case_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        return "case_" + UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private String generateUniqueCaseToken() {
+        String token = generateCaseToken();
+        while (disputeCaseRepository.existsByCaseToken(token)) {
+            token = generateCaseToken();
+        }
+        return token;
     }
 }

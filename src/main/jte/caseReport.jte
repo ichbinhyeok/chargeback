@@ -8,7 +8,13 @@
 @param boolean isPaid
 @param PaymentEntity latestPayment
 
-@template.layout(title = "Report | " + report.caseToken(), robotsMeta = "noindex,nofollow,noarchive", content = @`
+@template.layout(
+    title = "Report | " + report.caseToken(),
+    robotsMeta = "noindex,nofollow,noarchive",
+    caseTokenForVault = report.caseToken(),
+    casePlatformForVault = report.platform().name(),
+    caseStateForVault = report.state().name(),
+    content = @`
     <div class="max-w-4xl mx-auto">
         <div class="mb-6">
             <a href="/c/${report.caseToken()}" class="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">

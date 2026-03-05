@@ -3,9 +3,11 @@ package com.example.demo.dispute.web;
 import com.example.demo.dispute.api.CaseReportResponse;
 import com.example.demo.dispute.api.CreateCaseRequest;
 import com.example.demo.dispute.api.ValidateCaseResponse;
+import com.example.demo.dispute.api.ValidationIssueResponse;
 import com.example.demo.dispute.domain.CardNetwork;
 import com.example.demo.dispute.domain.CaseState;
 import com.example.demo.dispute.domain.EvidenceType;
+import com.example.demo.dispute.domain.IssueSeverity;
 import com.example.demo.dispute.domain.Platform;
 import com.example.demo.dispute.domain.ProductScope;
 import com.example.demo.dispute.domain.ValidationSource;
@@ -22,8 +24,17 @@ import com.example.demo.dispute.service.ValidationService;
 import jakarta.servlet.http.HttpServletResponse;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -36,6 +47,10 @@ import org.springframework.web.multipart.MultipartFile;
 @Controller
 public class WebCaseController {
 
+    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm z")
+            .withZone(ZoneId.systemDefault());
+    private static final Pattern CASE_TOKEN_PATTERN = Pattern.compile("(case_[A-Za-z0-9]+)");
+
     private final CaseService caseService;
     private final CaseReportService caseReportService;
     private final EvidenceFileService evidenceFileService;
@@ -44,6 +59,8 @@ public class WebCaseController {
     private final AutoFixService autoFixService;
     private final SubmissionExportService submissionExportService;
     private final PaymentService paymentService;
+    private final int retentionDays;
+    private final String publicBaseUrl;
 
     public WebCaseController(
             CaseService caseService,
@@ -53,7 +70,9 @@ public class WebCaseController {
             ValidationHistoryService validationHistoryService,
             AutoFixService autoFixService,
             SubmissionExportService submissionExportService,
-            PaymentService paymentService
+            PaymentService paymentService,
+            @Value("${app.retention.days:7}") int retentionDays,
+            @Value("${app.public-base-url:http://localhost:8080}") String publicBaseUrl
     ) {
         this.caseService = caseService;
         this.caseReportService = caseReportService;
@@ -63,12 +82,30 @@ public class WebCaseController {
         this.autoFixService = autoFixService;
         this.submissionExportService = submissionExportService;
         this.paymentService = paymentService;
+        this.retentionDays = retentionDays;
+        this.publicBaseUrl = trimTrailingSlash(publicBaseUrl);
     }
 
     @GetMapping("/")
-    public String index(@RequestParam(value = "message", required = false) String message, Model model) {
+    public String index(
+            @RequestParam(value = "message", required = false) String message,
+            @RequestParam(value = "error", required = false) String error,
+            Model model
+    ) {
         model.addAttribute("message", message);
+        model.addAttribute("error", error);
         return "index";
+    }
+
+    @PostMapping("/open-case")
+    public String openCase(@RequestParam("caseTokenOrUrl") String caseTokenOrUrl) {
+        try {
+            String token = normalizeCaseToken(caseTokenOrUrl);
+            caseService.getCaseByToken(token);
+            return "redirect:/c/" + token;
+        } catch (RuntimeException ex) {
+            return "redirect:/?error=" + encode("Case not found. Check the token or URL and try again.");
+        }
     }
 
     @GetMapping("/terms")
@@ -274,6 +311,35 @@ public class WebCaseController {
         }
     }
 
+    @GetMapping("/c/{caseToken}/access-key.txt")
+    public void downloadAccessKey(@PathVariable String caseToken, HttpServletResponse response) throws Exception {
+        DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
+        Instant expiresAt = disputeCase.getCreatedAt().plus(retentionDays, ChronoUnit.DAYS);
+        String caseUrl = publicBaseUrl + "/c/" + disputeCase.getCaseToken();
+
+        response.setContentType("text/plain; charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=\"chargeback_case_" + disputeCase.getCaseToken() + ".txt\"");
+        response.getWriter().print(
+                "Chargeback Case Access Key\n"
+                        + "Token: " + disputeCase.getCaseToken() + "\n"
+                        + "URL: " + caseUrl + "\n"
+                        + "CreatedAt: " + DATE_TIME_FORMAT.format(disputeCase.getCreatedAt()) + "\n"
+                        + "ExpiresAt: " + DATE_TIME_FORMAT.format(expiresAt) + "\n"
+                        + "\n"
+                        + "Keep this file private. Anyone with this token can access your case.\n"
+        );
+    }
+
+    @PostMapping("/c/{caseToken}/rotate-token")
+    public String rotateToken(@PathVariable String caseToken) {
+        try {
+            DisputeCase rotated = caseService.rotateCaseToken(caseToken);
+            return "redirect:/c/" + rotated.getCaseToken() + "?message=" + encode("Access token rotated. Save the new link now.");
+        } catch (RuntimeException ex) {
+            return "redirect:/?error=" + encode(ex.getMessage());
+        }
+    }
+
     @PostMapping("/c/{caseToken}/delete")
     public String deleteCase(@PathVariable String caseToken) {
         DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
@@ -284,12 +350,77 @@ public class WebCaseController {
     private void populateCaseModel(String caseToken, Model model) {
         DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
         CaseReportResponse report = caseReportService.getReport(disputeCase.getId());
+        ReadinessSummary readiness = computeReadiness(report);
+        Instant expiresAt = disputeCase.getCreatedAt().plus(retentionDays, ChronoUnit.DAYS);
 
         model.addAttribute("disputeCase", disputeCase);
         model.addAttribute("report", report);
         model.addAttribute("evidenceTypes", EvidenceType.values());
         model.addAttribute("isPaid", paymentService.isPaid(disputeCase.getId()));
         model.addAttribute("latestPayment", paymentService.latestPayment(disputeCase.getId()).orElse(null));
+        model.addAttribute("readinessScore", readiness.score());
+        model.addAttribute("readinessLabel", readiness.label());
+        model.addAttribute("readinessBlocked", readiness.blockedCount());
+        model.addAttribute("readinessFixable", readiness.fixableCount());
+        model.addAttribute("readinessWarning", readiness.warningCount());
+        model.addAttribute("missingEvidenceTypes", readiness.missingEvidenceTypes());
+        model.addAttribute("retentionDays", retentionDays);
+        model.addAttribute("expiresAtText", DATE_TIME_FORMAT.format(expiresAt));
+        model.addAttribute("casePublicUrl", publicBaseUrl + "/c/" + report.caseToken());
+    }
+
+    private ReadinessSummary computeReadiness(CaseReportResponse report) {
+        int blocked = 0;
+        int fixable = 0;
+        int warning = 0;
+
+        if (report.latestValidation() != null) {
+            for (ValidationIssueResponse issue : report.latestValidation().issues()) {
+                if (issue.severity() == IssueSeverity.BLOCKED) {
+                    blocked++;
+                } else if (issue.severity() == IssueSeverity.FIXABLE) {
+                    fixable++;
+                } else if (issue.severity() == IssueSeverity.WARNING) {
+                    warning++;
+                }
+            }
+        }
+
+        EnumSet<EvidenceType> presentTypes = EnumSet.noneOf(EvidenceType.class);
+        report.files().forEach(file -> presentTypes.add(file.evidenceType()));
+
+        List<String> missing = new ArrayList<>();
+        for (EvidenceType type : EvidenceType.values()) {
+            if (!presentTypes.contains(type)) {
+                missing.add(type.name());
+            }
+        }
+
+        int score = 100;
+        score -= blocked * 30;
+        score -= fixable * 12;
+        score -= warning * 5;
+        score -= Math.min(20, missing.size() * 3);
+        if (report.files().isEmpty()) {
+            score = Math.min(score, 10);
+        }
+        if (report.latestValidation() == null && !report.files().isEmpty()) {
+            score = Math.min(score, 70);
+        }
+        score = Math.max(0, Math.min(100, score));
+
+        String label;
+        if (score >= 90) {
+            label = "Excellent";
+        } else if (score >= 70) {
+            label = "Good";
+        } else if (score >= 50) {
+            label = "Needs Work";
+        } else {
+            label = "Critical";
+        }
+
+        return new ReadinessSummary(score, label, blocked, fixable, warning, missing);
     }
 
     private void markDownloaded(String caseToken) {
@@ -301,5 +432,39 @@ public class WebCaseController {
 
     private String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private String trimTrailingSlash(String value) {
+        if (value == null || value.isBlank()) {
+            return "http://localhost:8080";
+        }
+        if (value.endsWith("/")) {
+            return value.substring(0, value.length() - 1);
+        }
+        return value;
+    }
+
+    private String normalizeCaseToken(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Case token is required.");
+        }
+
+        String trimmed = value.trim();
+        Matcher matcher = CASE_TOKEN_PATTERN.matcher(trimmed);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+
+        throw new IllegalArgumentException("Invalid case token format.");
+    }
+
+    private record ReadinessSummary(
+            int score,
+            String label,
+            int blockedCount,
+            int fixableCount,
+            int warningCount,
+            List<String> missingEvidenceTypes
+    ) {
     }
 }
