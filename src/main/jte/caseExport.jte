@@ -10,6 +10,7 @@
 @param String message
 @param String error
 @param boolean paymentConfigured
+@param boolean exportReady
 
 @template.layout(
     title = "Export | " + report.caseToken(),
@@ -110,14 +111,16 @@
                     </ul>
                     
                     <div class="mt-auto">
-                        @if(!report.state().name().equals("READY"))
+                        @if(!exportReady)
                             <div class="p-3 bg-amber-50 border-l-4 border-amber-400 text-amber-800 text-xs rounded shadow-sm">
                                 <strong>Validation required:</strong> run validation and clear blocked issues before checkout. Current state: <code class="bg-amber-100 font-bold px-1 rounded">${report.state()}</code>.
                             </div>
                         @elseif(paymentConfigured)
-                            <a href="/c/${report.caseToken()}/pay" class="flex justify-center items-center w-full px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                                Pay via Stripe to Unlock
-                            </a>
+                            <form method="post" action="/c/${report.caseToken()}/pay">
+                                <button type="submit" class="flex justify-center items-center w-full px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                                    Pay via Stripe to Unlock
+                                </button>
+                            </form>
                         @else
                             <div class="p-3 bg-red-50 border-l-4 border-red-400 text-red-700 text-xs rounded shadow-sm">
                                 <strong>Setup required:</strong> Stripe checkout is not configured. Set billing environment variables (e.g., <code class="bg-red-100 font-bold px-1 rounded">STRIPE_SECRET_KEY</code>, <code class="bg-red-100 font-bold px-1 rounded">STRIPE_WEBHOOK_SECRET</code>) to enable payment.
@@ -151,9 +154,15 @@
                     </ul>
                     
                     <div class="space-y-3">
-                        <a href="/c/${report.caseToken()}/download/summary.pdf" class="flex justify-center items-center w-full px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded text-sm font-medium hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">
-                            Download Watermarked Guide PDF
-                        </a>
+                        @if(exportReady)
+                            <a href="/c/${report.caseToken()}/download/summary.pdf" class="flex justify-center items-center w-full px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded text-sm font-medium hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">
+                                Download Watermarked Guide PDF
+                            </a>
+                        @else
+                            <button type="button" disabled class="flex justify-center items-center w-full px-4 py-2 bg-gray-100 text-gray-400 border border-gray-200 rounded text-sm font-medium cursor-not-allowed shadow-sm">
+                                Run Validation to Unlock Free PDF
+                            </button>
+                        @endif
                         <a href="/c/${report.caseToken()}/validate" class="flex justify-center items-center w-full px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded text-sm font-medium hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">
                             View Validation Check Output
                         </a>

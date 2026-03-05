@@ -12,6 +12,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class NoIndexFilter extends OncePerRequestFilter {
 
     private static final String HEADER_VALUE = "noindex, nofollow, noarchive";
+    private static final String CACHE_CONTROL = "no-store, max-age=0";
 
     @Override
     protected void doFilterInternal(
@@ -22,6 +23,10 @@ public class NoIndexFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         if (path.startsWith("/c/") || path.startsWith("/api/") || path.startsWith("/webhooks/")) {
             response.setHeader("X-Robots-Tag", HEADER_VALUE);
+            response.setHeader("Cache-Control", CACHE_CONTROL);
+            response.setHeader("Pragma", "no-cache");
+            response.setDateHeader("Expires", 0L);
+            response.setHeader("Referrer-Policy", "no-referrer");
         }
         filterChain.doFilter(request, response);
     }

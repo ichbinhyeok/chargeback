@@ -1,21 +1,59 @@
 (function () {
     const STORAGE_KEY = "cb_recent_cases_v1";
+    const OPT_IN_KEY = "cb_recent_cases_opt_in_v1";
     const LIMIT = 30;
+    const TTL_DAYS = 30;
+    const TTL_MS = TTL_DAYS * 24 * 60 * 60 * 1000;
+
+    function canUseStorage() {
+        try {
+            const probeKey = "__cb_probe__";
+            localStorage.setItem(probeKey, "1");
+            localStorage.removeItem(probeKey);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
 
     function parse() {
+        if (!canUseStorage()) {
+            return [];
+        }
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (!raw) {
                 return [];
             }
             const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
+            if (!Array.isArray(parsed)) {
+                return [];
+            }
+            const now = Date.now();
+            return parsed
+                .map((entry) => ({
+                    token: normalizeToken(entry && entry.token),
+                    path: entry && entry.path ? String(entry.path) : "",
+                    platform: entry && entry.platform ? String(entry.platform) : "",
+                    state: entry && entry.state ? String(entry.state) : "",
+                    touchedAt: entry && entry.touchedAt ? String(entry.touchedAt) : ""
+                }))
+                .filter((entry) => {
+                    if (!entry.token) {
+                        return false;
+                    }
+                    const touchedAt = Date.parse(entry.touchedAt);
+                    return Number.isFinite(touchedAt) && now - touchedAt <= TTL_MS;
+                });
         } catch (_) {
             return [];
         }
     }
 
     function persist(entries) {
+        if (!canUseStorage()) {
+            return;
+        }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.slice(0, LIMIT)));
     }
 
@@ -36,7 +74,29 @@
         });
     }
 
+    function isEnabled() {
+        if (!canUseStorage()) {
+            return false;
+        }
+        return localStorage.getItem(OPT_IN_KEY) === "1";
+    }
+
+    function setEnabled(enabled) {
+        if (!canUseStorage()) {
+            return;
+        }
+        if (enabled) {
+            localStorage.setItem(OPT_IN_KEY, "1");
+            return;
+        }
+        localStorage.removeItem(OPT_IN_KEY);
+        clear();
+    }
+
     function save(entry) {
+        if (!isEnabled()) {
+            return;
+        }
         const token = normalizeToken(entry && entry.token);
         if (!token) {
             return;
@@ -53,6 +113,9 @@
     }
 
     function remove(tokenOrUrl) {
+        if (!canUseStorage()) {
+            return;
+        }
         const token = normalizeToken(tokenOrUrl);
         if (!token) {
             return;
@@ -62,12 +125,19 @@
     }
 
     function clear() {
+        if (!canUseStorage()) {
+            return;
+        }
         localStorage.removeItem(STORAGE_KEY);
     }
 
     function render(containerId) {
         const container = document.getElementById(containerId);
         if (!container) {
+            return;
+        }
+        if (!isEnabled()) {
+            container.innerHTML = '<p class="text-sm text-gray-500">Case vault is off on this browser. Enable "Remember cases on this device" to keep quick links.</p>';
             return;
         }
         const items = list();
@@ -115,6 +185,9 @@
         remove,
         clear,
         render,
-        normalizeToken
+        normalizeToken,
+        isEnabled,
+        setEnabled,
+        ttlDays: TTL_DAYS
     };
 })();

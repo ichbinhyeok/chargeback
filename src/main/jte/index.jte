@@ -59,6 +59,11 @@
                 <h2 class="text-lg font-semibold text-gray-900">Recent Cases (This Browser)</h2>
                 <button type="button" class="cb-btn cb-btn-secondary text-xs px-3 py-2" onclick="window.cbCaseVault.clear(); window.cbCaseVault.render('recent-cases-list')">Clear</button>
             </div>
+            <label class="mb-3 flex items-start gap-2 text-sm text-gray-700">
+                <input id="remember-cases-toggle" type="checkbox" class="mt-0.5 rounded border-gray-300">
+                <span>Remember cases on this device</span>
+            </label>
+            <p id="remember-cases-status" class="text-xs text-gray-500 mb-3"></p>
             <div id="recent-cases-list" class="space-y-2"></div>
         </section>
     </div>
@@ -90,7 +95,32 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             if (window.cbCaseVault) {
-                window.cbCaseVault.render('recent-cases-list');
+                const rememberToggle = document.getElementById('remember-cases-toggle');
+                const rememberStatus = document.getElementById('remember-cases-status');
+                const refreshVault = function () {
+                    const enabled = window.cbCaseVault.isEnabled();
+                    if (rememberToggle) {
+                        rememberToggle.checked = enabled;
+                    }
+                    if (rememberStatus) {
+                        rememberStatus.textContent = enabled
+                            ? 'Stored for up to ' + window.cbCaseVault.ttlDays + ' days in this browser only.'
+                            : 'Off by default for privacy. Enable only on a trusted private device.';
+                    }
+                    window.cbCaseVault.render('recent-cases-list');
+                };
+                if (rememberToggle) {
+                    rememberToggle.addEventListener('change', function () {
+                        window.cbCaseVault.setEnabled(rememberToggle.checked);
+                        refreshVault();
+                    });
+                }
+                refreshVault();
+            } else {
+                const rememberStatus = document.getElementById('remember-cases-status');
+                if (rememberStatus) {
+                    rememberStatus.textContent = 'Case vault is unavailable in this browser.';
+                }
             }
 
             const input = document.getElementById('access-key-file');
