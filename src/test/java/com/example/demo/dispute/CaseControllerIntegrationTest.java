@@ -687,7 +687,7 @@ class CaseControllerIntegrationTest {
     @Test
     void guidesRouterNoMatchWithPlatformRedirectsToDirectFixNewCase() throws Exception {
         mockMvc.perform(get("/guides/router")
-                        .param("q", "shopify checksum signature mismatch parser")
+                        .param("q", "shopify zqxv nonce checksum")
                         .param("platform", "shopify"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/new?src=guide_router_nomatch&guide=router_nomatch&platform=shopify")));

@@ -123,6 +123,130 @@ const ERROR_FAQ = [
   },
 ];
 
+const ERROR_ROUTER_PHRASES = {
+  "stripe/dispute-countered-fee-manual-15-usd": [
+    "stripe dispute countered fee",
+    "stripe manual counter fee",
+    "stripe dispute fee 15 usd",
+    "is stripe dispute counter paid",
+  ],
+  "stripe/evidence-file-size-limit-4-5mb": [
+    "stripe evidence file too large",
+    "evidence file size limit 4.5mb",
+    "stripe upload exceeds 4.5 mb",
+    "chargeback evidence too large stripe",
+    "stripe dispute file too large",
+  ],
+  "stripe/upload-failed-no-external-links": [
+    "stripe no external links allowed",
+    "upload failed no external links",
+    "remove external links from pdf stripe",
+    "stripe evidence contains external links",
+  ],
+  "stripe/merge-multiple-evidence-files": [
+    "merge multiple evidence files stripe",
+    "one file per evidence type stripe",
+    "stripe duplicate evidence file type",
+    "stripe combine evidence files",
+  ],
+  "stripe/invalid-file-format-pdf-jpg-png-only": [
+    "stripe invalid file format pdf jpg png only",
+    "stripe unsupported file format evidence",
+    "heic not supported stripe dispute",
+    "webp not supported stripe evidence",
+  ],
+  "stripe/total-pages-over-limit": [
+    "stripe total pages over limit",
+    "stripe evidence too many pages",
+    "stripe dispute page limit exceeded",
+    "stripe upload page count exceeded",
+  ],
+  "stripe/mastercard-19-page-limit": [
+    "mastercard 19 page limit stripe",
+    "stripe mastercard evidence 19 pages",
+    "mastercard dispute page limit exceeded",
+    "stripe mastercard too many pages",
+  ],
+  "stripe/duplicate-evidence-type-file-error": [
+    "duplicate evidence type file error stripe",
+    "stripe one file per evidence type",
+    "stripe duplicate file same evidence type",
+    "stripe cannot upload multiple files same type",
+  ],
+  "stripe/oversized-pdf-with-low-signal-pages": [
+    "stripe oversized pdf evidence",
+    "reduce pdf size stripe dispute",
+    "stripe compress evidence pdf",
+    "stripe trim low signal pages",
+  ],
+  "stripe/stripe-vs-shopify-evidence-rules-comparison": [
+    "stripe vs shopify evidence rules",
+    "shopify stripe chargeback evidence difference",
+    "compare evidence upload rules stripe shopify",
+  ],
+  "shopify/pdf-a-format-required-error": [
+    "shopify pdf/a format required",
+    "shopify pdf a required",
+    "pdfa required shopify chargeback",
+    "shopify payments pdf/a error",
+    "shopify invalid pdf format requires pdf/a",
+  ],
+  "shopify/evidence-file-too-large-2mb": [
+    "shopify evidence file too large 2mb",
+    "shopify upload exceeds 2mb",
+    "shopify chargeback file too large",
+    "shopify compress evidence file under 2mb",
+  ],
+  "shopify/pdf-portfolio-not-accepted": [
+    "shopify pdf portfolio not accepted",
+    "shopify embedded pdf attachments not allowed",
+    "portfolio pdf rejected shopify",
+    "flatten pdf portfolio shopify dispute",
+  ],
+  "shopify/invalid-file-format-pdf-jpg-png-only": [
+    "shopify invalid file format pdf jpg png only",
+    "shopify unsupported file format chargeback",
+    "shopify heic evidence not supported",
+    "shopify webp not supported evidence",
+  ],
+  "shopify/external-links-not-allowed-error": [
+    "shopify external links not allowed",
+    "shopify no external links evidence",
+    "remove links from pdf shopify chargeback",
+    "shopify evidence contains external urls",
+  ],
+  "shopify/duplicate-evidence-type-file-error": [
+    "shopify duplicate evidence type file error",
+    "shopify one file per evidence type",
+    "shopify duplicate file same evidence type",
+    "shopify merge evidence files by type",
+  ],
+  "shopify/pdf-pages-over-50-error": [
+    "shopify pdf pages over 50",
+    "shopify pdf exceeds 50 pages",
+    "shopify chargeback page limit error",
+    "shopify too many pdf pages evidence",
+  ],
+  "shopify/shopify-payments-total-size-over-4mb": [
+    "shopify payments total size over 4mb",
+    "shopify chargeback total upload size exceeded",
+    "shopify total evidence too large",
+    "shopify upload exceeds 4mb total",
+  ],
+  "shopify/oversized-image-compression-readability-fix": [
+    "shopify oversized image compression",
+    "shopify compress screenshot for chargeback",
+    "shopify image too large evidence",
+    "shopify reduce image size readable",
+  ],
+  "shopify/unsupported-embedded-objects-error": [
+    "shopify unsupported embedded objects",
+    "shopify embedded object parser failure",
+    "shopify unsupported embedded object in pdf",
+    "shopify embedded files not accepted",
+  ],
+};
+
 function phraseSlug(slug) {
   return slug.replaceAll("-", " ");
 }
@@ -149,6 +273,56 @@ function keywordSeed(platformSlug, slug, label) {
   ];
 }
 
+function uniqueStrings(values) {
+  const seen = new Set();
+  const out = [];
+  for (const value of values) {
+    const normalized = String(value || "").trim().toLowerCase();
+    if (!normalized) continue;
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    out.push(normalized);
+  }
+  return out;
+}
+
+function reasonQueries(platformSlug, slug, label) {
+  const topic = phraseSlug(slug);
+  const p = platformSlug;
+  const base = keywordSeed(platformSlug, slug, label);
+  const expanded = [
+    `${p} ${topic} checklist`,
+    `${p} ${topic} evidence checklist`,
+    `${p} ${topic} dispute evidence required`,
+    `${p} ${topic} chargeback evidence`,
+    `${p} ${topic} evidence upload failed`,
+    `${p} ${topic} submission ready`,
+  ];
+  return uniqueStrings([...base, ...expanded]);
+}
+
+function errorQueries(platformSlug, slug, label) {
+  const topic = phraseSlug(slug);
+  const p = platformSlug;
+  const base = keywordSeed(platformSlug, slug, label);
+  const generic = [
+    `${p} ${topic} error`,
+    `${p} ${topic} fix`,
+    `${p} ${topic} upload failed`,
+    `${p} ${topic} chargeback evidence`,
+    `${p} ${topic} submission blocker`,
+    `${p} ${topic} troubleshooting`,
+  ];
+  const specific = ERROR_ROUTER_PHRASES[`${platformSlug}/${slug}`] || [];
+  return uniqueStrings([...base, ...generic, ...specific]);
+}
+
+function errorCommonErrors(platformSlug, slug) {
+  const specific = ERROR_ROUTER_PHRASES[`${platformSlug}/${slug}`] || [];
+  const phraseLines = specific.slice(0, 4).map((phrase) => `Raw uploader message often appears as: "${phrase}".`);
+  return [...ERROR_COMMON_ERRORS, ...phraseLines];
+}
+
 function reasonEntry(platformSlug, slug, label) {
   const pLabel = platformLabel(platformSlug);
   const topicPhrase = phraseSlug(slug);
@@ -161,7 +335,7 @@ function reasonEntry(platformSlug, slug, label) {
     title: `${pLabel} ${label} Evidence Checklist for Upload Recovery`,
     metaDescription:
       `Fix ${pLabel} ${topicPhrase} dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.`,
-    targetSearchQueries: keywordSeed(platformSlug, slug, label),
+    targetSearchQueries: reasonQueries(platformSlug, slug, label),
     keyChecks: REASON_KEY_CHECKS,
     commonErrors: REASON_COMMON_ERRORS,
     nextSteps: REASON_NEXT_STEPS,
@@ -186,9 +360,9 @@ function errorEntry(platformSlug, slug, label) {
     title: `${pLabel} ${label} Evidence Upload Error Fix Guide`,
     metaDescription:
       `Resolve ${pLabel} ${topicPhrase} upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.`,
-    targetSearchQueries: keywordSeed(platformSlug, slug, label),
+    targetSearchQueries: errorQueries(platformSlug, slug, label),
     keyChecks: ERROR_KEY_CHECKS,
-    commonErrors: ERROR_COMMON_ERRORS,
+    commonErrors: errorCommonErrors(platformSlug, slug),
     nextSteps: ERROR_NEXT_STEPS,
     explanationPreviewLines: ERROR_EXPLANATION_LINES,
     sourceUrls: sourcesFor(platformSlug, slug),
@@ -348,7 +522,7 @@ function main() {
   validate(guides);
 
   const catalog = {
-    version: "2026-03-06",
+    version: "2026-03-07",
     guides,
   };
 

@@ -1,5 +1,5 @@
 {
-  "version": "2026-03-06",
+  "version": "2026-03-07",
   "guides": [
     {
       "platformSlug": "stripe",
@@ -13,7 +13,13 @@
         "stripe fraudulent",
         "stripe upload failed fraudulent",
         "stripe fraudulent evidence guide",
-        "stripe dispute evidence fraudulent fix"
+        "stripe dispute evidence fraudulent fix",
+        "stripe fraudulent checklist",
+        "stripe fraudulent evidence checklist",
+        "stripe fraudulent dispute evidence required",
+        "stripe fraudulent chargeback evidence",
+        "stripe fraudulent evidence upload failed",
+        "stripe fraudulent submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -82,7 +88,13 @@
         "stripe product not received",
         "stripe upload failed product not received",
         "stripe product not received evidence guide",
-        "stripe dispute evidence product not received fix"
+        "stripe dispute evidence product not received fix",
+        "stripe product not received checklist",
+        "stripe product not received evidence checklist",
+        "stripe product not received dispute evidence required",
+        "stripe product not received chargeback evidence",
+        "stripe product not received evidence upload failed",
+        "stripe product not received submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -151,7 +163,13 @@
         "stripe product unacceptable",
         "stripe upload failed product unacceptable",
         "stripe product unacceptable evidence guide",
-        "stripe dispute evidence product unacceptable fix"
+        "stripe dispute evidence product unacceptable fix",
+        "stripe product unacceptable checklist",
+        "stripe product unacceptable evidence checklist",
+        "stripe product unacceptable dispute evidence required",
+        "stripe product unacceptable chargeback evidence",
+        "stripe product unacceptable evidence upload failed",
+        "stripe product unacceptable submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -220,7 +238,13 @@
         "stripe credit not processed",
         "stripe upload failed credit not processed",
         "stripe credit not processed evidence guide",
-        "stripe dispute evidence credit not processed fix"
+        "stripe dispute evidence credit not processed fix",
+        "stripe credit not processed checklist",
+        "stripe credit not processed evidence checklist",
+        "stripe credit not processed dispute evidence required",
+        "stripe credit not processed chargeback evidence",
+        "stripe credit not processed evidence upload failed",
+        "stripe credit not processed submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -289,7 +313,13 @@
         "stripe subscription cancelled",
         "stripe upload failed subscription cancelled",
         "stripe subscription cancelled evidence guide",
-        "stripe dispute evidence subscription cancelled fix"
+        "stripe dispute evidence subscription cancelled fix",
+        "stripe subscription cancelled checklist",
+        "stripe subscription cancelled evidence checklist",
+        "stripe subscription cancelled dispute evidence required",
+        "stripe subscription cancelled chargeback evidence",
+        "stripe subscription cancelled evidence upload failed",
+        "stripe subscription cancelled submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -358,7 +388,13 @@
         "stripe duplicate",
         "stripe upload failed duplicate",
         "stripe duplicate evidence guide",
-        "stripe dispute evidence duplicate fix"
+        "stripe dispute evidence duplicate fix",
+        "stripe duplicate checklist",
+        "stripe duplicate evidence checklist",
+        "stripe duplicate dispute evidence required",
+        "stripe duplicate chargeback evidence",
+        "stripe duplicate evidence upload failed",
+        "stripe duplicate submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -427,7 +463,13 @@
         "stripe unrecognized",
         "stripe upload failed unrecognized",
         "stripe unrecognized evidence guide",
-        "stripe dispute evidence unrecognized fix"
+        "stripe dispute evidence unrecognized fix",
+        "stripe unrecognized checklist",
+        "stripe unrecognized evidence checklist",
+        "stripe unrecognized dispute evidence required",
+        "stripe unrecognized chargeback evidence",
+        "stripe unrecognized evidence upload failed",
+        "stripe unrecognized submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -496,7 +538,13 @@
         "stripe not as described",
         "stripe upload failed not as described",
         "stripe not as described evidence guide",
-        "stripe dispute evidence not as described fix"
+        "stripe dispute evidence not as described fix",
+        "stripe not as described checklist",
+        "stripe not as described evidence checklist",
+        "stripe not as described dispute evidence required",
+        "stripe not as described chargeback evidence",
+        "stripe not as described evidence upload failed",
+        "stripe not as described submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -565,7 +613,13 @@
         "stripe canceled order",
         "stripe upload failed canceled order",
         "stripe canceled order evidence guide",
-        "stripe dispute evidence canceled order fix"
+        "stripe dispute evidence canceled order fix",
+        "stripe canceled order checklist",
+        "stripe canceled order evidence checklist",
+        "stripe canceled order dispute evidence required",
+        "stripe canceled order chargeback evidence",
+        "stripe canceled order evidence upload failed",
+        "stripe canceled order submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -634,7 +688,13 @@
         "stripe general",
         "stripe upload failed general",
         "stripe general evidence guide",
-        "stripe dispute evidence general fix"
+        "stripe dispute evidence general fix",
+        "stripe general checklist",
+        "stripe general evidence checklist",
+        "stripe general dispute evidence required",
+        "stripe general chargeback evidence",
+        "stripe general evidence upload failed",
+        "stripe general submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -703,7 +763,13 @@
         "shopify fraudulent",
         "shopify upload failed fraudulent",
         "shopify fraudulent evidence guide",
-        "shopify dispute evidence fraudulent fix"
+        "shopify dispute evidence fraudulent fix",
+        "shopify fraudulent checklist",
+        "shopify fraudulent evidence checklist",
+        "shopify fraudulent dispute evidence required",
+        "shopify fraudulent chargeback evidence",
+        "shopify fraudulent evidence upload failed",
+        "shopify fraudulent submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -772,7 +838,13 @@
         "shopify item not received",
         "shopify upload failed item not received",
         "shopify item not received evidence guide",
-        "shopify dispute evidence item not received fix"
+        "shopify dispute evidence item not received fix",
+        "shopify item not received checklist",
+        "shopify item not received evidence checklist",
+        "shopify item not received dispute evidence required",
+        "shopify item not received chargeback evidence",
+        "shopify item not received evidence upload failed",
+        "shopify item not received submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -841,7 +913,13 @@
         "shopify not as described",
         "shopify upload failed not as described",
         "shopify not as described evidence guide",
-        "shopify dispute evidence not as described fix"
+        "shopify dispute evidence not as described fix",
+        "shopify not as described checklist",
+        "shopify not as described evidence checklist",
+        "shopify not as described dispute evidence required",
+        "shopify not as described chargeback evidence",
+        "shopify not as described evidence upload failed",
+        "shopify not as described submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -910,7 +988,13 @@
         "shopify cancelled order",
         "shopify upload failed cancelled order",
         "shopify cancelled order evidence guide",
-        "shopify dispute evidence cancelled order fix"
+        "shopify dispute evidence cancelled order fix",
+        "shopify cancelled order checklist",
+        "shopify cancelled order evidence checklist",
+        "shopify cancelled order dispute evidence required",
+        "shopify cancelled order chargeback evidence",
+        "shopify cancelled order evidence upload failed",
+        "shopify cancelled order submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -979,7 +1063,13 @@
         "shopify duplicate",
         "shopify upload failed duplicate",
         "shopify duplicate evidence guide",
-        "shopify dispute evidence duplicate fix"
+        "shopify dispute evidence duplicate fix",
+        "shopify duplicate checklist",
+        "shopify duplicate evidence checklist",
+        "shopify duplicate dispute evidence required",
+        "shopify duplicate chargeback evidence",
+        "shopify duplicate evidence upload failed",
+        "shopify duplicate submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -1048,7 +1138,13 @@
         "shopify credit not processed",
         "shopify upload failed credit not processed",
         "shopify credit not processed evidence guide",
-        "shopify dispute evidence credit not processed fix"
+        "shopify dispute evidence credit not processed fix",
+        "shopify credit not processed checklist",
+        "shopify credit not processed evidence checklist",
+        "shopify credit not processed dispute evidence required",
+        "shopify credit not processed chargeback evidence",
+        "shopify credit not processed evidence upload failed",
+        "shopify credit not processed submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -1117,7 +1213,13 @@
         "shopify unrecognized",
         "shopify upload failed unrecognized",
         "shopify unrecognized evidence guide",
-        "shopify dispute evidence unrecognized fix"
+        "shopify dispute evidence unrecognized fix",
+        "shopify unrecognized checklist",
+        "shopify unrecognized evidence checklist",
+        "shopify unrecognized dispute evidence required",
+        "shopify unrecognized chargeback evidence",
+        "shopify unrecognized evidence upload failed",
+        "shopify unrecognized submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -1186,7 +1288,13 @@
         "shopify subscription cancelled",
         "shopify upload failed subscription cancelled",
         "shopify subscription cancelled evidence guide",
-        "shopify dispute evidence subscription cancelled fix"
+        "shopify dispute evidence subscription cancelled fix",
+        "shopify subscription cancelled checklist",
+        "shopify subscription cancelled evidence checklist",
+        "shopify subscription cancelled dispute evidence required",
+        "shopify subscription cancelled chargeback evidence",
+        "shopify subscription cancelled evidence upload failed",
+        "shopify subscription cancelled submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -1255,7 +1363,13 @@
         "shopify product unacceptable",
         "shopify upload failed product unacceptable",
         "shopify product unacceptable evidence guide",
-        "shopify dispute evidence product unacceptable fix"
+        "shopify dispute evidence product unacceptable fix",
+        "shopify product unacceptable checklist",
+        "shopify product unacceptable evidence checklist",
+        "shopify product unacceptable dispute evidence required",
+        "shopify product unacceptable chargeback evidence",
+        "shopify product unacceptable evidence upload failed",
+        "shopify product unacceptable submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -1324,7 +1438,13 @@
         "shopify general",
         "shopify upload failed general",
         "shopify general evidence guide",
-        "shopify dispute evidence general fix"
+        "shopify dispute evidence general fix",
+        "shopify general checklist",
+        "shopify general evidence checklist",
+        "shopify general dispute evidence required",
+        "shopify general chargeback evidence",
+        "shopify general evidence upload failed",
+        "shopify general submission ready"
       ],
       "keyChecks": [
         "Prepare one final file per evidence type and keep filenames reviewer-readable.",
@@ -1393,7 +1513,17 @@
         "stripe dispute countered fee manual 15 usd",
         "stripe upload failed dispute countered fee manual 15 usd",
         "stripe dispute countered fee manual 15 usd evidence guide",
-        "stripe dispute evidence dispute countered fee manual 15 usd fix"
+        "stripe dispute evidence dispute countered fee manual 15 usd fix",
+        "stripe dispute countered fee manual 15 usd error",
+        "stripe dispute countered fee manual 15 usd fix",
+        "stripe dispute countered fee manual 15 usd upload failed",
+        "stripe dispute countered fee manual 15 usd chargeback evidence",
+        "stripe dispute countered fee manual 15 usd submission blocker",
+        "stripe dispute countered fee manual 15 usd troubleshooting",
+        "stripe dispute countered fee",
+        "stripe manual counter fee",
+        "stripe dispute fee 15 usd",
+        "is stripe dispute counter paid"
       ],
       "keyChecks": [
         "Confirm whether the dispute will be manually countered and which fees apply in your operating region.",
@@ -1462,7 +1592,18 @@
         "stripe evidence file size limit 4 5mb",
         "stripe upload failed evidence file size limit 4 5mb",
         "stripe evidence file size limit 4.5mb evidence guide",
-        "stripe dispute evidence evidence file size limit 4 5mb fix"
+        "stripe dispute evidence evidence file size limit 4 5mb fix",
+        "stripe evidence file size limit 4 5mb error",
+        "stripe evidence file size limit 4 5mb fix",
+        "stripe evidence file size limit 4 5mb upload failed",
+        "stripe evidence file size limit 4 5mb chargeback evidence",
+        "stripe evidence file size limit 4 5mb submission blocker",
+        "stripe evidence file size limit 4 5mb troubleshooting",
+        "stripe evidence file too large",
+        "evidence file size limit 4.5mb",
+        "stripe upload exceeds 4.5 mb",
+        "chargeback evidence too large stripe",
+        "stripe dispute file too large"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -1478,7 +1619,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"stripe evidence file too large\".",
+        "Raw uploader message often appears as: \"evidence file size limit 4.5mb\".",
+        "Raw uploader message often appears as: \"stripe upload exceeds 4.5 mb\".",
+        "Raw uploader message often appears as: \"chargeback evidence too large stripe\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -1531,7 +1676,17 @@
         "stripe upload failed no external links",
         "stripe upload failed upload failed no external links",
         "stripe upload failed no external links evidence guide",
-        "stripe dispute evidence upload failed no external links fix"
+        "stripe dispute evidence upload failed no external links fix",
+        "stripe upload failed no external links error",
+        "stripe upload failed no external links fix",
+        "stripe upload failed no external links upload failed",
+        "stripe upload failed no external links chargeback evidence",
+        "stripe upload failed no external links submission blocker",
+        "stripe upload failed no external links troubleshooting",
+        "stripe no external links allowed",
+        "upload failed no external links",
+        "remove external links from pdf stripe",
+        "stripe evidence contains external links"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -1547,7 +1702,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"stripe no external links allowed\".",
+        "Raw uploader message often appears as: \"upload failed no external links\".",
+        "Raw uploader message often appears as: \"remove external links from pdf stripe\".",
+        "Raw uploader message often appears as: \"stripe evidence contains external links\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -1600,7 +1759,17 @@
         "stripe merge multiple evidence files",
         "stripe upload failed merge multiple evidence files",
         "stripe merge multiple evidence files evidence guide",
-        "stripe dispute evidence merge multiple evidence files fix"
+        "stripe dispute evidence merge multiple evidence files fix",
+        "stripe merge multiple evidence files error",
+        "stripe merge multiple evidence files fix",
+        "stripe merge multiple evidence files upload failed",
+        "stripe merge multiple evidence files chargeback evidence",
+        "stripe merge multiple evidence files submission blocker",
+        "stripe merge multiple evidence files troubleshooting",
+        "merge multiple evidence files stripe",
+        "one file per evidence type stripe",
+        "stripe duplicate evidence file type",
+        "stripe combine evidence files"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -1616,7 +1785,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"merge multiple evidence files stripe\".",
+        "Raw uploader message often appears as: \"one file per evidence type stripe\".",
+        "Raw uploader message often appears as: \"stripe duplicate evidence file type\".",
+        "Raw uploader message often appears as: \"stripe combine evidence files\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -1669,7 +1842,16 @@
         "stripe invalid file format pdf jpg png only",
         "stripe upload failed invalid file format pdf jpg png only",
         "stripe invalid file format pdf jpg png only evidence guide",
-        "stripe dispute evidence invalid file format pdf jpg png only fix"
+        "stripe dispute evidence invalid file format pdf jpg png only fix",
+        "stripe invalid file format pdf jpg png only error",
+        "stripe invalid file format pdf jpg png only fix",
+        "stripe invalid file format pdf jpg png only upload failed",
+        "stripe invalid file format pdf jpg png only chargeback evidence",
+        "stripe invalid file format pdf jpg png only submission blocker",
+        "stripe invalid file format pdf jpg png only troubleshooting",
+        "stripe unsupported file format evidence",
+        "heic not supported stripe dispute",
+        "webp not supported stripe evidence"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -1685,7 +1867,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"stripe invalid file format pdf jpg png only\".",
+        "Raw uploader message often appears as: \"stripe unsupported file format evidence\".",
+        "Raw uploader message often appears as: \"heic not supported stripe dispute\".",
+        "Raw uploader message often appears as: \"webp not supported stripe evidence\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -1738,7 +1924,16 @@
         "stripe total pages over limit",
         "stripe upload failed total pages over limit",
         "stripe total pages over limit evidence guide",
-        "stripe dispute evidence total pages over limit fix"
+        "stripe dispute evidence total pages over limit fix",
+        "stripe total pages over limit error",
+        "stripe total pages over limit fix",
+        "stripe total pages over limit upload failed",
+        "stripe total pages over limit chargeback evidence",
+        "stripe total pages over limit submission blocker",
+        "stripe total pages over limit troubleshooting",
+        "stripe evidence too many pages",
+        "stripe dispute page limit exceeded",
+        "stripe upload page count exceeded"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -1754,7 +1949,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"stripe total pages over limit\".",
+        "Raw uploader message often appears as: \"stripe evidence too many pages\".",
+        "Raw uploader message often appears as: \"stripe dispute page limit exceeded\".",
+        "Raw uploader message often appears as: \"stripe upload page count exceeded\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -1807,7 +2006,17 @@
         "stripe mastercard 19 page limit",
         "stripe upload failed mastercard 19 page limit",
         "stripe mastercard 19 page limit evidence guide",
-        "stripe dispute evidence mastercard 19 page limit fix"
+        "stripe dispute evidence mastercard 19 page limit fix",
+        "stripe mastercard 19 page limit error",
+        "stripe mastercard 19 page limit fix",
+        "stripe mastercard 19 page limit upload failed",
+        "stripe mastercard 19 page limit chargeback evidence",
+        "stripe mastercard 19 page limit submission blocker",
+        "stripe mastercard 19 page limit troubleshooting",
+        "mastercard 19 page limit stripe",
+        "stripe mastercard evidence 19 pages",
+        "mastercard dispute page limit exceeded",
+        "stripe mastercard too many pages"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -1823,7 +2032,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"mastercard 19 page limit stripe\".",
+        "Raw uploader message often appears as: \"stripe mastercard evidence 19 pages\".",
+        "Raw uploader message often appears as: \"mastercard dispute page limit exceeded\".",
+        "Raw uploader message often appears as: \"stripe mastercard too many pages\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -1876,7 +2089,17 @@
         "stripe duplicate evidence type file error",
         "stripe upload failed duplicate evidence type file error",
         "stripe duplicate evidence type file error evidence guide",
-        "stripe dispute evidence duplicate evidence type file error fix"
+        "stripe dispute evidence duplicate evidence type file error fix",
+        "stripe duplicate evidence type file error error",
+        "stripe duplicate evidence type file error fix",
+        "stripe duplicate evidence type file error upload failed",
+        "stripe duplicate evidence type file error chargeback evidence",
+        "stripe duplicate evidence type file error submission blocker",
+        "stripe duplicate evidence type file error troubleshooting",
+        "duplicate evidence type file error stripe",
+        "stripe one file per evidence type",
+        "stripe duplicate file same evidence type",
+        "stripe cannot upload multiple files same type"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -1892,7 +2115,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"duplicate evidence type file error stripe\".",
+        "Raw uploader message often appears as: \"stripe one file per evidence type\".",
+        "Raw uploader message often appears as: \"stripe duplicate file same evidence type\".",
+        "Raw uploader message often appears as: \"stripe cannot upload multiple files same type\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -1945,7 +2172,17 @@
         "stripe oversized pdf with low signal pages",
         "stripe upload failed oversized pdf with low signal pages",
         "stripe oversized pdf with low signal pages evidence guide",
-        "stripe dispute evidence oversized pdf with low signal pages fix"
+        "stripe dispute evidence oversized pdf with low signal pages fix",
+        "stripe oversized pdf with low signal pages error",
+        "stripe oversized pdf with low signal pages fix",
+        "stripe oversized pdf with low signal pages upload failed",
+        "stripe oversized pdf with low signal pages chargeback evidence",
+        "stripe oversized pdf with low signal pages submission blocker",
+        "stripe oversized pdf with low signal pages troubleshooting",
+        "stripe oversized pdf evidence",
+        "reduce pdf size stripe dispute",
+        "stripe compress evidence pdf",
+        "stripe trim low signal pages"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -1961,7 +2198,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"stripe oversized pdf evidence\".",
+        "Raw uploader message often appears as: \"reduce pdf size stripe dispute\".",
+        "Raw uploader message often appears as: \"stripe compress evidence pdf\".",
+        "Raw uploader message often appears as: \"stripe trim low signal pages\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -2014,7 +2255,16 @@
         "stripe stripe vs shopify evidence rules comparison",
         "stripe upload failed stripe vs shopify evidence rules comparison",
         "stripe stripe vs shopify evidence rules comparison evidence guide",
-        "stripe dispute evidence stripe vs shopify evidence rules comparison fix"
+        "stripe dispute evidence stripe vs shopify evidence rules comparison fix",
+        "stripe stripe vs shopify evidence rules comparison error",
+        "stripe stripe vs shopify evidence rules comparison fix",
+        "stripe stripe vs shopify evidence rules comparison upload failed",
+        "stripe stripe vs shopify evidence rules comparison chargeback evidence",
+        "stripe stripe vs shopify evidence rules comparison submission blocker",
+        "stripe stripe vs shopify evidence rules comparison troubleshooting",
+        "stripe vs shopify evidence rules",
+        "shopify stripe chargeback evidence difference",
+        "compare evidence upload rules stripe shopify"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -2030,7 +2280,10 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"stripe vs shopify evidence rules\".",
+        "Raw uploader message often appears as: \"shopify stripe chargeback evidence difference\".",
+        "Raw uploader message often appears as: \"compare evidence upload rules stripe shopify\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -2083,7 +2336,18 @@
         "shopify pdf a format required error",
         "shopify upload failed pdf a format required error",
         "shopify pdf a format required error evidence guide",
-        "shopify dispute evidence pdf a format required error fix"
+        "shopify dispute evidence pdf a format required error fix",
+        "shopify pdf a format required error error",
+        "shopify pdf a format required error fix",
+        "shopify pdf a format required error upload failed",
+        "shopify pdf a format required error chargeback evidence",
+        "shopify pdf a format required error submission blocker",
+        "shopify pdf a format required error troubleshooting",
+        "shopify pdf/a format required",
+        "shopify pdf a required",
+        "pdfa required shopify chargeback",
+        "shopify payments pdf/a error",
+        "shopify invalid pdf format requires pdf/a"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -2099,7 +2363,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"shopify pdf/a format required\".",
+        "Raw uploader message often appears as: \"shopify pdf a required\".",
+        "Raw uploader message often appears as: \"pdfa required shopify chargeback\".",
+        "Raw uploader message often appears as: \"shopify payments pdf/a error\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -2152,7 +2420,16 @@
         "shopify evidence file too large 2mb",
         "shopify upload failed evidence file too large 2mb",
         "shopify evidence file too large 2mb evidence guide",
-        "shopify dispute evidence evidence file too large 2mb fix"
+        "shopify dispute evidence evidence file too large 2mb fix",
+        "shopify evidence file too large 2mb error",
+        "shopify evidence file too large 2mb fix",
+        "shopify evidence file too large 2mb upload failed",
+        "shopify evidence file too large 2mb chargeback evidence",
+        "shopify evidence file too large 2mb submission blocker",
+        "shopify evidence file too large 2mb troubleshooting",
+        "shopify upload exceeds 2mb",
+        "shopify chargeback file too large",
+        "shopify compress evidence file under 2mb"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -2168,7 +2445,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"shopify evidence file too large 2mb\".",
+        "Raw uploader message often appears as: \"shopify upload exceeds 2mb\".",
+        "Raw uploader message often appears as: \"shopify chargeback file too large\".",
+        "Raw uploader message often appears as: \"shopify compress evidence file under 2mb\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -2221,7 +2502,16 @@
         "shopify pdf portfolio not accepted",
         "shopify upload failed pdf portfolio not accepted",
         "shopify pdf portfolio not accepted evidence guide",
-        "shopify dispute evidence pdf portfolio not accepted fix"
+        "shopify dispute evidence pdf portfolio not accepted fix",
+        "shopify pdf portfolio not accepted error",
+        "shopify pdf portfolio not accepted fix",
+        "shopify pdf portfolio not accepted upload failed",
+        "shopify pdf portfolio not accepted chargeback evidence",
+        "shopify pdf portfolio not accepted submission blocker",
+        "shopify pdf portfolio not accepted troubleshooting",
+        "shopify embedded pdf attachments not allowed",
+        "portfolio pdf rejected shopify",
+        "flatten pdf portfolio shopify dispute"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -2237,7 +2527,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"shopify pdf portfolio not accepted\".",
+        "Raw uploader message often appears as: \"shopify embedded pdf attachments not allowed\".",
+        "Raw uploader message often appears as: \"portfolio pdf rejected shopify\".",
+        "Raw uploader message often appears as: \"flatten pdf portfolio shopify dispute\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -2290,7 +2584,16 @@
         "shopify invalid file format pdf jpg png only",
         "shopify upload failed invalid file format pdf jpg png only",
         "shopify invalid file format pdf jpg png only evidence guide",
-        "shopify dispute evidence invalid file format pdf jpg png only fix"
+        "shopify dispute evidence invalid file format pdf jpg png only fix",
+        "shopify invalid file format pdf jpg png only error",
+        "shopify invalid file format pdf jpg png only fix",
+        "shopify invalid file format pdf jpg png only upload failed",
+        "shopify invalid file format pdf jpg png only chargeback evidence",
+        "shopify invalid file format pdf jpg png only submission blocker",
+        "shopify invalid file format pdf jpg png only troubleshooting",
+        "shopify unsupported file format chargeback",
+        "shopify heic evidence not supported",
+        "shopify webp not supported evidence"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -2306,7 +2609,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"shopify invalid file format pdf jpg png only\".",
+        "Raw uploader message often appears as: \"shopify unsupported file format chargeback\".",
+        "Raw uploader message often appears as: \"shopify heic evidence not supported\".",
+        "Raw uploader message often appears as: \"shopify webp not supported evidence\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -2359,7 +2666,17 @@
         "shopify external links not allowed error",
         "shopify upload failed external links not allowed error",
         "shopify external links not allowed error evidence guide",
-        "shopify dispute evidence external links not allowed error fix"
+        "shopify dispute evidence external links not allowed error fix",
+        "shopify external links not allowed error error",
+        "shopify external links not allowed error fix",
+        "shopify external links not allowed error upload failed",
+        "shopify external links not allowed error chargeback evidence",
+        "shopify external links not allowed error submission blocker",
+        "shopify external links not allowed error troubleshooting",
+        "shopify external links not allowed",
+        "shopify no external links evidence",
+        "remove links from pdf shopify chargeback",
+        "shopify evidence contains external urls"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -2375,7 +2692,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"shopify external links not allowed\".",
+        "Raw uploader message often appears as: \"shopify no external links evidence\".",
+        "Raw uploader message often appears as: \"remove links from pdf shopify chargeback\".",
+        "Raw uploader message often appears as: \"shopify evidence contains external urls\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -2428,7 +2749,16 @@
         "shopify duplicate evidence type file error",
         "shopify upload failed duplicate evidence type file error",
         "shopify duplicate evidence type file error evidence guide",
-        "shopify dispute evidence duplicate evidence type file error fix"
+        "shopify dispute evidence duplicate evidence type file error fix",
+        "shopify duplicate evidence type file error error",
+        "shopify duplicate evidence type file error fix",
+        "shopify duplicate evidence type file error upload failed",
+        "shopify duplicate evidence type file error chargeback evidence",
+        "shopify duplicate evidence type file error submission blocker",
+        "shopify duplicate evidence type file error troubleshooting",
+        "shopify one file per evidence type",
+        "shopify duplicate file same evidence type",
+        "shopify merge evidence files by type"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -2444,7 +2774,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"shopify duplicate evidence type file error\".",
+        "Raw uploader message often appears as: \"shopify one file per evidence type\".",
+        "Raw uploader message often appears as: \"shopify duplicate file same evidence type\".",
+        "Raw uploader message often appears as: \"shopify merge evidence files by type\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -2497,7 +2831,17 @@
         "shopify pdf pages over 50 error",
         "shopify upload failed pdf pages over 50 error",
         "shopify pdf pages over 50 error evidence guide",
-        "shopify dispute evidence pdf pages over 50 error fix"
+        "shopify dispute evidence pdf pages over 50 error fix",
+        "shopify pdf pages over 50 error error",
+        "shopify pdf pages over 50 error fix",
+        "shopify pdf pages over 50 error upload failed",
+        "shopify pdf pages over 50 error chargeback evidence",
+        "shopify pdf pages over 50 error submission blocker",
+        "shopify pdf pages over 50 error troubleshooting",
+        "shopify pdf pages over 50",
+        "shopify pdf exceeds 50 pages",
+        "shopify chargeback page limit error",
+        "shopify too many pdf pages evidence"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -2513,7 +2857,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"shopify pdf pages over 50\".",
+        "Raw uploader message often appears as: \"shopify pdf exceeds 50 pages\".",
+        "Raw uploader message often appears as: \"shopify chargeback page limit error\".",
+        "Raw uploader message often appears as: \"shopify too many pdf pages evidence\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -2566,7 +2914,17 @@
         "shopify shopify payments total size over 4mb",
         "shopify upload failed shopify payments total size over 4mb",
         "shopify shopify payments total size over 4mb evidence guide",
-        "shopify dispute evidence shopify payments total size over 4mb fix"
+        "shopify dispute evidence shopify payments total size over 4mb fix",
+        "shopify shopify payments total size over 4mb error",
+        "shopify shopify payments total size over 4mb fix",
+        "shopify shopify payments total size over 4mb upload failed",
+        "shopify shopify payments total size over 4mb chargeback evidence",
+        "shopify shopify payments total size over 4mb submission blocker",
+        "shopify shopify payments total size over 4mb troubleshooting",
+        "shopify payments total size over 4mb",
+        "shopify chargeback total upload size exceeded",
+        "shopify total evidence too large",
+        "shopify upload exceeds 4mb total"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -2582,7 +2940,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"shopify payments total size over 4mb\".",
+        "Raw uploader message often appears as: \"shopify chargeback total upload size exceeded\".",
+        "Raw uploader message often appears as: \"shopify total evidence too large\".",
+        "Raw uploader message often appears as: \"shopify upload exceeds 4mb total\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -2635,7 +2997,17 @@
         "shopify oversized image compression readability fix",
         "shopify upload failed oversized image compression readability fix",
         "shopify oversized image compression readability fix evidence guide",
-        "shopify dispute evidence oversized image compression readability fix fix"
+        "shopify dispute evidence oversized image compression readability fix fix",
+        "shopify oversized image compression readability fix error",
+        "shopify oversized image compression readability fix fix",
+        "shopify oversized image compression readability fix upload failed",
+        "shopify oversized image compression readability fix chargeback evidence",
+        "shopify oversized image compression readability fix submission blocker",
+        "shopify oversized image compression readability fix troubleshooting",
+        "shopify oversized image compression",
+        "shopify compress screenshot for chargeback",
+        "shopify image too large evidence",
+        "shopify reduce image size readable"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -2651,7 +3023,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"shopify oversized image compression\".",
+        "Raw uploader message often appears as: \"shopify compress screenshot for chargeback\".",
+        "Raw uploader message often appears as: \"shopify image too large evidence\".",
+        "Raw uploader message often appears as: \"shopify reduce image size readable\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
@@ -2704,7 +3080,17 @@
         "shopify unsupported embedded objects error",
         "shopify upload failed unsupported embedded objects error",
         "shopify unsupported embedded objects error evidence guide",
-        "shopify dispute evidence unsupported embedded objects error fix"
+        "shopify dispute evidence unsupported embedded objects error fix",
+        "shopify unsupported embedded objects error error",
+        "shopify unsupported embedded objects error fix",
+        "shopify unsupported embedded objects error upload failed",
+        "shopify unsupported embedded objects error chargeback evidence",
+        "shopify unsupported embedded objects error submission blocker",
+        "shopify unsupported embedded objects error troubleshooting",
+        "shopify unsupported embedded objects",
+        "shopify embedded object parser failure",
+        "shopify unsupported embedded object in pdf",
+        "shopify embedded files not accepted"
       ],
       "keyChecks": [
         "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
@@ -2720,7 +3106,11 @@
         "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
         "External links are referenced instead of attaching the underlying proof directly.",
         "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
-        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time.",
+        "Raw uploader message often appears as: \"shopify unsupported embedded objects\".",
+        "Raw uploader message often appears as: \"shopify embedded object parser failure\".",
+        "Raw uploader message often appears as: \"shopify unsupported embedded object in pdf\".",
+        "Raw uploader message often appears as: \"shopify embedded files not accepted\"."
       ],
       "nextSteps": [
         "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",

@@ -373,6 +373,7 @@ public class SeoController {
         String normalizedReason = normalizeSearchText(guide.reasonCodeLabel());
         String normalizedSlug = normalizeSearchText(guide.reasonCodeSlug());
         String normalizedMeta = normalizeSearchText(guide.metaDescription());
+        String normalizedCorpus = buildNormalizedSearchCorpus(guide);
 
         int score = 0;
 
@@ -388,29 +389,33 @@ public class SeoController {
         if (normalizedMeta != null && normalizedMeta.contains(query)) {
             score += 25;
         }
+        if (normalizedCorpus != null && normalizedCorpus.contains(query)) {
+            score += 22;
+        }
 
         for (String phrase : guide.targetSearchQueries()) {
             String normalizedPhrase = normalizeSearchText(phrase);
             if (normalizedPhrase != null && (normalizedPhrase.contains(query) || query.contains(normalizedPhrase))) {
-                score += 20;
+                score += 24;
             }
         }
         for (String errorPhrase : guide.commonErrors()) {
             String normalizedError = normalizeSearchText(errorPhrase);
-            if (normalizedError != null && normalizedError.contains(query)) {
-                score += 12;
+            if (normalizedError != null && (normalizedError.contains(query) || query.contains(normalizedError))) {
+                score += 14;
             }
         }
 
         for (String token : query.split(" ")) {
-            if (token.length() < 3) {
+            if (token.length() < 2) {
                 continue;
             }
             if (containsToken(normalizedTitle, token)
                     || containsToken(normalizedReason, token)
                     || containsToken(normalizedSlug, token)
-                    || containsToken(normalizedMeta, token)) {
-                score += 3;
+                    || containsToken(normalizedMeta, token)
+                    || containsToken(normalizedCorpus, token)) {
+                score += 4;
             }
         }
 
@@ -432,11 +437,45 @@ public class SeoController {
         if (normalized.isBlank()) {
             return null;
         }
+        normalized = normalized
+                .replace("pdf/a", "pdfa")
+                .replace("pdf-a", "pdfa")
+                .replace("4.5mb", "4 5 mb")
+                .replace("2mb", "2 mb");
         normalized = normalized.replaceAll("[^a-z0-9]+", " ").trim();
         if (normalized.isBlank()) {
             return null;
         }
+        normalized = normalized
+                .replaceAll("\\bpdfa\\b", "pdf a")
+                .replaceAll("\\s+", " ")
+                .trim();
         return normalized.replaceAll("\\s+", " ");
+    }
+
+    private String buildNormalizedSearchCorpus(GuidePageView guide) {
+        List<String> segments = new ArrayList<>();
+        addNormalizedSegment(segments, guide.title());
+        addNormalizedSegment(segments, guide.reasonCodeLabel());
+        addNormalizedSegment(segments, guide.reasonCodeSlug());
+        addNormalizedSegment(segments, guide.metaDescription());
+        for (String phrase : guide.targetSearchQueries()) {
+            addNormalizedSegment(segments, phrase);
+        }
+        for (String phrase : guide.commonErrors()) {
+            addNormalizedSegment(segments, phrase);
+        }
+        if (segments.isEmpty()) {
+            return null;
+        }
+        return String.join(" ", segments);
+    }
+
+    private void addNormalizedSegment(List<String> segments, String value) {
+        String normalized = normalizeSearchText(value);
+        if (normalized != null && !normalized.isBlank()) {
+            segments.add(normalized);
+        }
     }
 
     private String normalizePlatform(String value) {
