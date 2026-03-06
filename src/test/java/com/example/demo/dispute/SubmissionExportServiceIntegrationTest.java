@@ -69,12 +69,24 @@ class SubmissionExportServiceIntegrationTest {
 
         try {
             byte[] receiptPdf = simplePdf("receipt");
+            byte[] customerPdf = simplePdf("customer");
+            byte[] communicationPdf = simplePdf("communication");
             byte[] policyPng = simplePng(96, 96);
 
             evidenceFileService.upload(
                     disputeCase.getId(),
                     EvidenceType.ORDER_RECEIPT,
                     new MockMultipartFile("file", "receipt.pdf", "application/pdf", receiptPdf)
+            );
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.CUSTOMER_DETAILS,
+                    new MockMultipartFile("file", "customer.pdf", "application/pdf", customerPdf)
+            );
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.CUSTOMER_COMMUNICATION,
+                    new MockMultipartFile("file", "communication.pdf", "application/pdf", communicationPdf)
             );
             evidenceFileService.upload(
                     disputeCase.getId(),
@@ -89,9 +101,24 @@ class SubmissionExportServiceIntegrationTest {
             submissionExportService.writeSubmissionZip(disputeCase.getCaseToken(), zipBytes);
 
             Map<String, byte[]> entries = unzip(zipBytes.toByteArray());
-            assertEquals(List.of("01_ORDER_RECEIPT.pdf", "02_POLICIES.png", "manifest.json"), new ArrayList<>(entries.keySet()));
+            assertEquals(
+                    List.of(
+                            "01_ORDER_RECEIPT.pdf",
+                            "02_CUSTOMER_DETAILS.pdf",
+                            "03_CUSTOMER_COMMUNICATION.pdf",
+                            "04_POLICIES.png",
+                            "dispute_explanation_draft.txt",
+                            "manifest.json"
+                    ),
+                    new ArrayList<>(entries.keySet())
+            );
             assertArrayEquals(receiptPdf, entries.get("01_ORDER_RECEIPT.pdf"));
-            assertArrayEquals(policyPng, entries.get("02_POLICIES.png"));
+            assertArrayEquals(customerPdf, entries.get("02_CUSTOMER_DETAILS.pdf"));
+            assertArrayEquals(communicationPdf, entries.get("03_CUSTOMER_COMMUNICATION.pdf"));
+            assertArrayEquals(policyPng, entries.get("04_POLICIES.png"));
+            String explanation = new String(entries.get("dispute_explanation_draft.txt"), StandardCharsets.UTF_8);
+            assertTrue(explanation.contains("Dispute Explanation Draft"));
+            assertTrue(explanation.contains("Disclaimer: This draft is a submission-writing aid only."));
             String manifest = new String(entries.get("manifest.json"), StandardCharsets.UTF_8);
             assertTrue(manifest.contains("\"caseId\""));
             assertTrue(manifest.contains(disputeCase.getId().toString()));
@@ -155,6 +182,7 @@ class SubmissionExportServiceIntegrationTest {
             byte[] firstReceipt = simplePdf("receipt-first");
             byte[] secondReceipt = simplePdf("receipt-second");
             byte[] customerPng = simplePng(80, 80);
+            byte[] communicationPdf = simplePdf("shopify-credit-communication");
 
             evidenceFileService.upload(
                     disputeCase.getId(),
@@ -173,6 +201,12 @@ class SubmissionExportServiceIntegrationTest {
                     EvidenceType.ORDER_RECEIPT,
                     new MockMultipartFile("file", "receipt-second.pdf", "application/pdf", secondReceipt)
             );
+            Thread.sleep(Duration.ofMillis(5));
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.CUSTOMER_COMMUNICATION,
+                    new MockMultipartFile("file", "communication.pdf", "application/pdf", communicationPdf)
+            );
 
             moveCaseToReady(disputeCase);
             recordValidation(disputeCase);
@@ -186,6 +220,8 @@ class SubmissionExportServiceIntegrationTest {
                             "01_ORDER_RECEIPT_01.pdf",
                             "02_ORDER_RECEIPT_02.pdf",
                             "03_CUSTOMER_DETAILS.png",
+                            "04_CUSTOMER_COMMUNICATION.pdf",
+                            "dispute_explanation_draft.txt",
                             "manifest.json"
                     ),
                     new ArrayList<>(entries.keySet())
@@ -193,6 +229,7 @@ class SubmissionExportServiceIntegrationTest {
             assertArrayEquals(firstReceipt, entries.get("01_ORDER_RECEIPT_01.pdf"));
             assertArrayEquals(secondReceipt, entries.get("02_ORDER_RECEIPT_02.pdf"));
             assertArrayEquals(customerPng, entries.get("03_CUSTOMER_DETAILS.png"));
+            assertArrayEquals(communicationPdf, entries.get("04_CUSTOMER_COMMUNICATION.pdf"));
         } finally {
             caseService.deleteCase(disputeCase.getId());
         }

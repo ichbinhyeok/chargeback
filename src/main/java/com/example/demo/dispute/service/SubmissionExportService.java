@@ -53,6 +53,7 @@ public class SubmissionExportService {
     private final EvidenceFileRepository evidenceFileRepository;
     private final ValidationFreshnessService validationFreshnessService;
     private final PolicyCatalogService policyCatalogService;
+    private final DisputeExplanationService disputeExplanationService;
     private final ObjectMapper objectMapper;
 
     public SubmissionExportService(
@@ -60,13 +61,15 @@ public class SubmissionExportService {
             CaseReportService caseReportService,
             EvidenceFileRepository evidenceFileRepository,
             ValidationFreshnessService validationFreshnessService,
-            PolicyCatalogService policyCatalogService
+            PolicyCatalogService policyCatalogService,
+            DisputeExplanationService disputeExplanationService
     ) {
         this.caseService = caseService;
         this.caseReportService = caseReportService;
         this.evidenceFileRepository = evidenceFileRepository;
         this.validationFreshnessService = validationFreshnessService;
         this.policyCatalogService = policyCatalogService;
+        this.disputeExplanationService = disputeExplanationService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -113,6 +116,7 @@ public class SubmissionExportService {
                 zip.closeEntry();
                 zippedFileRows.add(new ZippedFileRow(zipName, file));
             }
+            writeExplanationEntry(zip, report);
             writeManifestEntry(zip, disputeCase, report, zippedFileRows);
         } catch (IOException ex) {
             throw new IllegalStateException("failed to generate submission zip: " + ex.getMessage(), ex);
@@ -263,6 +267,7 @@ public class SubmissionExportService {
         lines.add("- Keep one file per evidence type.");
         lines.add("- Remove external links from PDFs.");
         lines.add("- Confirm platform file size/page limits before submission.");
+        lines.add("- Use the generated dispute explanation draft and tailor it with transaction-specific facts.");
         lines.add("");
         lines.add("Disclaimer: This tool helps formatting and organization only, and does not guarantee dispute outcomes.");
         return lines;
@@ -328,6 +333,15 @@ public class SubmissionExportService {
         ZipEntry manifest = new ZipEntry("manifest.json");
         zip.putNextEntry(manifest);
         zip.write(manifestBytes);
+        zip.closeEntry();
+    }
+
+    private void writeExplanationEntry(ZipOutputStream zip, CaseReportResponse report) throws IOException {
+        DisputeExplanationService.ExplanationDraft draft = disputeExplanationService.buildDraft(report);
+        byte[] explanationBytes = draft.text().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        ZipEntry explanation = new ZipEntry("dispute_explanation_draft.txt");
+        zip.putNextEntry(explanation);
+        zip.write(explanationBytes);
         zip.closeEntry();
     }
 

@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.demo.dispute.api.CreateCaseRequest;
 import com.example.demo.dispute.domain.CaseState;
+import com.example.demo.dispute.domain.EvidenceType;
 import com.example.demo.dispute.domain.PaymentStatus;
 import com.example.demo.dispute.domain.Platform;
 import com.example.demo.dispute.domain.ProductScope;
@@ -155,6 +156,89 @@ class WebExportPageIntegrationTest {
             mockMvc.perform(post("/c/{caseToken}/pay", disputeCase.getCaseToken()))
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrlPattern("/c/" + disputeCase.getCaseToken() + "/export?error=*stale*"));
+        } finally {
+            caseService.deleteCase(disputeCase.getId());
+        }
+    }
+
+    @Test
+    void payEndpointRejectsMissingRequiredEvidenceEvenWhenValidationIsFresh() throws Exception {
+        DisputeCase disputeCase = createReadyCase("missing_required_pay_case");
+        try {
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.ORDER_RECEIPT,
+                    new MockMultipartFile("file", "receipt.pdf", "application/pdf", simplePdf("required-missing"))
+            );
+            moveCaseToReady(disputeCase);
+
+            var inputs = evidenceFileService.listAsValidationInputs(disputeCase.getId());
+            var response = validationService.validate(disputeCase, inputs, false);
+            validationHistoryService.record(disputeCase, response, ValidationSource.STORED_FILES, false, inputs);
+
+            mockMvc.perform(post("/c/{caseToken}/pay", disputeCase.getCaseToken()))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrlPattern("/c/" + disputeCase.getCaseToken() + "/export?error=*Missing*required*evidence*"));
+        } finally {
+            caseService.deleteCase(disputeCase.getId());
+        }
+    }
+
+    @Test
+    void exportPageHidesCheckoutButtonWhenRequiredEvidenceIsMissing() throws Exception {
+        DisputeCase disputeCase = createReadyCase("missing_required_ui_case");
+        try {
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.ORDER_RECEIPT,
+                    new MockMultipartFile("file", "receipt.pdf", "application/pdf", simplePdf("ui-required-missing"))
+            );
+            moveCaseToReady(disputeCase);
+
+            var inputs = evidenceFileService.listAsValidationInputs(disputeCase.getId());
+            var response = validationService.validate(disputeCase, inputs, false);
+            validationHistoryService.record(disputeCase, response, ValidationSource.STORED_FILES, false, inputs);
+
+            mockMvc.perform(get("/c/{caseToken}/export", disputeCase.getCaseToken()))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("Required evidence missing:")))
+                    .andExpect(content().string(not(containsString("Pay via Stripe to Unlock"))));
+        } finally {
+            caseService.deleteCase(disputeCase.getId());
+        }
+    }
+
+    @Test
+    void submissionZipRedirectsWhenRequiredEvidenceIsMissing() throws Exception {
+        DisputeCase disputeCase = createReadyCase("missing_required_zip_case");
+        try {
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.ORDER_RECEIPT,
+                    new MockMultipartFile("file", "receipt.pdf", "application/pdf", simplePdf("zip-required-missing"))
+            );
+            moveCaseToReady(disputeCase);
+
+            var inputs = evidenceFileService.listAsValidationInputs(disputeCase.getId());
+            var response = validationService.validate(disputeCase, inputs, false);
+            validationHistoryService.record(disputeCase, response, ValidationSource.STORED_FILES, false, inputs);
+
+            PaymentEntity payment = new PaymentEntity();
+            payment.setDisputeCase(disputeCase);
+            payment.setProvider("stripe");
+            payment.setCheckoutSessionId("cs_test_missing_required_zip");
+            payment.setPaymentIntentId("pi_test_missing_required_zip");
+            payment.setStatus(PaymentStatus.PAID);
+            payment.setAmountCents(1900L);
+            payment.setCurrency("usd");
+            payment.setPaidAt(Instant.now());
+            payment.setPolicyVersion("2026.03.v1");
+            payment.setRequiredEvidenceSnapshot("ORDER_RECEIPT,CUSTOMER_DETAILS");
+            paymentRepository.save(payment);
+
+            mockMvc.perform(get("/c/{caseToken}/download/submission.zip", disputeCase.getCaseToken()))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrlPattern("/c/" + disputeCase.getCaseToken() + "/export?error=*Missing*required*evidence*"));
         } finally {
             caseService.deleteCase(disputeCase.getId());
         }

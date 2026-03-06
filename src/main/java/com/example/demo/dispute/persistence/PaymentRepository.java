@@ -11,6 +11,8 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, UUID> {
 
     Optional<PaymentEntity> findFirstByDisputeCaseIdOrderByCreatedAtDesc(UUID caseId);
 
+    Optional<PaymentEntity> findFirstByDisputeCaseIdAndStatusOrderByCreatedAtDesc(UUID caseId, PaymentStatus status);
+
     boolean existsByDisputeCaseIdAndStatus(UUID caseId, PaymentStatus status);
 
     List<PaymentEntity> findByDisputeCaseId(UUID caseId);

@@ -28,9 +28,10 @@ Core flow:
 3. Review reason-code evidence checklist
 4. Upload evidence files by type
 5. Validate against platform rules
-6. Run auto-fix (per-type merge + Shopify oversized image compression)
-7. Pay (Stripe Checkout)
-8. Download submission ZIP and one-page guide PDF
+6. Generate dispute explanation draft (editable)
+7. Run auto-fix (per-type merge + Shopify oversized image compression)
+8. Pay (Stripe Checkout) only when validation is fresh and required evidence coverage is complete
+9. Download submission ZIP (same required-evidence gate), explanation TXT, and one-page guide PDF
 
 ## Policy Baseline (as implemented)
 
@@ -112,6 +113,7 @@ General:
 - `APP_API_ENFORCE_CASE_TOKEN` (default `true`)
 - `APP_TRACE_HEADER_NAME` (default `X-Trace-Id`)
 - `APP_PUBLIC_BASE_URL` (default `http://localhost:8080`)
+- `APP_SEO_GUIDES_PATH` (default `seo/guides-v1.json`)
 
 Billing:
 - `APP_BILLING_AMOUNT_CENTS` (default `1900`)
@@ -154,23 +156,51 @@ Prod defaults:
 - `/` landing
 - `/open-case` token/url resume endpoint
 - `/guides` public evidence guides (indexable)
-- `/guides/{platform}` platform guide hub pages (indexable)
-- `/guides/{platform}/{reasonCode}` public guide detail pages (indexable)
+- `/guides/{platform}` platform hub pages with `Upload/Error Fix` + `Reason-Code` sections (indexable)
+- `/guides/{platform}/{reasonCode}` detail pages for reason guides and error-message guides (indexable)
+- `/seo/kpi` internal SEO KPI dashboard (`noindex`)
 - `/terms` terms of use
 - `/privacy` privacy policy
 - `/new` create case
 - `/c/{caseToken}` dashboard
 - `/c/{caseToken}/upload` upload
 - `/c/{caseToken}/validate` validation result
+- `/c/{caseToken}/explanation` dispute explanation draft editor
 - `/c/{caseToken}/report` case report
 - `/c/{caseToken}/export` paywall + download
 - `POST /c/{caseToken}/pay` start Stripe Checkout
 - `/c/{caseToken}/download/submission.zip` paid only
 - `/c/{caseToken}/download/summary.pdf` free with watermark, paid without watermark
+- `/c/{caseToken}/download/explanation.txt` explanation draft text download
 - `/c/{caseToken}/access-key.txt` case recovery key download
 - `/c/{caseToken}/rotate-token` rotate token and invalidate old URL
+- `POST /api/seo/events` SEO funnel event tracking endpoint
+- `GET /api/seo/kpi?days=7` SEO KPI aggregation endpoint
 - `/robots.txt` crawler policy
 - `/sitemap.xml` public sitemap
+
+## SEO Guide Catalog (pSEO Data Source)
+
+- Guide pages are data-driven from `src/main/resources/seo/guides-v1.json`.
+- Current catalog target volume: 40 pages (20 reason + 20 error).
+- Each entry defines:
+  - platform + slug
+  - `guideType` (`reason` or `error`)
+  - title/meta description
+  - target search phrases (error-intent long-tail queries)
+  - checklist / common failures / next steps
+  - explanation draft sample lines
+  - source links and FAQ
+- `SeoController` loads this catalog at startup and auto-populates:
+  - `/guides`
+  - `/guides/{platform}`
+  - `/guides/{platform}/{slug}`
+  - `/sitemap.xml`
+- Regenerate catalog:
+  - `$env:PATH = "c:\\Users\\Administrator\\chargeback\\.nodejs\\node-v20.18.0-win-x64;" + $env:PATH`
+  - `node scripts/generate_seo_guides.mjs`
+- Quality gate test:
+  - `.\gradlew.bat test --tests "*SeoGuideCatalogQualityTest"`
 
 ## Retention / Privacy
 
@@ -186,11 +216,12 @@ Prod defaults:
 5. Run auto-fix and confirm merge/compression behavior is applied when issues are fixable.
 6. Run validation and confirm READY/BLOCKED transitions.
 7. Verify unpaid export route shows paywall.
-8. Complete Stripe checkout and confirm export unlocks.
-9. Download `submission.zip` and verify normalized filenames.
-10. Download `summary.pdf` and verify case/issue summary contents.
-11. Delete case and confirm files and DB records are removed.
-12. Verify retention cleanup removes expired cases.
+8. Confirm payment/ZIP are blocked when required evidence types are missing.
+9. Complete Stripe checkout and confirm export unlocks.
+10. Download `submission.zip` and verify normalized filenames.
+11. Download `summary.pdf` and verify case/issue summary contents.
+12. Delete case and confirm files and DB records are removed.
+13. Verify retention cleanup removes expired cases.
 
 ## Prelaunch Checklist (No Billing)
 

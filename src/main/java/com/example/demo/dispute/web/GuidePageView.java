@@ -7,11 +7,15 @@ public record GuidePageView(
         String reasonCodeSlug,
         String platformLabel,
         String reasonCodeLabel,
+        String guideType,
         String title,
         String metaDescription,
+        List<String> targetSearchQueries,
         List<String> keyChecks,
         List<String> commonErrors,
         List<String> nextSteps,
+        List<String> explanationPreviewLines,
+        List<String> sourceUrls,
         List<GuideFaqItem> faqItems
 ) {
     public String platformPath() {
@@ -24,5 +28,13 @@ public record GuidePageView(
 
     public String slugKey() {
         return platformSlug + "/" + reasonCodeSlug;
+    }
+
+    public boolean isErrorGuide() {
+        return "error".equalsIgnoreCase(guideType);
+    }
+
+    public String guideTypeLabel() {
+        return isErrorGuide() ? "Upload/Error Fix Guide" : "Reason-Code Guide";
     }
 }

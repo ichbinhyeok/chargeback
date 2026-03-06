@@ -2,6 +2,7 @@
 @import com.example.demo.dispute.api.CaseReportResponse
 @import com.example.demo.dispute.domain.EvidenceType
 @import com.example.demo.dispute.persistence.PaymentEntity
+@import java.util.List
 @param DisputeCase disputeCase
 @param CaseReportResponse report
 @param EvidenceType[] evidenceTypes
@@ -13,6 +14,7 @@
 @param boolean exportReady
 @param String validationFreshness
 @param boolean validationFresh
+@param List<String> missingRequiredEvidenceTypes
 
 @template.layout(
     title = "Export | " + report.caseToken(),
@@ -66,6 +68,7 @@
             <a href="/c/${report.caseToken()}" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Dashboard</a>
             <a href="/c/${report.caseToken()}/upload" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Upload Evidence</a>
             <a href="/c/${report.caseToken()}/validate" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Validate & Fix</a>
+            <a href="/c/${report.caseToken()}/explanation" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Explanation Draft</a>
             <a href="/c/${report.caseToken()}/export" class="border-primary-600 text-primary-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" aria-current="page">Export Pack</a>
         </nav>
     </div>
@@ -85,6 +88,10 @@
                     <a href="/c/${report.caseToken()}/download/summary.pdf" class="cb-btn cb-btn-secondary border-gray-300 shadow">
                         <svg class="w-4 h-4 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                         Download Guide PDF (No Watermark)
+                    </a>
+                    <a href="/c/${report.caseToken()}/download/explanation.txt" class="cb-btn cb-btn-secondary border-gray-300 shadow">
+                        <svg class="w-4 h-4 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Download Explanation TXT
                     </a>
                 </div>
             </div>
@@ -122,6 +129,10 @@
                         @if(!exportReady)
                             <div class="p-3 bg-amber-50 border-l-4 border-amber-400 text-amber-800 text-xs rounded shadow-sm">
                                 <strong>Validation required:</strong> run validation and clear blocked issues before checkout. Current state: <code class="bg-amber-100 font-bold px-1 rounded">${report.state()}</code>.
+                            </div>
+                        @elseif(!missingRequiredEvidenceTypes.isEmpty())
+                            <div class="p-3 bg-amber-50 border-l-4 border-amber-400 text-amber-800 text-xs rounded shadow-sm">
+                                <strong>Required evidence missing:</strong> ${String.join(", ", missingRequiredEvidenceTypes)}. Upload these before checkout.
                             </div>
                         @elseif(paymentConfigured)
                             <form method="post" action="/c/${report.caseToken()}/pay">

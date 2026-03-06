@@ -30,6 +30,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/app.css">
     <script src="/js/case-vault.js" defer></script>
+    <script src="/js/seo-tracker.js" defer></script>
     <style>
         body { background-color: #F6F9FC; color: #1A1F36; font-family: 'Inter', sans-serif; }
     </style>

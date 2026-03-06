@@ -1,5 +1,7 @@
+@import java.util.List
 @import com.example.demo.dispute.web.GuidePageView
 @param GuidePageView guide
+@param List<GuidePageView> relatedGuides
 @param String canonicalUrl
 @param String metaDescription
 
@@ -8,7 +10,7 @@
     canonicalUrl = canonicalUrl,
     metaDescription = metaDescription,
     content = @`
-    <article class="max-w-4xl">
+    <article class="max-w-4xl" data-seo-page="guide-detail" data-seo-platform="${guide.platformSlug()}" data-seo-guide="${guide.reasonCodeSlug()}">
         <div class="text-sm mb-4">
             <a href="/guides" class="text-primary-600 hover:underline">Guides</a>
             <span class="text-gray-400"> / </span>
@@ -17,21 +19,26 @@
             <span class="text-gray-600">${guide.reasonCodeLabel()}</span>
         </div>
 
-        <p class="text-xs uppercase tracking-wide text-primary-600 font-semibold mb-2">${guide.platformLabel()} - ${guide.reasonCodeLabel()}</p>
+        <div class="mb-3 flex flex-wrap gap-2">
+            <span class="cb-badge cb-badge-blue">${guide.platformLabel()}</span>
+            <span class="cb-badge cb-badge-gray">${guide.guideTypeLabel()}</span>
+        </div>
         <h1 class="text-3xl font-bold text-gray-900 mb-3">${guide.title()}</h1>
         <p class="text-gray-600 mb-8">${guide.metaDescription()}</p>
 
-        <section class="cb-card mb-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-3">Key Checks</h2>
-            <ul class="list-disc pl-5 space-y-2 text-sm text-gray-700">
-                @for(String check : guide.keyChecks())
-                    <li>${check}</li>
-                @endfor
-            </ul>
-        </section>
+        @if(!guide.targetSearchQueries().isEmpty())
+            <section class="cb-card mb-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-3">Search Phrases This Page Solves</h2>
+                <ul class="list-disc pl-5 space-y-2 text-sm text-gray-700">
+                    @for(String keyword : guide.targetSearchQueries())
+                        <li>${keyword}</li>
+                    @endfor
+                </ul>
+            </section>
+        @endif
 
         <section class="cb-card mb-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-3">Common Failures</h2>
+            <h2 class="text-lg font-semibold text-gray-900 mb-3">1. Why Upload Fails</h2>
             <ul class="list-disc pl-5 space-y-2 text-sm text-gray-700">
                 @for(String err : guide.commonErrors())
                     <li>${err}</li>
@@ -40,13 +47,64 @@
         </section>
 
         <section class="cb-card mb-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-3">Next Actions</h2>
+            <h2 class="text-lg font-semibold text-gray-900 mb-3">2. Required Evidence Checklist</h2>
+            <ul class="list-disc pl-5 space-y-2 text-sm text-gray-700">
+                @for(String check : guide.keyChecks())
+                    <li>${check}</li>
+                @endfor
+            </ul>
+        </section>
+
+        <section class="cb-card mb-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-3">3. Fix Steps</h2>
             <ol class="list-decimal pl-5 space-y-2 text-sm text-gray-700">
                 @for(String step : guide.nextSteps())
                     <li>${step}</li>
                 @endfor
             </ol>
         </section>
+
+        @if(!guide.explanationPreviewLines().isEmpty())
+            <section class="cb-card mb-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-3">Explanation Draft Sample</h2>
+                <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 space-y-2">
+                    @for(String line : guide.explanationPreviewLines())
+                        <p>${line}</p>
+                    @endfor
+                </div>
+                <p class="mt-3 text-sm text-gray-600">Need a case-specific draft and evidence package? Start from a free case check.</p>
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <a href="/new?src=guide&platform=${guide.platformSlug()}&guide=${guide.reasonCodeSlug()}" class="cb-btn cb-btn-primary" data-seo-event="guide_start_case_click" data-seo-platform="${guide.platformSlug()}" data-seo-guide="${guide.reasonCodeSlug()}">Start Free Case Check</a>
+                    <a href="${guide.platformPath()}" class="cb-btn cb-btn-secondary">More ${guide.platformLabel()} Guides</a>
+                </div>
+            </section>
+        @endif
+
+        @if(!guide.sourceUrls().isEmpty())
+            <section class="cb-card mb-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-3">Policy Sources</h2>
+                <ul class="list-disc pl-5 space-y-2 text-sm text-gray-700">
+                    @for(String sourceUrl : guide.sourceUrls())
+                        <li><a href="${sourceUrl}" target="_blank" rel="nofollow noopener noreferrer" class="text-primary-600 hover:underline">${sourceUrl}</a></li>
+                    @endfor
+                </ul>
+            </section>
+        @endif
+
+        @if(relatedGuides != null && !relatedGuides.isEmpty())
+            <section class="cb-card mb-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-3">Related ${guide.platformLabel()} Guides</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    @for(GuidePageView related : relatedGuides)
+                        <a href="${related.path()}" class="block rounded-lg border border-gray-200 p-3 hover:border-primary-300 hover:bg-primary-50/20 transition-colors">
+                            <p class="text-xs uppercase tracking-wide text-primary-600 font-semibold mb-1">${related.guideTypeLabel()}</p>
+                            <p class="text-sm font-semibold text-gray-900 mb-1">${related.reasonCodeLabel()}</p>
+                            <p class="text-xs text-gray-600">${related.metaDescription()}</p>
+                        </a>
+                    @endfor
+                </div>
+            </section>
+        @endif
 
         <section class="cb-card mb-6">
             <h2 class="text-lg font-semibold text-gray-900 mb-3">FAQ</h2>
@@ -61,7 +119,7 @@
         </section>
 
         <section class="text-xs text-gray-500">
-            <p>This guide is informational and focuses on submission formatting. It is not legal advice and does not guarantee dispute outcomes.</p>
+            <p>This guide focuses on evidence formatting and submission quality. It is not legal advice and does not guarantee dispute outcomes.</p>
         </section>
 
         <script type="application/ld+json">

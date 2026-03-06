@@ -3,8 +3,10 @@ package com.example.demo.dispute.service;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.stereotype.Component;
@@ -19,10 +21,9 @@ public class StripeWebhookVerifier {
             return false;
         }
 
-        Map<String, String> parts = parseSignatureHeader(signatureHeader);
-        String timestamp = parts.get("t");
-        String expectedSignature = parts.get("v1");
-        if (timestamp == null || expectedSignature == null) {
+        ParsedStripeSignature signature = parseSignatureHeader(signatureHeader);
+        String timestamp = signature.timestamp();
+        if (timestamp == null || signature.v1Signatures().isEmpty()) {
             return false;
         }
 
@@ -40,22 +41,31 @@ public class StripeWebhookVerifier {
 
         String signedPayload = timestamp + "." + payload;
         String computed = hmacSha256Hex(webhookSecret, signedPayload);
-        return MessageDigest.isEqual(
-                computed.getBytes(StandardCharsets.UTF_8),
-                expectedSignature.getBytes(StandardCharsets.UTF_8)
-        );
+        byte[] computedBytes = computed.getBytes(StandardCharsets.UTF_8);
+        for (String candidate : signature.v1Signatures()) {
+            if (MessageDigest.isEqual(computedBytes, candidate.getBytes(StandardCharsets.UTF_8))) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    private Map<String, String> parseSignatureHeader(String signatureHeader) {
+    private ParsedStripeSignature parseSignatureHeader(String signatureHeader) {
         Map<String, String> values = new HashMap<>();
+        List<String> v1Signatures = new ArrayList<>();
         String[] parts = signatureHeader.split(",");
         for (String part : parts) {
             String[] kv = part.split("=", 2);
             if (kv.length == 2) {
-                values.put(kv[0].trim(), kv[1].trim());
+                String key = kv[0].trim();
+                String value = kv[1].trim();
+                values.put(key, value);
+                if ("v1".equals(key) && !value.isBlank()) {
+                    v1Signatures.add(value);
+                }
             }
         }
-        return values;
+        return new ParsedStripeSignature(values.get("t"), List.copyOf(v1Signatures));
     }
 
     private String hmacSha256Hex(String secret, String payload) {
@@ -71,5 +81,8 @@ public class StripeWebhookVerifier {
         } catch (Exception ex) {
             throw new IllegalStateException("failed to verify stripe signature", ex);
         }
+    }
+
+    private record ParsedStripeSignature(String timestamp, List<String> v1Signatures) {
     }
 }

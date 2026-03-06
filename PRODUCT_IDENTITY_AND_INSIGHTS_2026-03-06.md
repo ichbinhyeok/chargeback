@@ -33,7 +33,7 @@ Current project coverage:
 - Step 2: partial (reason code stored and used in policy resolution context)
 - Step 3: yes (evidence intake by type)
 - Step 4: strong (validation + auto-fix + deterministic export)
-- Step 5: not yet (no full explanation generator in core UX)
+- Step 5: partial (`explanation draft` generation is now available as writing aid)
 - Step 6: partial (submission-ready artifact generation)
 
 ## 4) Strategic Insight Agreed
@@ -62,7 +62,28 @@ Phase B (next): controlled Step 5
 
 Phase C (later)
 1. richer explanation generation
-2. SEO expansion by reason-code evidence pages
+2. SEO expansion by reason-code + upload-error evidence pages (now started with data-driven guide catalog)
+
+## 8) pSEO Execution Update (2026-03-06)
+
+- Public guide pages are now catalog-driven from `seo/guides-v1.json` (not controller hardcoding).
+- Catalog now scaled to 40 pages (20 reason + 20 error intent).
+- Guide taxonomy now includes:
+  - `reason` pages
+  - `error` pages for high-intent upload failures (size/link/PDF format/portfolio issues)
+- On-page structure now emphasizes:
+  1. why upload fails
+  2. required evidence checklist
+  3. fix steps
+  4. explanation draft sample + CTA to `/new`
+- Internal links on guide detail are now auto-generated from same-platform related guides.
+- SEO funnel instrumentation is now active:
+  - `guide_view`
+  - `guide_start_case_click`
+  - `new_case_view_from_guide`
+- KPI visibility:
+  - API: `/api/seo/kpi?days=N`
+  - internal dashboard: `/seo/kpi` (noindex)
 
 ## 6) Positioning Guardrails
 

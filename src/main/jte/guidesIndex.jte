@@ -14,7 +14,7 @@
     <section class="mb-10">
         <h1 class="text-3xl font-bold text-gray-900 mb-3">Dispute Evidence Guides</h1>
         <p class="text-gray-600 max-w-2xl">
-            Public checklists for Stripe and Shopify evidence submission. These guides focus on format and packaging constraints that trigger avoidable failures.
+            Public Stripe and Shopify guides focused on high-intent upload failures (file size, format, link errors) plus reason-code evidence checklists.
         </p>
     </section>
 
@@ -30,9 +30,13 @@
     <section class="grid grid-cols-1 md:grid-cols-2 gap-5">
         @for(GuidePageView guide : guides)
             <article class="cb-card">
-                <div class="text-xs uppercase tracking-wide text-primary-600 font-semibold mb-2">${guide.platformLabel()} - ${guide.reasonCodeLabel()}</div>
+                <div class="mb-2 flex items-center gap-2">
+                    <span class="cb-badge cb-badge-blue">${guide.platformLabel()}</span>
+                    <span class="cb-badge cb-badge-gray">${guide.guideTypeLabel()}</span>
+                </div>
                 <h2 class="text-xl font-semibold text-gray-900 mb-2">${guide.title()}</h2>
                 <p class="text-sm text-gray-600 mb-4">${guide.metaDescription()}</p>
+                <p class="text-xs text-gray-500 mb-4">${guide.reasonCodeLabel()}</p>
                 <a href="${guide.path()}" class="cb-btn cb-btn-secondary">Read Guide</a>
             </article>
         @endfor

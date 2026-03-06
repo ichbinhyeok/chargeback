@@ -1,0 +1,2765 @@
+{
+  "version": "2026-03-06",
+  "guides": [
+    {
+      "platformSlug": "stripe",
+      "slug": "fraudulent",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Fraudulent",
+      "guideType": "reason",
+      "title": "Stripe Fraudulent Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Stripe fraudulent dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "stripe fraudulent",
+        "stripe upload failed fraudulent",
+        "stripe fraudulent evidence guide",
+        "stripe dispute evidence fraudulent fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "What causes Stripe Fraudulent evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "product-not-received",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Product Not Received",
+      "guideType": "reason",
+      "title": "Stripe Product Not Received Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Stripe product not received dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "stripe product not received",
+        "stripe upload failed product not received",
+        "stripe product not received evidence guide",
+        "stripe dispute evidence product not received fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "What causes Stripe Product Not Received evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "product-unacceptable",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Product Unacceptable",
+      "guideType": "reason",
+      "title": "Stripe Product Unacceptable Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Stripe product unacceptable dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "stripe product unacceptable",
+        "stripe upload failed product unacceptable",
+        "stripe product unacceptable evidence guide",
+        "stripe dispute evidence product unacceptable fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "What causes Stripe Product Unacceptable evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "credit-not-processed",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Credit Not Processed",
+      "guideType": "reason",
+      "title": "Stripe Credit Not Processed Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Stripe credit not processed dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "stripe credit not processed",
+        "stripe upload failed credit not processed",
+        "stripe credit not processed evidence guide",
+        "stripe dispute evidence credit not processed fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "What causes Stripe Credit Not Processed evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "subscription-cancelled",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Subscription Cancelled",
+      "guideType": "reason",
+      "title": "Stripe Subscription Cancelled Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Stripe subscription cancelled dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "stripe subscription cancelled",
+        "stripe upload failed subscription cancelled",
+        "stripe subscription cancelled evidence guide",
+        "stripe dispute evidence subscription cancelled fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "What causes Stripe Subscription Cancelled evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "duplicate",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Duplicate",
+      "guideType": "reason",
+      "title": "Stripe Duplicate Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Stripe duplicate dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "stripe duplicate",
+        "stripe upload failed duplicate",
+        "stripe duplicate evidence guide",
+        "stripe dispute evidence duplicate fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "What causes Stripe Duplicate evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "unrecognized",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Unrecognized",
+      "guideType": "reason",
+      "title": "Stripe Unrecognized Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Stripe unrecognized dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "stripe unrecognized",
+        "stripe upload failed unrecognized",
+        "stripe unrecognized evidence guide",
+        "stripe dispute evidence unrecognized fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "What causes Stripe Unrecognized evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "not-as-described",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Not As Described",
+      "guideType": "reason",
+      "title": "Stripe Not As Described Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Stripe not as described dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "stripe not as described",
+        "stripe upload failed not as described",
+        "stripe not as described evidence guide",
+        "stripe dispute evidence not as described fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "What causes Stripe Not As Described evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "canceled-order",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Canceled Order",
+      "guideType": "reason",
+      "title": "Stripe Canceled Order Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Stripe canceled order dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "stripe canceled order",
+        "stripe upload failed canceled order",
+        "stripe canceled order evidence guide",
+        "stripe dispute evidence canceled order fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "What causes Stripe Canceled Order evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "general",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "General",
+      "guideType": "reason",
+      "title": "Stripe General Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Stripe general dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "stripe general",
+        "stripe upload failed general",
+        "stripe general evidence guide",
+        "stripe dispute evidence general fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "What causes Stripe General evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "fraudulent",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Fraudulent",
+      "guideType": "reason",
+      "title": "Shopify Fraudulent Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Shopify fraudulent dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "shopify fraudulent",
+        "shopify upload failed fraudulent",
+        "shopify fraudulent evidence guide",
+        "shopify dispute evidence fraudulent fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "What causes Shopify Fraudulent evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "item-not-received",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Item Not Received",
+      "guideType": "reason",
+      "title": "Shopify Item Not Received Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Shopify item not received dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "shopify item not received",
+        "shopify upload failed item not received",
+        "shopify item not received evidence guide",
+        "shopify dispute evidence item not received fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "What causes Shopify Item Not Received evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "not-as-described",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Not As Described",
+      "guideType": "reason",
+      "title": "Shopify Not As Described Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Shopify not as described dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "shopify not as described",
+        "shopify upload failed not as described",
+        "shopify not as described evidence guide",
+        "shopify dispute evidence not as described fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "What causes Shopify Not As Described evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "cancelled-order",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Cancelled Order",
+      "guideType": "reason",
+      "title": "Shopify Cancelled Order Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Shopify cancelled order dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "shopify cancelled order",
+        "shopify upload failed cancelled order",
+        "shopify cancelled order evidence guide",
+        "shopify dispute evidence cancelled order fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "What causes Shopify Cancelled Order evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "duplicate",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Duplicate",
+      "guideType": "reason",
+      "title": "Shopify Duplicate Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Shopify duplicate dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "shopify duplicate",
+        "shopify upload failed duplicate",
+        "shopify duplicate evidence guide",
+        "shopify dispute evidence duplicate fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "What causes Shopify Duplicate evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "credit-not-processed",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Credit Not Processed",
+      "guideType": "reason",
+      "title": "Shopify Credit Not Processed Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Shopify credit not processed dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "shopify credit not processed",
+        "shopify upload failed credit not processed",
+        "shopify credit not processed evidence guide",
+        "shopify dispute evidence credit not processed fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "What causes Shopify Credit Not Processed evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "unrecognized",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Unrecognized",
+      "guideType": "reason",
+      "title": "Shopify Unrecognized Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Shopify unrecognized dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "shopify unrecognized",
+        "shopify upload failed unrecognized",
+        "shopify unrecognized evidence guide",
+        "shopify dispute evidence unrecognized fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "What causes Shopify Unrecognized evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "subscription-cancelled",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Subscription Cancelled",
+      "guideType": "reason",
+      "title": "Shopify Subscription Cancelled Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Shopify subscription cancelled dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "shopify subscription cancelled",
+        "shopify upload failed subscription cancelled",
+        "shopify subscription cancelled evidence guide",
+        "shopify dispute evidence subscription cancelled fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "What causes Shopify Subscription Cancelled evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "product-unacceptable",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Product Unacceptable",
+      "guideType": "reason",
+      "title": "Shopify Product Unacceptable Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Shopify product unacceptable dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "shopify product unacceptable",
+        "shopify upload failed product unacceptable",
+        "shopify product unacceptable evidence guide",
+        "shopify dispute evidence product unacceptable fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "What causes Shopify Product Unacceptable evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "general",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "General",
+      "guideType": "reason",
+      "title": "Shopify General Evidence Checklist for Upload Recovery",
+      "metaDescription": "Fix Shopify general dispute upload failures using reason-mapped evidence structure, stronger chronology, and submission-ready formatting checks before export.",
+      "targetSearchQueries": [
+        "shopify general",
+        "shopify upload failed general",
+        "shopify general evidence guide",
+        "shopify dispute evidence general fix"
+      ],
+      "keyChecks": [
+        "Prepare one final file per evidence type and keep filenames reviewer-readable.",
+        "Map each attachment to the dispute reason code so reviewers can verify relevance quickly.",
+        "Include a timeline that links order, payment, fulfillment, communication, and policy context.",
+        "Keep only dispute-relevant excerpts to reduce payload size and reviewer fatigue.",
+        "Check format and size constraints before packaging so uploads do not fail at the last step.",
+        "Place decisive records first and supporting context second for faster manual review."
+      ],
+      "commonErrors": [
+        "Evidence is split across too many files, forcing reviewers to reconstruct chronology manually.",
+        "Critical records are buried under low-signal screenshots and redundant attachments.",
+        "Reason-specific required evidence is missing while optional files dominate the package.",
+        "Policy evidence is attached without highlighting the exact section tied to the claim.",
+        "Delivery or service logs are present but not connected to customer identity and order facts.",
+        "Final package is technically valid but logically weak because narrative and evidence are disconnected."
+      ],
+      "nextSteps": [
+        "Group files by evidence type and merge same-type duplicates into one final reviewer file.",
+        "Build a short chronology table before export and ensure each line points to an attached artifact.",
+        "Trim non-essential pages and remove repeated screenshots to lower size and complexity.",
+        "Reorder artifacts so strongest transaction proof appears first in each evidence category.",
+        "Run validation again and fix every blocker before generating the final submission bundle.",
+        "Export only when readiness checks pass and missing required evidence warnings are cleared."
+      ],
+      "explanationPreviewLines": [
+        "The evidence package is organized by submission category and chronological sequence.",
+        "Each attachment is mapped to the dispute reason and supports direct reviewer verification.",
+        "Order, payment, fulfillment, and communication records are linked with consistent identifiers.",
+        "Only dispute-relevant excerpts are included to improve clarity and reduce review friction.",
+        "Policy and transactional documents are attached with section-level relevance to the claim.",
+        "This structure is intended to minimize upload failures and improve review completeness."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "What causes Shopify General evidence rejection most often?",
+          "answer": "Most rejections come from missing required evidence, weak chronology, and packaging clutter that hides decisive records."
+        },
+        {
+          "question": "How much evidence should be attached?",
+          "answer": "Attach enough to prove the claim path clearly, but avoid redundant pages that increase size without adding decision value."
+        },
+        {
+          "question": "Should communication logs be full exports?",
+          "answer": "Use focused excerpts with timestamps and order identifiers, then keep full logs only if they add specific dispute relevance."
+        },
+        {
+          "question": "What should be checked right before export?",
+          "answer": "Verify required evidence coverage, file format constraints, payload size, and timeline-to-attachment consistency."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "dispute-countered-fee-manual-15-usd",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Dispute Countered Fee Manual 15 USD",
+      "guideType": "error",
+      "title": "Stripe Dispute Countered Fee ($15 Manual) ROI and Submission Guide",
+      "metaDescription": "Understand Stripe dispute countered fee exposure for manual submissions and reduce avoidable upload failures before committing to a paid counter workflow.",
+      "targetSearchQueries": [
+        "stripe dispute countered fee manual 15 usd",
+        "stripe upload failed dispute countered fee manual 15 usd",
+        "stripe dispute countered fee manual 15 usd evidence guide",
+        "stripe dispute evidence dispute countered fee manual 15 usd fix"
+      ],
+      "keyChecks": [
+        "Confirm whether the dispute will be manually countered and which fees apply in your operating region.",
+        "Only proceed to counter once required evidence coverage and packaging readiness are both complete.",
+        "Treat upload-failure risk as direct cost exposure when manual countering introduces additional fees.",
+        "Prioritize decisive claim-mapped evidence so paid counter attempts are not wasted on formatting blockers.",
+        "Review current Stripe pricing policy before each submission cycle because fee policy can change over time.",
+        "Document submission decision logic internally for post-case ROI tracking and playbook refinement."
+      ],
+      "commonErrors": [
+        "Countering begins before evidence packaging is ready, causing avoidable paid failure risk.",
+        "Merchants treat manual counter flow as no-cost and underestimate per-case downside exposure.",
+        "Submission is attempted with unresolved blocker issues, making fee-bearing retries more likely.",
+        "Team lacks a pre-counter checklist tying expected recovery to evidence strength and upload readiness.",
+        "Fee assumptions are based on outdated community posts instead of current Stripe pricing pages.",
+        "Case value is low but manual counter process is still pursued without a minimum ROI threshold."
+      ],
+      "nextSteps": [
+        "Establish a pre-counter gate: required evidence complete, no blocking validation issues, clear chronology.",
+        "Check current Stripe pricing policy and internal dispute economics before committing to manual countering.",
+        "Use upload recovery flow first so the paid counter step is executed only once with final-ready files.",
+        "Track counter attempt outcomes and cost per attempt to calibrate future counter/no-counter decisions.",
+        "Create a minimum case-value threshold below which manual countering is not operationally justified.",
+        "Reassess policy links monthly and update guidance pages when fee terms or mechanics change."
+      ],
+      "explanationPreviewLines": [
+        "This package was validated for upload readiness before manual counter execution.",
+        "Required records are mapped to dispute claims to reduce avoidable paid retries.",
+        "Evidence chronology is structured for first-pass reviewer comprehension.",
+        "Only decisive, dispute-relevant files are included to avoid unnecessary payload bloat.",
+        "Submission follows current fee-aware playbook and documented countering thresholds.",
+        "The objective is to reduce avoidable formatting risk before fee-bearing counter actions."
+      ],
+      "sourceUrls": [
+        "https://stripe.com/pricing",
+        "https://docs.stripe.com/disputes/how-disputes-work"
+      ],
+      "faq": [
+        {
+          "question": "What is a countered fee in Stripe dispute workflow?",
+          "answer": "Stripe documents additional fee mechanics for manually countered disputes in current pricing and disputes documentation; check live policy before each submission."
+        },
+        {
+          "question": "When should manual countering be avoided?",
+          "answer": "Avoid manual countering when required evidence is incomplete or package quality is not upload-ready, because retry risk directly harms case ROI."
+        },
+        {
+          "question": "How does upload readiness impact fee-aware ROI?",
+          "answer": "If countering has incremental cost, each avoidable upload failure increases downside. Readiness checks reduce that avoidable loss path."
+        },
+        {
+          "question": "Which source should be trusted for fee terms?",
+          "answer": "Use Stripe official pricing and disputes docs as primary source, not stale forum screenshots or third-party summaries."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "evidence-file-size-limit-4-5mb",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Evidence File Size Limit 4.5MB",
+      "guideType": "error",
+      "title": "Stripe Evidence File Size Limit 4.5MB Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Stripe evidence file size limit 4 5mb upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "stripe evidence file size limit 4 5mb",
+        "stripe upload failed evidence file size limit 4 5mb",
+        "stripe evidence file size limit 4.5mb evidence guide",
+        "stripe dispute evidence evidence file size limit 4 5mb fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "upload-failed-no-external-links",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Upload Failed No External Links",
+      "guideType": "error",
+      "title": "Stripe Upload Failed No External Links Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Stripe upload failed no external links upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "stripe upload failed no external links",
+        "stripe upload failed upload failed no external links",
+        "stripe upload failed no external links evidence guide",
+        "stripe dispute evidence upload failed no external links fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "merge-multiple-evidence-files",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Merge Multiple Evidence Files",
+      "guideType": "error",
+      "title": "Stripe Merge Multiple Evidence Files Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Stripe merge multiple evidence files upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "stripe merge multiple evidence files",
+        "stripe upload failed merge multiple evidence files",
+        "stripe merge multiple evidence files evidence guide",
+        "stripe dispute evidence merge multiple evidence files fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "invalid-file-format-pdf-jpg-png-only",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Invalid File Format PDF JPG PNG Only",
+      "guideType": "error",
+      "title": "Stripe Invalid File Format PDF JPG PNG Only Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Stripe invalid file format pdf jpg png only upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "stripe invalid file format pdf jpg png only",
+        "stripe upload failed invalid file format pdf jpg png only",
+        "stripe invalid file format pdf jpg png only evidence guide",
+        "stripe dispute evidence invalid file format pdf jpg png only fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "total-pages-over-limit",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Total Pages Over Limit",
+      "guideType": "error",
+      "title": "Stripe Total Pages Over Limit Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Stripe total pages over limit upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "stripe total pages over limit",
+        "stripe upload failed total pages over limit",
+        "stripe total pages over limit evidence guide",
+        "stripe dispute evidence total pages over limit fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "mastercard-19-page-limit",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Mastercard 19 Page Limit",
+      "guideType": "error",
+      "title": "Stripe Mastercard 19 Page Limit Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Stripe mastercard 19 page limit upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "stripe mastercard 19 page limit",
+        "stripe upload failed mastercard 19 page limit",
+        "stripe mastercard 19 page limit evidence guide",
+        "stripe dispute evidence mastercard 19 page limit fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "duplicate-evidence-type-file-error",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Duplicate Evidence Type File Error",
+      "guideType": "error",
+      "title": "Stripe Duplicate Evidence Type File Error Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Stripe duplicate evidence type file error upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "stripe duplicate evidence type file error",
+        "stripe upload failed duplicate evidence type file error",
+        "stripe duplicate evidence type file error evidence guide",
+        "stripe dispute evidence duplicate evidence type file error fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "oversized-pdf-with-low-signal-pages",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Oversized PDF With Low Signal Pages",
+      "guideType": "error",
+      "title": "Stripe Oversized PDF With Low Signal Pages Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Stripe oversized pdf with low signal pages upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "stripe oversized pdf with low signal pages",
+        "stripe upload failed oversized pdf with low signal pages",
+        "stripe oversized pdf with low signal pages evidence guide",
+        "stripe dispute evidence oversized pdf with low signal pages fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "stripe",
+      "slug": "stripe-vs-shopify-evidence-rules-comparison",
+      "platformLabel": "Stripe",
+      "reasonCodeLabel": "Stripe Vs Shopify Evidence Rules Comparison",
+      "guideType": "error",
+      "title": "Stripe Stripe Vs Shopify Evidence Rules Comparison Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Stripe stripe vs shopify evidence rules comparison upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "stripe stripe vs shopify evidence rules comparison",
+        "stripe upload failed stripe vs shopify evidence rules comparison",
+        "stripe stripe vs shopify evidence rules comparison evidence guide",
+        "stripe dispute evidence stripe vs shopify evidence rules comparison fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/responding",
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "pdf-a-format-required-error",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "PDF A Format Required Error",
+      "guideType": "error",
+      "title": "Shopify PDF A Format Required Error Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Shopify pdf a format required error upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "shopify pdf a format required error",
+        "shopify upload failed pdf a format required error",
+        "shopify pdf a format required error evidence guide",
+        "shopify dispute evidence pdf a format required error fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "evidence-file-too-large-2mb",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Evidence File Too Large 2MB",
+      "guideType": "error",
+      "title": "Shopify Evidence File Too Large 2MB Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Shopify evidence file too large 2mb upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "shopify evidence file too large 2mb",
+        "shopify upload failed evidence file too large 2mb",
+        "shopify evidence file too large 2mb evidence guide",
+        "shopify dispute evidence evidence file too large 2mb fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "pdf-portfolio-not-accepted",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "PDF Portfolio Not Accepted",
+      "guideType": "error",
+      "title": "Shopify PDF Portfolio Not Accepted Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Shopify pdf portfolio not accepted upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "shopify pdf portfolio not accepted",
+        "shopify upload failed pdf portfolio not accepted",
+        "shopify pdf portfolio not accepted evidence guide",
+        "shopify dispute evidence pdf portfolio not accepted fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "invalid-file-format-pdf-jpg-png-only",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Invalid File Format PDF JPG PNG Only",
+      "guideType": "error",
+      "title": "Shopify Invalid File Format PDF JPG PNG Only Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Shopify invalid file format pdf jpg png only upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "shopify invalid file format pdf jpg png only",
+        "shopify upload failed invalid file format pdf jpg png only",
+        "shopify invalid file format pdf jpg png only evidence guide",
+        "shopify dispute evidence invalid file format pdf jpg png only fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "external-links-not-allowed-error",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "External Links Not Allowed Error",
+      "guideType": "error",
+      "title": "Shopify External Links Not Allowed Error Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Shopify external links not allowed error upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "shopify external links not allowed error",
+        "shopify upload failed external links not allowed error",
+        "shopify external links not allowed error evidence guide",
+        "shopify dispute evidence external links not allowed error fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "duplicate-evidence-type-file-error",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Duplicate Evidence Type File Error",
+      "guideType": "error",
+      "title": "Shopify Duplicate Evidence Type File Error Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Shopify duplicate evidence type file error upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "shopify duplicate evidence type file error",
+        "shopify upload failed duplicate evidence type file error",
+        "shopify duplicate evidence type file error evidence guide",
+        "shopify dispute evidence duplicate evidence type file error fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "pdf-pages-over-50-error",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "PDF Pages Over 50 Error",
+      "guideType": "error",
+      "title": "Shopify PDF Pages Over 50 Error Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Shopify pdf pages over 50 error upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "shopify pdf pages over 50 error",
+        "shopify upload failed pdf pages over 50 error",
+        "shopify pdf pages over 50 error evidence guide",
+        "shopify dispute evidence pdf pages over 50 error fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "shopify-payments-total-size-over-4mb",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Shopify Payments Total Size Over 4MB",
+      "guideType": "error",
+      "title": "Shopify Shopify Payments Total Size Over 4MB Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Shopify shopify payments total size over 4mb upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "shopify shopify payments total size over 4mb",
+        "shopify upload failed shopify payments total size over 4mb",
+        "shopify shopify payments total size over 4mb evidence guide",
+        "shopify dispute evidence shopify payments total size over 4mb fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "oversized-image-compression-readability-fix",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Oversized Image Compression Readability Fix",
+      "guideType": "error",
+      "title": "Shopify Oversized Image Compression Readability Fix Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Shopify oversized image compression readability fix upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "shopify oversized image compression readability fix",
+        "shopify upload failed oversized image compression readability fix",
+        "shopify oversized image compression readability fix evidence guide",
+        "shopify dispute evidence oversized image compression readability fix fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    },
+    {
+      "platformSlug": "shopify",
+      "slug": "unsupported-embedded-objects-error",
+      "platformLabel": "Shopify",
+      "reasonCodeLabel": "Unsupported Embedded Objects Error",
+      "guideType": "error",
+      "title": "Shopify Unsupported Embedded Objects Error Evidence Upload Error Fix Guide",
+      "metaDescription": "Resolve Shopify unsupported embedded objects error upload blockers with precise format checks, payload cleanup, and repeatable re-validation steps before submission export.",
+      "targetSearchQueries": [
+        "shopify unsupported embedded objects error",
+        "shopify upload failed unsupported embedded objects error",
+        "shopify unsupported embedded objects error evidence guide",
+        "shopify dispute evidence unsupported embedded objects error fix"
+      ],
+      "keyChecks": [
+        "Identify the exact blocker class first: size, format, page limit, duplicate file type, or unsupported structure.",
+        "Normalize files to accepted formats and remove unsupported wrappers before re-upload.",
+        "Preserve readability while compressing payload size so evidence quality remains reviewable.",
+        "Keep one final file per evidence type and avoid ambiguous naming that breaks reviewer mapping.",
+        "Strip external dependencies and include direct artifacts that reviewers can open immediately.",
+        "Re-run validation after each fix cycle instead of batching unknown changes blindly."
+      ],
+      "commonErrors": [
+        "A single oversized file causes repeated upload failure while other files are already compliant.",
+        "PDF or image metadata structures are unsupported even though files open locally.",
+        "Duplicate evidence-type uploads create validation blockers that require merge or reclassification.",
+        "External links are referenced instead of attaching the underlying proof directly.",
+        "Page count or total payload limits are exceeded by low-signal appendices and duplicate exports.",
+        "Manual fixes are applied without revalidation, causing new blockers to appear at submission time."
+      ],
+      "nextSteps": [
+        "Classify blockers by severity and resolve strict upload constraints before content-level tuning.",
+        "Re-export problematic files using supported settings and flatten unsupported embedded structures.",
+        "Merge duplicate files per evidence type and maintain chronological ordering in merged outputs.",
+        "Trim low-value pages first, then apply readable compression to reduce payload size safely.",
+        "Re-run validation after each major fix so regressions are caught early.",
+        "Finalize only after zero blocking issues remain and required evidence coverage is complete."
+      ],
+      "explanationPreviewLines": [
+        "The evidence set was rebuilt using upload-safe formats and validated packaging rules.",
+        "All attachments are direct reviewer artifacts without external dependency links.",
+        "Duplicate type files were consolidated and ordered to preserve claim chronology.",
+        "Payload size was reduced with readability preserved for receipts, logs, and policy excerpts.",
+        "Blocking format structures were removed and replaced with compliant evidence documents.",
+        "The final package is prepared for consistent submission and manual review flow."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding",
+        "https://help.shopify.com/en/manual/payments/chargebacks/resolve-chargeback"
+      ],
+      "faq": [
+        {
+          "question": "Why does upload keep failing after minor edits?",
+          "answer": "Most failures persist when the root blocker class is unchanged, such as unsupported format wrappers or unresolved size limits."
+        },
+        {
+          "question": "What should be fixed first?",
+          "answer": "Fix strict blockers first: accepted format, size limits, duplicate-type issues, and unsupported PDF structure."
+        },
+        {
+          "question": "Can I rely on links instead of files?",
+          "answer": "No. Upload workflows and reviewer tooling are more reliable when the core evidence is attached directly as files."
+        },
+        {
+          "question": "How do I avoid another failure after fixing once?",
+          "answer": "Use a repeated cycle: fix one blocker class, revalidate immediately, then continue until no blocking errors remain."
+        }
+      ]
+    }
+  ]
+}

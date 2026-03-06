@@ -1,12 +1,16 @@
 package com.example.demo.dispute.service;
 
 import com.example.demo.dispute.domain.CaseState;
+import com.example.demo.dispute.domain.EvidenceType;
 import com.example.demo.dispute.domain.PaymentStatus;
 import com.example.demo.dispute.persistence.DisputeCase;
 import com.example.demo.dispute.persistence.PaymentEntity;
 import com.example.demo.dispute.persistence.PaymentRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.List;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -31,6 +35,9 @@ public class PaymentService {
     private final AuditLogService auditLogService;
     private final StripeWebhookVerifier stripeWebhookVerifier;
     private final ValidationFreshnessService validationFreshnessService;
+    private final CaseReportService caseReportService;
+    private final ReadinessService readinessService;
+    private final PolicyCatalogService policyCatalogService;
     private final ObjectMapper objectMapper;
     private final RestClient stripeRestClient;
 
@@ -47,6 +54,9 @@ public class PaymentService {
             AuditLogService auditLogService,
             StripeWebhookVerifier stripeWebhookVerifier,
             ValidationFreshnessService validationFreshnessService,
+            CaseReportService caseReportService,
+            ReadinessService readinessService,
+            PolicyCatalogService policyCatalogService,
             @Value("${app.billing.stripe.secret-key:}") String stripeSecretKey,
             @Value("${app.billing.stripe.webhook-secret:}") String stripeWebhookSecret,
             @Value("${app.billing.amount-cents:1900}") long amountCents,
@@ -59,6 +69,9 @@ public class PaymentService {
         this.auditLogService = auditLogService;
         this.stripeWebhookVerifier = stripeWebhookVerifier;
         this.validationFreshnessService = validationFreshnessService;
+        this.caseReportService = caseReportService;
+        this.readinessService = readinessService;
+        this.policyCatalogService = policyCatalogService;
         this.objectMapper = new ObjectMapper();
         this.stripeSecretKey = stripeSecretKey;
         this.stripeWebhookSecret = stripeWebhookSecret;
@@ -72,7 +85,7 @@ public class PaymentService {
     public CheckoutStartResult startCheckout(String caseToken) {
         DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
         if (!supportsCheckout(disputeCase.getState())) {
-            throw new IllegalArgumentException("case must be READY before payment");
+            throw new IllegalArgumentException("case must be export-ready (READY/PAID/DOWNLOADED) before payment");
         }
 
         if (isPaid(disputeCase.getId())) {
@@ -81,6 +94,21 @@ public class PaymentService {
         if (!validationFreshnessService.hasFreshPassedValidation(disputeCase.getId())) {
             throw new IllegalArgumentException("Validation is stale or failed. Run validation again before payment.");
         }
+        var missingRequiredEvidenceTypes = readinessService
+                .summarize(caseReportService.getReport(disputeCase.getId()))
+                .missingRequiredEvidenceTypes();
+        if (!missingRequiredEvidenceTypes.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Missing required evidence before payment: " + String.join(", ", missingRequiredEvidenceTypes)
+            );
+        }
+        PolicyCatalogService.ResolvedPolicy policy = policyCatalogService.resolve(
+                disputeCase.getPlatform(),
+                disputeCase.getProductScope(),
+                disputeCase.getReasonCode(),
+                disputeCase.getCardNetwork()
+        );
+        String requiredEvidenceSnapshot = serializeRequiredEvidence(policy.requiredEvidenceTypes());
 
         if (stripeSecretKey == null || stripeSecretKey.isBlank()) {
             throw new IllegalStateException("stripe secret key is not configured");
@@ -99,6 +127,7 @@ public class PaymentService {
                     "CHECKOUT_SESSION_REUSED",
                     "provider=stripe,sessionId=" + session.id()
             );
+            backfillSnapshotIfMissing(reused, policy.policyVersion(), requiredEvidenceSnapshot);
             return new CheckoutStartResult(session.url(), false);
         }
 
@@ -111,6 +140,8 @@ public class PaymentService {
         payment.setAmountCents(amountCents);
         payment.setCurrency(currency);
         payment.setCustomerEmail(null);
+        payment.setPolicyVersion(policy.policyVersion());
+        payment.setRequiredEvidenceSnapshot(requiredEvidenceSnapshot);
         paymentRepository.save(payment);
 
         auditLogService.log(
@@ -141,6 +172,28 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public Optional<PaymentEntity> latestPayment(UUID caseId) {
         return paymentRepository.findFirstByDisputeCaseIdOrderByCreatedAtDesc(caseId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> missingRequiredEvidenceForPaidExport(UUID caseId) {
+        Optional<PaymentEntity> paidPayment = paymentRepository
+                .findFirstByDisputeCaseIdAndStatusOrderByCreatedAtDesc(caseId, PaymentStatus.PAID);
+        if (paidPayment.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> requiredSnapshot = deserializeRequiredEvidence(paidPayment.get().getRequiredEvidenceSnapshot());
+        if (requiredSnapshot.isEmpty()) {
+            // Legacy paid records created before snapshot support: do not retroactively lock exports.
+            return List.of();
+        }
+
+        EnumSet<EvidenceType> presentTypes = EnumSet.noneOf(EvidenceType.class);
+        caseReportService.getReport(caseId).files().forEach(file -> presentTypes.add(file.evidenceType()));
+
+        return requiredSnapshot.stream()
+                .filter(name -> !isPresent(name, presentTypes))
+                .toList();
     }
 
     public void processStripeWebhook(String payload, String signatureHeader) {
@@ -243,6 +296,55 @@ public class PaymentService {
 
     private String valueAsString(Object value) {
         return value == null ? null : value.toString();
+    }
+
+    private void backfillSnapshotIfMissing(
+            PaymentEntity payment,
+            String policyVersion,
+            String requiredEvidenceSnapshot
+    ) {
+        boolean needsUpdate = false;
+        if (payment.getPolicyVersion() == null || payment.getPolicyVersion().isBlank()) {
+            payment.setPolicyVersion(policyVersion);
+            needsUpdate = true;
+        }
+        if (payment.getRequiredEvidenceSnapshot() == null || payment.getRequiredEvidenceSnapshot().isBlank()) {
+            payment.setRequiredEvidenceSnapshot(requiredEvidenceSnapshot);
+            needsUpdate = true;
+        }
+        if (needsUpdate) {
+            paymentRepository.save(payment);
+        }
+    }
+
+    private String serializeRequiredEvidence(List<EvidenceType> requiredTypes) {
+        if (requiredTypes == null || requiredTypes.isEmpty()) {
+            return "";
+        }
+        List<String> values = requiredTypes.stream()
+                .map(Enum::name)
+                .distinct()
+                .toList();
+        return String.join(",", values);
+    }
+
+    private List<String> deserializeRequiredEvidence(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .distinct()
+                .toList();
+    }
+
+    private boolean isPresent(String requiredTypeName, EnumSet<EvidenceType> presentTypes) {
+        try {
+            return presentTypes.contains(EvidenceType.valueOf(requiredTypeName));
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
     }
 
     private boolean supportsCheckout(CaseState state) {

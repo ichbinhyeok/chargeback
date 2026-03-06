@@ -586,12 +586,28 @@ class CaseControllerIntegrationTest {
     void guidesPlatformAndDetailPagesRenderSeoContent() throws Exception {
         mockMvc.perform(get("/guides/stripe"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Evidence Guides")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Evidence Guides")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Upload/Error Fix Guides")));
 
-        mockMvc.perform(get("/guides/stripe/fraud"))
+        mockMvc.perform(get("/guides/stripe/fraudulent"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Fraud Dispute Evidence Checklist")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Fraudulent Evidence Checklist for Upload Recovery")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Case Check")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"@type\": \"FAQPage\"")));
+
+        mockMvc.perform(get("/guides/stripe/evidence-file-size-limit-4-5mb"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Evidence File Size Limit 4.5MB Evidence Upload Error Fix Guide")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Search Phrases This Page Solves")));
+    }
+
+    @Test
+    void sitemapIncludesErrorAndReasonGuideUrls() throws Exception {
+        mockMvc.perform(get("/sitemap.xml"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/guides/stripe/fraudulent")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/guides/stripe/evidence-file-size-limit-4-5mb")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/guides/shopify/pdf-a-format-required-error")));
     }
 
     @Test
@@ -624,6 +640,36 @@ class CaseControllerIntegrationTest {
         mockMvc.perform(get("/c/{caseToken}/download/summary.pdf", caseRef.caseToken()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/c/" + caseRef.caseToken() + "/export?error=")));
+    }
+
+    @Test
+    void explanationPageAndDownloadRenderDraftText() throws Exception {
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "delivery.pdf",
+                "application/pdf",
+                simplePdf()
+        );
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(file)
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "FULFILLMENT_DELIVERY"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/c/{caseToken}/explanation", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Dispute Explanation Draft")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Explanation Draft")));
+
+        mockMvc.perform(get("/c/{caseToken}/download/explanation.txt", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Checklist Gaps and Actions")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Disclaimer: This draft is a submission-writing aid only.")));
     }
 
     @Test

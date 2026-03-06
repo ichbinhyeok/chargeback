@@ -16,6 +16,7 @@ import com.example.demo.dispute.service.AutoFixService;
 import com.example.demo.dispute.service.CaseReportService;
 import com.example.demo.dispute.service.CaseService;
 import com.example.demo.dispute.service.CheckoutStartResult;
+import com.example.demo.dispute.service.DisputeExplanationService;
 import com.example.demo.dispute.service.EvidenceFileService;
 import com.example.demo.dispute.service.PaymentService;
 import com.example.demo.dispute.service.PolicyCatalogService;
@@ -71,6 +72,7 @@ public class WebCaseController {
     private final ReadinessService readinessService;
     private final PolicyCatalogService policyCatalogService;
     private final ReasonCodeChecklistService reasonCodeChecklistService;
+    private final DisputeExplanationService disputeExplanationService;
     private final int caseMaxFiles;
     private final int retentionDays;
     private final String publicBaseUrl;
@@ -88,6 +90,7 @@ public class WebCaseController {
             ReadinessService readinessService,
             PolicyCatalogService policyCatalogService,
             ReasonCodeChecklistService reasonCodeChecklistService,
+            DisputeExplanationService disputeExplanationService,
             @Value("${app.case.max-files:100}") int caseMaxFiles,
             @Value("${app.retention.days:7}") int retentionDays,
             @Value("${app.public-base-url:http://localhost:8080}") String publicBaseUrl
@@ -104,6 +107,7 @@ public class WebCaseController {
         this.readinessService = readinessService;
         this.policyCatalogService = policyCatalogService;
         this.reasonCodeChecklistService = reasonCodeChecklistService;
+        this.disputeExplanationService = disputeExplanationService;
         this.caseMaxFiles = caseMaxFiles;
         this.retentionDays = retentionDays;
         this.publicBaseUrl = trimTrailingSlash(publicBaseUrl);
@@ -277,6 +281,23 @@ public class WebCaseController {
         return "caseReport";
     }
 
+    @GetMapping("/c/{caseToken}/explanation")
+    public String explanationPage(
+            @PathVariable String caseToken,
+            @RequestParam(value = "message", required = false) String message,
+            @RequestParam(value = "error", required = false) String error,
+            Model model
+    ) {
+        populateCaseModel(caseToken, model);
+        DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
+        CaseReportResponse report = caseReportService.getReport(disputeCase.getId());
+        DisputeExplanationService.ExplanationDraft draft = disputeExplanationService.buildDraft(report);
+        model.addAttribute("explanationDraft", draft);
+        model.addAttribute("message", message);
+        model.addAttribute("error", error);
+        return "caseExplanation";
+    }
+
     @GetMapping("/c/{caseToken}/export")
     public String exportPage(
             @PathVariable String caseToken,
@@ -338,6 +359,15 @@ public class WebCaseController {
             response.sendRedirect("/c/" + caseToken + "/export?error=" + encode("Payment required to download."));
             return;
         }
+        List<String> missingRequiredEvidenceTypes = paymentService.missingRequiredEvidenceForPaidExport(disputeCase.getId());
+        if (!missingRequiredEvidenceTypes.isEmpty()) {
+            response.sendRedirect(
+                    "/c/" + caseToken + "/export?error=" + encode(
+                            "Missing required evidence captured at payment time: " + String.join(", ", missingRequiredEvidenceTypes)
+                    )
+            );
+            return;
+        }
 
         response.setContentType("application/zip");
         response.setHeader("Content-Disposition", "attachment; filename=\"Chargeback_Submission_Pack_" + caseToken + ".zip\"");
@@ -363,6 +393,20 @@ public class WebCaseController {
             response.setHeader("Content-Disposition", "attachment; filename=\"Chargeback_Submission_Guide_FREE_" + caseToken + ".pdf\"");
             submissionExportService.writeSummaryPdf(caseToken, response.getOutputStream(), true);
         }
+    }
+
+    @GetMapping("/c/{caseToken}/download/explanation.txt")
+    public void downloadExplanationTxt(@PathVariable String caseToken, HttpServletResponse response) throws Exception {
+        DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
+        CaseReportResponse report = caseReportService.getReport(disputeCase.getId());
+        DisputeExplanationService.ExplanationDraft draft = disputeExplanationService.buildDraft(report);
+
+        response.setContentType("text/plain; charset=UTF-8");
+        response.setHeader(
+                "Content-Disposition",
+                "attachment; filename=\"Dispute_Explanation_Draft_" + caseToken + ".txt\""
+        );
+        response.getWriter().print(draft.text());
     }
 
     @GetMapping("/c/{caseToken}/access-key.txt")

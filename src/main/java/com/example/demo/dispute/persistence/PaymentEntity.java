@@ -47,6 +47,12 @@ public class PaymentEntity {
     @Column(name = "customer_email")
     private String customerEmail;
 
+    @Column(name = "policy_version")
+    private String policyVersion;
+
+    @Column(name = "required_evidence_snapshot")
+    private String requiredEvidenceSnapshot;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -133,6 +139,22 @@ public class PaymentEntity {
 
     public void setCustomerEmail(String customerEmail) {
         this.customerEmail = customerEmail;
+    }
+
+    public String getPolicyVersion() {
+        return policyVersion;
+    }
+
+    public void setPolicyVersion(String policyVersion) {
+        this.policyVersion = policyVersion;
+    }
+
+    public String getRequiredEvidenceSnapshot() {
+        return requiredEvidenceSnapshot;
+    }
+
+    public void setRequiredEvidenceSnapshot(String requiredEvidenceSnapshot) {
+        this.requiredEvidenceSnapshot = requiredEvidenceSnapshot;
     }
 
     public Instant getCreatedAt() {

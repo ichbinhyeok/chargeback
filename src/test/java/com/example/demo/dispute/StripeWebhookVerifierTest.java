@@ -35,6 +35,20 @@ class StripeWebhookVerifierTest {
         assertFalse(verifier.isValid(payload, header, secret));
     }
 
+    @Test
+    void acceptsWhenAnyV1SignatureMatches() throws Exception {
+        String secret = "whsec_test_secret";
+        String payload = "{\"type\":\"checkout.session.completed\"}";
+        long timestamp = Instant.now().getEpochSecond();
+        String valid = hmac(secret, timestamp + "." + payload);
+
+        String headerWithValidFirst = "t=" + timestamp + ",v1=" + valid + ",v1=invalid";
+        assertTrue(verifier.isValid(payload, headerWithValidFirst, secret));
+
+        String headerWithValidLast = "t=" + timestamp + ",v1=invalid,v1=" + valid;
+        assertTrue(verifier.isValid(payload, headerWithValidLast, secret));
+    }
+
     private String hmac(String secret, String payload) throws Exception {
         Mac mac = Mac.getInstance("HmacSHA256");
         mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
