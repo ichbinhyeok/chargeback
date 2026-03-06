@@ -36,6 +36,12 @@ public class SeoEventEntity {
     @Column(name = "referrer", length = 512)
     private String referrer;
 
+    @Column(name = "query_text", length = 255)
+    private String queryText;
+
+    @Column(name = "match_target", length = 255)
+    private String matchTarget;
+
     @Column(name = "user_agent", length = 512)
     private String userAgent;
 
@@ -128,6 +134,22 @@ public class SeoEventEntity {
 
     public void setUserAgent(String userAgent) {
         this.userAgent = userAgent;
+    }
+
+    public String getQueryText() {
+        return queryText;
+    }
+
+    public void setQueryText(String queryText) {
+        this.queryText = queryText;
+    }
+
+    public String getMatchTarget() {
+        return matchTarget;
+    }
+
+    public void setMatchTarget(String matchTarget) {
+        this.matchTarget = matchTarget;
     }
 
     public Instant getOccurredAt() {

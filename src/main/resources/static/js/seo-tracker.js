@@ -2,6 +2,7 @@
     "use strict";
 
     var SESSION_KEY = "cb_seo_session_id";
+    var GUIDE_ATTRIBUTION_KEY = "cb_seo_guide_attribution";
 
     function randomId() {
         if (window.crypto && window.crypto.randomUUID) {
@@ -21,6 +22,57 @@
             return created;
         } catch (error) {
             return randomId();
+        }
+    }
+
+    function normalizeSlug(value) {
+        if (!value) {
+            return null;
+        }
+        var normalized = String(value).trim().toLowerCase();
+        if (!normalized) {
+            return null;
+        }
+        if (!/^[a-z0-9_-]{1,80}$/.test(normalized)) {
+            return null;
+        }
+        return normalized;
+    }
+
+    function getGuideAttribution() {
+        try {
+            var raw = window.sessionStorage.getItem(GUIDE_ATTRIBUTION_KEY);
+            if (!raw) {
+                return null;
+            }
+            var parsed = JSON.parse(raw);
+            var platformSlug = normalizeSlug(parsed.platformSlug);
+            var guideSlug = normalizeSlug(parsed.guideSlug);
+            if (!platformSlug || !guideSlug) {
+                return null;
+            }
+            return {
+                platformSlug: platformSlug,
+                guideSlug: guideSlug
+            };
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function saveGuideAttribution(platformSlug, guideSlug) {
+        var platform = normalizeSlug(platformSlug);
+        var guide = normalizeSlug(guideSlug);
+        if (!platform || !guide) {
+            return;
+        }
+        try {
+            window.sessionStorage.setItem(GUIDE_ATTRIBUTION_KEY, JSON.stringify({
+                platformSlug: platform,
+                guideSlug: guide
+            }));
+        } catch (error) {
+            // noop
         }
     }
 
@@ -97,19 +149,10 @@
 
         var platformSlug = node.getAttribute("data-seo-platform") || null;
         var guideSlug = node.getAttribute("data-seo-guide") || null;
+        saveGuideAttribution(platformSlug, guideSlug);
         track("guide_view", {
             platformSlug: platformSlug,
             guideSlug: guideSlug
-        });
-
-        var clickTargets = document.querySelectorAll("[data-seo-event]");
-        clickTargets.forEach(function (element) {
-            element.addEventListener("click", function () {
-                track(element.getAttribute("data-seo-event"), {
-                    platformSlug: element.getAttribute("data-seo-platform") || platformSlug,
-                    guideSlug: element.getAttribute("data-seo-guide") || guideSlug
-                });
-            });
         });
     }
 
@@ -118,19 +161,90 @@
             return;
         }
         var params = new URLSearchParams(window.location.search || "");
-        if (params.get("src") !== "guide") {
+        var source = params.get("src");
+        if (source !== "guide" && source !== "guide_router_nomatch") {
             return;
         }
-        track("new_case_view_from_guide", {
-            platformSlug: params.get("platform"),
-            guideSlug: params.get("guide"),
-            sourceChannel: "guide_internal"
+        var platformSlug = normalizeSlug(params.get("platform"));
+        var guideSlug = normalizeSlug(params.get("guide")) || (source === "guide_router_nomatch" ? "router_nomatch" : null);
+        saveGuideAttribution(platformSlug, guideSlug);
+        track(source === "guide_router_nomatch" ? "new_case_view_from_router_nomatch" : "new_case_view_from_guide", {
+            platformSlug: platformSlug,
+            guideSlug: guideSlug,
+            sourceChannel: source === "guide_router_nomatch" ? "guide_router" : "guide_internal"
+        });
+    }
+
+    function initCaseCreatedTracking() {
+        if (!window.location.pathname.startsWith("/c/")) {
+            return;
+        }
+        var params = new URLSearchParams(window.location.search || "");
+        var source = params.get("src");
+        if (source !== "guide" && source !== "guide_router_nomatch") {
+            return;
+        }
+        if (params.get("created") !== "1") {
+            return;
+        }
+
+        var platformSlug = normalizeSlug(params.get("platform"));
+        var guideSlug = normalizeSlug(params.get("guide")) || (source === "guide_router_nomatch" ? "router_nomatch" : null);
+        if (!guideSlug) {
+            return;
+        }
+        if (platformSlug) {
+            saveGuideAttribution(platformSlug, guideSlug);
+        }
+
+        var caseCreatedFlagKey = "cb_case_created_tracked_" + window.location.pathname;
+        try {
+            if (window.sessionStorage.getItem(caseCreatedFlagKey) === "1") {
+                return;
+            }
+            window.sessionStorage.setItem(caseCreatedFlagKey, "1");
+        } catch (error) {
+            // noop
+        }
+
+        track(source === "guide_router_nomatch" ? "case_created_from_router_nomatch" : "case_created_from_guide", {
+            platformSlug: platformSlug,
+            guideSlug: guideSlug,
+            sourceChannel: source === "guide_router_nomatch" ? "guide_router" : "guide_internal"
+        });
+    }
+
+    function initGlobalSeoEventTracking() {
+        document.addEventListener("click", function (event) {
+            var target = event.target && event.target.closest ? event.target.closest("[data-seo-event]") : null;
+            if (!target) {
+                return;
+            }
+            var eventName = target.getAttribute("data-seo-event");
+            if (!eventName) {
+                return;
+            }
+            var attribution = getGuideAttribution();
+            var platformSlug = normalizeSlug(target.getAttribute("data-seo-platform"))
+                    || (attribution ? attribution.platformSlug : null);
+            var guideSlug = normalizeSlug(target.getAttribute("data-seo-guide"))
+                    || (attribution ? attribution.guideSlug : null);
+            if (platformSlug && guideSlug) {
+                saveGuideAttribution(platformSlug, guideSlug);
+            }
+            track(eventName, {
+                platformSlug: platformSlug,
+                guideSlug: guideSlug,
+                sourceChannel: (platformSlug && guideSlug) ? "guide_internal" : undefined
+            });
         });
     }
 
     document.addEventListener("DOMContentLoaded", function () {
+        initGlobalSeoEventTracking();
         initGuideDetailTracking();
         initNewCaseTracking();
+        initCaseCreatedTracking();
     });
 
     window.cbSeoTracker = {

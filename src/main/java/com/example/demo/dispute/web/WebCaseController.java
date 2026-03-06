@@ -22,6 +22,7 @@ import com.example.demo.dispute.service.PaymentService;
 import com.example.demo.dispute.service.PolicyCatalogService;
 import com.example.demo.dispute.service.ReasonCodeChecklistService;
 import com.example.demo.dispute.service.ReadinessService;
+import com.example.demo.dispute.service.RetentionPolicyService;
 import com.example.demo.dispute.service.SubmissionExportService;
 import com.example.demo.dispute.service.ValidationFreshnessService;
 import com.example.demo.dispute.service.ValidationHistoryService;
@@ -33,9 +34,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Value;
@@ -59,6 +60,9 @@ public class WebCaseController {
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm z")
             .withZone(ZoneId.systemDefault());
     private static final Pattern CASE_TOKEN_PATTERN = Pattern.compile("(case_[A-Za-z0-9]+)");
+    private static final Pattern ATTRIBUTION_VALUE_PATTERN = Pattern.compile("^[a-z0-9_-]{1,80}$");
+    private static final String SOURCE_GUIDE = "guide";
+    private static final String SOURCE_GUIDE_ROUTER_NOMATCH = "guide_router_nomatch";
 
     private final CaseService caseService;
     private final CaseReportService caseReportService;
@@ -73,8 +77,8 @@ public class WebCaseController {
     private final PolicyCatalogService policyCatalogService;
     private final ReasonCodeChecklistService reasonCodeChecklistService;
     private final DisputeExplanationService disputeExplanationService;
+    private final RetentionPolicyService retentionPolicyService;
     private final int caseMaxFiles;
-    private final int retentionDays;
     private final String publicBaseUrl;
 
     public WebCaseController(
@@ -91,8 +95,8 @@ public class WebCaseController {
             PolicyCatalogService policyCatalogService,
             ReasonCodeChecklistService reasonCodeChecklistService,
             DisputeExplanationService disputeExplanationService,
+            RetentionPolicyService retentionPolicyService,
             @Value("${app.case.max-files:100}") int caseMaxFiles,
-            @Value("${app.retention.days:7}") int retentionDays,
             @Value("${app.public-base-url:http://localhost:8080}") String publicBaseUrl
     ) {
         this.caseService = caseService;
@@ -108,8 +112,8 @@ public class WebCaseController {
         this.policyCatalogService = policyCatalogService;
         this.reasonCodeChecklistService = reasonCodeChecklistService;
         this.disputeExplanationService = disputeExplanationService;
+        this.retentionPolicyService = retentionPolicyService;
         this.caseMaxFiles = caseMaxFiles;
-        this.retentionDays = retentionDays;
         this.publicBaseUrl = trimTrailingSlash(publicBaseUrl);
     }
 
@@ -146,13 +150,35 @@ public class WebCaseController {
     }
 
     @GetMapping("/new")
-    public String newCase(Model model, @RequestParam(value = "error", required = false) String error) {
+    public String newCase(
+            Model model,
+            @RequestParam(value = "error", required = false) String error,
+            @RequestParam(value = "src", required = false) String source,
+            @RequestParam(value = "guide", required = false) String guide,
+            @RequestParam(value = "platform", required = false) String attributionPlatform,
+            @RequestParam(value = "q", required = false) String routerQuery
+    ) {
+        String normalizedSource = normalizeAttributionSource(source);
+        String normalizedGuide = normalizeAttributionValue(guide);
+        String normalizedPlatform = normalizeAttributionValue(attributionPlatform);
+        Platform prefillPlatform = resolveAttributionPlatform(normalizedSource, normalizedPlatform);
+        String prefillReasonCode = resolvePrefillReasonCode(normalizedSource, prefillPlatform, normalizedGuide);
+        String normalizedRouterQuery = normalizeRouterQuery(routerQuery);
+
         model.addAttribute("platforms", Platform.values());
         model.addAttribute("productScopes", ProductScope.values());
         model.addAttribute("cardNetworks", CardNetwork.values());
         model.addAttribute("stripeReasonOptions", reasonCodeChecklistService.listReasonOptions(Platform.STRIPE));
         model.addAttribute("shopifyReasonOptions", reasonCodeChecklistService.listReasonOptions(Platform.SHOPIFY));
         model.addAttribute("error", error);
+        model.addAttribute("attributionSource", normalizedSource);
+        model.addAttribute("attributionGuide", normalizedGuide);
+        model.addAttribute("attributionPlatform", normalizedPlatform);
+        model.addAttribute("prefillPlatform", prefillPlatform != null ? prefillPlatform.name() : null);
+        model.addAttribute("prefillReasonCode", prefillReasonCode);
+        model.addAttribute("routerQuery", normalizedRouterQuery);
+        model.addAttribute("retentionDays", retentionPolicyService.retentionDays());
+        model.addAttribute("retentionDueDateBufferDays", retentionPolicyService.dueDateBufferDays());
         return "newCase";
     }
 
@@ -162,7 +188,11 @@ public class WebCaseController {
             @RequestParam("productScope") ProductScope productScope,
             @RequestParam(value = "reasonCode", required = false) String reasonCode,
             @RequestParam(value = "dueAt", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueAt,
-            @RequestParam(value = "cardNetwork", required = false) String cardNetwork
+            @RequestParam(value = "cardNetwork", required = false) String cardNetwork,
+            @RequestParam(value = "src", required = false) String source,
+            @RequestParam(value = "guide", required = false) String guide,
+            @RequestParam(value = "sourcePlatform", required = false) String sourcePlatform,
+            @RequestParam(value = "query", required = false) String query
     ) {
         try {
             CardNetwork selectedNetwork = null;
@@ -173,7 +203,7 @@ public class WebCaseController {
             DisputeCase disputeCase = caseService.createCase(
                     new CreateCaseRequest(platform, productScope, reasonCode, dueAt, selectedNetwork)
             );
-            return "redirect:/c/" + disputeCase.getCaseToken();
+            return "redirect:/c/" + disputeCase.getCaseToken() + buildGuideAttributionQuery(source, sourcePlatform, guide, query);
         } catch (RuntimeException ex) {
             return "redirect:/new?error=" + encode(ex.getMessage());
         }
@@ -412,7 +442,7 @@ public class WebCaseController {
     @GetMapping("/c/{caseToken}/access-key.txt")
     public void downloadAccessKey(@PathVariable String caseToken, HttpServletResponse response) throws Exception {
         DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
-        Instant expiresAt = disputeCase.getCreatedAt().plus(retentionDays, ChronoUnit.DAYS);
+        Instant expiresAt = retentionPolicyService.resolveExpiry(disputeCase);
         String caseUrl = publicBaseUrl + "/c/" + disputeCase.getCaseToken();
 
         response.setContentType("text/plain; charset=UTF-8");
@@ -449,7 +479,7 @@ public class WebCaseController {
         DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
         CaseReportResponse report = caseReportService.getReport(disputeCase.getId());
         ReadinessService.ReadinessSummary readiness = readinessService.summarize(report);
-        Instant expiresAt = disputeCase.getCreatedAt().plus(retentionDays, ChronoUnit.DAYS);
+        Instant expiresAt = retentionPolicyService.resolveExpiry(disputeCase);
         int uploadedFileCount = report.files().size();
         EnumSet<EvidenceType> presentEvidenceTypes = EnumSet.noneOf(EvidenceType.class);
         report.files().forEach(file -> presentEvidenceTypes.add(file.evidenceType()));
@@ -487,7 +517,8 @@ public class WebCaseController {
         model.addAttribute("missingEvidenceTypes", readiness.missingEvidenceTypes());
         model.addAttribute("missingRequiredEvidenceTypes", readiness.missingRequiredEvidenceTypes());
         model.addAttribute("missingRecommendedEvidenceTypes", readiness.missingRecommendedEvidenceTypes());
-        model.addAttribute("retentionDays", retentionDays);
+        model.addAttribute("retentionDays", retentionPolicyService.retentionDays());
+        model.addAttribute("retentionDueDateBufferDays", retentionPolicyService.dueDateBufferDays());
         model.addAttribute("expiresAtText", DATE_TIME_FORMAT.format(expiresAt));
         model.addAttribute("casePublicUrl", publicBaseUrl + "/c/" + report.caseToken());
         model.addAttribute("exportReady", isExportableState(report.state()));
@@ -543,6 +574,111 @@ public class WebCaseController {
         }
 
         throw new IllegalArgumentException("Invalid case token format.");
+    }
+
+    private String normalizeAttributionSource(String source) {
+        if (source == null) {
+            return null;
+        }
+        String normalized = source.trim().toLowerCase(Locale.ROOT);
+        if (SOURCE_GUIDE.equals(normalized) || SOURCE_GUIDE_ROUTER_NOMATCH.equals(normalized)) {
+            return normalized;
+        }
+        return null;
+    }
+
+    private String normalizeAttributionValue(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        if (!ATTRIBUTION_VALUE_PATTERN.matcher(normalized).matches()) {
+            return null;
+        }
+        return normalized;
+    }
+
+    private String buildGuideAttributionQuery(String source, String sourcePlatform, String guide, String query) {
+        String normalizedSource = normalizeAttributionSource(source);
+        String normalizedPlatform = normalizeAttributionValue(sourcePlatform);
+        String normalizedGuide = normalizeAttributionValue(guide);
+        String normalizedQuery = normalizeRouterQuery(query);
+        if (SOURCE_GUIDE.equals(normalizedSource)) {
+            if (normalizedPlatform == null || normalizedGuide == null) {
+                return "";
+            }
+            return "?src=guide&platform=" + encode(normalizedPlatform) + "&guide=" + encode(normalizedGuide) + "&created=1";
+        }
+        if (SOURCE_GUIDE_ROUTER_NOMATCH.equals(normalizedSource)) {
+            StringBuilder queryString = new StringBuilder("?src=").append(SOURCE_GUIDE_ROUTER_NOMATCH)
+                    .append("&created=1")
+                    .append("&guide=router_nomatch");
+            if (normalizedPlatform != null) {
+                queryString.append("&platform=").append(encode(normalizedPlatform));
+            }
+            if (normalizedQuery != null) {
+                queryString.append("&q=").append(encode(normalizedQuery));
+            }
+            return queryString.toString();
+        }
+        return "";
+    }
+
+    private Platform resolveAttributionPlatform(String source, String platform) {
+        if ((!SOURCE_GUIDE.equals(source) && !SOURCE_GUIDE_ROUTER_NOMATCH.equals(source)) || platform == null) {
+            return null;
+        }
+        return switch (platform) {
+            case "stripe" -> Platform.STRIPE;
+            case "shopify" -> Platform.SHOPIFY;
+            default -> null;
+        };
+    }
+
+    private String resolvePrefillReasonCode(String source, Platform platform, String guide) {
+        if (!SOURCE_GUIDE.equals(source) || platform == null || guide == null) {
+            return null;
+        }
+        String guideToken = canonicalReasonToken(guide);
+        if (guideToken == null) {
+            return null;
+        }
+        return reasonCodeChecklistService.listReasonOptions(platform).stream()
+                .map(ReasonCodeChecklistService.ReasonOption::code)
+                .filter(code -> canonicalReasonToken(code) != null)
+                .filter(code -> canonicalReasonToken(code).equals(guideToken))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String canonicalReasonToken(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        if (normalized.isBlank()) {
+            return null;
+        }
+        normalized = normalized.replace('-', '_');
+        normalized = normalized.replace("cancelled", "canceled");
+        while (normalized.contains("__")) {
+            normalized = normalized.replace("__", "_");
+        }
+        return normalized;
+    }
+
+    private String normalizeRouterQuery(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        if (normalized.isBlank()) {
+            return null;
+        }
+        return normalized.length() > 255 ? normalized.substring(0, 255) : normalized;
     }
 
     private long totalSizeLimitFor(CaseReportResponse report) {

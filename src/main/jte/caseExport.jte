@@ -81,7 +81,7 @@
                 <h2 class="text-2xl font-bold text-green-900 mb-2">Export Pack Unlocked</h2>
                 <p class="text-green-800 mb-6 text-sm max-w-lg mx-auto leading-relaxed">Your submission assets are ready. Download the ZIP and summary guide, then submit them in your payment dashboard.</p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                    <a href="/c/${report.caseToken()}/download/submission.zip" class="cb-btn cb-btn-primary bg-green-600 hover:bg-green-700 shadow border-green-600 hover:border-green-700 focus:ring-green-500">
+                    <a href="/c/${report.caseToken()}/download/submission.zip" class="cb-btn cb-btn-primary bg-green-600 hover:bg-green-700 shadow border-green-600 hover:border-green-700 focus:ring-green-500" data-seo-event="guide_export_click">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                         Download Submission ZIP
                     </a>

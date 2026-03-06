@@ -29,7 +29,7 @@ Core flow:
 4. Upload evidence files by type
 5. Validate against platform rules
 6. Generate dispute explanation draft (editable)
-7. Run auto-fix (per-type merge + Shopify oversized image compression)
+7. Run auto-fix (per-type merge + Shopify oversized image compression + PDF external-link removal)
 8. Pay (Stripe Checkout) only when validation is fresh and required evidence coverage is complete
 9. Download submission ZIP (same required-evidence gate), explanation TXT, and one-page guide PDF
 
@@ -84,7 +84,7 @@ Open:
 Dev defaults:
 - H2 in-memory DB
 - evidence storage: `./data/evidence`
-- retention: 7 days
+- retention: 30 days default (extended to due date + buffer when later)
 
 ## Frontend Assets (Tailwind)
 
@@ -108,7 +108,8 @@ Output:
 General:
 - `APP_STORAGE_ROOT` (default `./data/evidence`)
 - `APP_CASE_MAX_FILES` (default `100`)
-- `APP_RETENTION_DAYS` (default `7`)
+- `APP_RETENTION_DAYS` (default `30`)
+- `APP_RETENTION_DUE_DATE_BUFFER_DAYS` (default `7`)
 - `APP_RETENTION_CRON` (default `0 30 3 * * *`)
 - `APP_API_ENFORCE_CASE_TOKEN` (default `true`)
 - `APP_TRACE_HEADER_NAME` (default `X-Trace-Id`)
@@ -202,9 +203,37 @@ Prod defaults:
 - Quality gate test:
   - `.\gradlew.bat test --tests "*SeoGuideCatalogQualityTest"`
 
+## Router No-Match Loop (What "No-Match" Means)
+
+- `No-Match` means: user-entered error text did not strongly match an existing guide.
+- This is a useful signal, not a failure:
+  - it captures real user error wording you did not cover yet,
+  - it feeds the next pSEO guide backlog with evidence.
+
+Current behavior:
+- `/guides/router` tries best-match routing first.
+- If match score is strong:
+  - error-guide query -> `/new?src=guide...`
+  - reason-guide query -> `/guides/{platform}/{slug}`
+- If no strong match:
+  - route to direct fix flow (`/new?src=guide_router_nomatch...`) when platform is known,
+  - preserve original query text for attribution and analytics.
+
+Tracked events for this loop:
+- `guide_router_nomatch`
+- `new_case_view_from_router_nomatch`
+- `case_created_from_router_nomatch`
+
+KPI additions:
+- no-match volume
+- no-match -> new-case-view rate
+- no-match -> case-created rate
+- top no-match queries (`routerOpportunities`) with suggested slug/title for new guide creation
+
 ## Retention / Privacy
 
-- Default retention is 7 days, then scheduled cleanup removes case and files.
+- Default retention is 30 days.
+- If due date is set, expiry extends to `due date + APP_RETENTION_DUE_DATE_BUFFER_DAYS` when that is later than created+retention.
 - User can delete case immediately from dashboard.
 
 ## Manual QA Checklist
@@ -237,6 +266,8 @@ Prod defaults:
 5. Confirm no Korean/garbled text exists in `src/main`, `src/test`, `README.md`.
 6. Confirm retention notice is visible in Terms/Privacy and dashboard flow.
 7. Confirm prod config variables are set for storage and database before deploy.
+8. Run `/guides/router` no-match query and confirm direct-fix redirect to `/new?src=guide_router_nomatch...`.
+9. Check `/seo/kpi` and confirm router no-match metrics are populated.
 
 ## Notes
 

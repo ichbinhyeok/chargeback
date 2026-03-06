@@ -9,6 +9,14 @@
 @param List<ReasonCodeChecklistService.ReasonOption> stripeReasonOptions
 @param List<ReasonCodeChecklistService.ReasonOption> shopifyReasonOptions
 @param String error
+@param String attributionSource
+@param String attributionGuide
+@param String attributionPlatform
+@param String prefillPlatform
+@param String prefillReasonCode
+@param String routerQuery
+@param int retentionDays
+@param int retentionDueDateBufferDays
 
 @template.layout(title = "Create New Case", content = @`
     <div class="max-w-2xl mx-auto">
@@ -26,6 +34,22 @@
             </div>
         @endif
 
+        @if("guide_router_nomatch".equals(attributionSource) && routerQuery != null && !routerQuery.isBlank())
+            <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <p class="font-semibold mb-1">No exact guide match yet</p>
+                <p>Continuing with direct fix flow for: <code>${routerQuery}</code></p>
+            </div>
+        @endif
+
+        <div class="mb-6 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+            <p class="font-semibold mb-2">Privacy & Trust</p>
+            <ul class="list-disc pl-5 space-y-1">
+                <li>Case routes use <code>noindex / no-store / no-referrer</code> protections.</li>
+                <li>Default retention is <strong>${retentionDays} days</strong> (extended to due date + ${retentionDueDateBufferDays} days buffer when later).</li>
+                <li>You can delete your case and files immediately anytime from the dashboard.</li>
+            </ul>
+        </div>
+
         <div class="cb-card">
             <div class="border-b border-gray-100 pb-5 mb-6">
                 <h1 class="text-2xl font-bold text-neutral-800">Create New Dispute Case</h1>
@@ -33,13 +57,17 @@
             </div>
 
             <form id="new-case-form" method="post" action="/new" class="space-y-6">
+                <input type="hidden" name="src" value="${attributionSource != null ? attributionSource : ""}">
+                <input type="hidden" name="guide" value="${attributionGuide != null ? attributionGuide : ""}">
+                <input type="hidden" name="sourcePlatform" value="${attributionPlatform != null ? attributionPlatform : ""}">
+                <input type="hidden" name="query" value="${routerQuery != null ? routerQuery : ""}">
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <div class="space-y-1.5">
                         <label for="platform" class="block text-sm font-semibold text-gray-700">Platform</label>
                         <select id="platform" name="platform" required class="cb-input">
-                            <option value="" disabled selected>Select Platform</option>
+                            <option value="" disabled selected="${prefillPlatform == null}">Select Platform</option>
                             @for(Platform platform : platforms)
-                                <option value="${platform.name()}">${platform.name()}</option>
+                                <option value="${platform.name()}" selected="${prefillPlatform != null && prefillPlatform.equals(platform.name())}">${platform.name()}</option>
                             @endfor
                         </select>
                     </div>
@@ -72,7 +100,7 @@
                     
                     <div class="sm:col-span-2 space-y-1.5">
                         <label for="reasonPreset" class="block text-sm font-semibold text-gray-700">Reason Code Preset <span class="text-gray-400 font-normal ml-1">(Optional)</span></label>
-                        <select id="reasonPreset" class="cb-input bg-gray-50 text-gray-600">
+                        <select id="reasonPreset" class="cb-input bg-gray-50 text-gray-600" data-prefill-code="${prefillReasonCode != null ? prefillReasonCode : ""}">
                             <option value="">Not set</option>
                         </select>
                         <input id="reasonCustom" type="text" placeholder="Custom reason code (e.g. 13.1, item_not_received)" class="cb-input bg-gray-50 text-gray-600 hidden mt-2">
@@ -108,6 +136,10 @@
         const reasonCodeInput = document.getElementById('reasonCode');
         const reasonHint = document.getElementById('reasonHint');
         const reasonOptionNodes = document.querySelectorAll('#reason-options-store [data-platform]');
+        const sourcePlatformInput = document.querySelector('input[name="sourcePlatform"]');
+        const prefillPlatform = ((sourcePlatformInput && sourcePlatformInput.value) ? sourcePlatformInput.value : '').trim().toUpperCase();
+        const prefillReasonCode = (reasonPresetSelect.dataset.prefillCode || '').trim();
+        let reasonPrefillApplied = false;
 
         const reasonOptionsByPlatform = {};
         reasonOptionNodes.forEach((node) => {
@@ -155,8 +187,13 @@
             options.forEach((option) => addReasonOption(option.code, option.label, option.hint));
             addReasonOption('__CUSTOM__', 'Custom input', 'Use this if your reason code is not listed.');
 
-            const hasCurrentValue = Array.from(reasonPresetSelect.options).some((option) => option.value === currentValue);
-            reasonPresetSelect.value = hasCurrentValue ? currentValue : '';
+            let targetValue = currentValue;
+            if (!reasonPrefillApplied && prefillReasonCode) {
+                targetValue = prefillReasonCode;
+                reasonPrefillApplied = true;
+            }
+            const hasTargetValue = Array.from(reasonPresetSelect.options).some((option) => option.value === targetValue);
+            reasonPresetSelect.value = hasTargetValue ? targetValue : '';
             refreshReasonInputs();
         }
 
@@ -200,6 +237,9 @@
         reasonCustomInput.addEventListener('input', syncReasonCodeValue);
         newCaseForm.addEventListener('submit', syncReasonCodeValue);
 
+        if (prefillPlatform && Array.from(platformSelect.options).some((option) => option.value === prefillPlatform)) {
+            platformSelect.value = prefillPlatform;
+        }
         refreshScopeOptions();
         refreshReasonPresetOptions();
     </script>

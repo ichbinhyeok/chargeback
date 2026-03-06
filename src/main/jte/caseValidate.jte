@@ -151,7 +151,7 @@
                 <div class="mt-8 bg-blue-50 border border-blue-100 rounded-xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
                         <h4 class="font-bold text-blue-900 mb-1">Let us fix these issues automatically</h4>
-                        <p class="text-sm text-blue-800">Our auto-fix engine repairs image compression and merges multi-file types like <code class="bg-blue-100 px-1 rounded mx-0.5 text-xs text-blue-900 font-bold">receipt</code> where possible.</p>
+                        <p class="text-sm text-blue-800">Our auto-fix engine merges multi-file types, compresses oversized Shopify images, and removes PDF external-link annotations when detected.</p>
                     </div>
                     <form method="post" action="/c/${report.caseToken()}/fix">
                         <button type="submit" class="cb-btn cb-btn-primary bg-blue-600 hover:bg-blue-700 hover:-translate-y-0.5 transition-transform shrink-0 shadow">Run Auto-Fix Engine</button>

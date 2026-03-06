@@ -145,6 +145,12 @@ class ValidationServiceTest {
 
         assertFalse(response.passed());
         assertContainsCode(response, "ERR_STRIPE_LINK_DETECTED");
+        ValidationIssueResponse issue = response.issues().stream()
+                .filter(item -> "ERR_STRIPE_LINK_DETECTED".equals(item.code()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(IssueSeverity.FIXABLE, issue.severity());
+        assertEquals(FixStrategy.REMOVE_EXTERNAL_LINKS_PDF, issue.fixStrategy());
     }
 
     @Test

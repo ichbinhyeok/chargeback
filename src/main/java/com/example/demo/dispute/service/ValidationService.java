@@ -159,15 +159,21 @@ public class ValidationService {
             issues.add(issue(
                     "ERR_STRIPE_LINK_DETECTED",
                     "STR_CNT_001",
-                    IssueSeverity.BLOCKED,
-                    "External links are not allowed in Stripe evidence."
+                    IssueSeverity.FIXABLE,
+                    "External links are not allowed in Stripe evidence.",
+                    IssueTargetScope.GLOBAL,
+                    null,
+                    FixStrategy.REMOVE_EXTERNAL_LINKS_PDF
             ));
         } else {
             issues.add(issue(
                     "ERR_SHPFY_LINK_DETECTED",
                     "SHP_CNT_001",
-                    IssueSeverity.BLOCKED,
-                    "External links are not allowed in Shopify evidence."
+                    IssueSeverity.FIXABLE,
+                    "External links are not allowed in Shopify evidence.",
+                    IssueTargetScope.GLOBAL,
+                    null,
+                    FixStrategy.REMOVE_EXTERNAL_LINKS_PDF
             ));
         }
     }

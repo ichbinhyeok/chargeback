@@ -17,7 +17,7 @@
                 
                 <div>
                     <h2 class="text-lg font-bold text-gray-900 mb-2">Retention and Deletion</h2>
-                    <p>Cases and uploaded evidence files are strictly retained for a maximum of <strong>7 days</strong> by default. After this period, all case files and metadata are automatically permanently deleted from our servers. Users can also manually delete their case immediately from the dashboard at any time.</p>
+                    <p>Cases and uploaded evidence files are retained for <strong>30 days by default</strong>. If a due date is set, retention may extend to due date plus a safety buffer. After expiry, case files and metadata are automatically permanently deleted from our servers. Users can also manually delete their case immediately from the dashboard at any time.</p>
                 </div>
                 
                 <div>

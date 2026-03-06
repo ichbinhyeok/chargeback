@@ -5,6 +5,12 @@
 @param Set<String> platforms
 @param String canonicalUrl
 @param String metaDescription
+@param String routerQuery
+@param String routerPlatform
+@param boolean routerPlatformStripe
+@param boolean routerPlatformShopify
+@param boolean routerNoMatch
+@param String routerStartFixUrl
 
 @template.layout(
     title = "Dispute Evidence Guides | Chargeback Builder",
@@ -16,6 +22,36 @@
         <p class="text-gray-600 max-w-2xl">
             Public Stripe and Shopify guides focused on high-intent upload failures (file size, format, link errors) plus reason-code evidence checklists.
         </p>
+    </section>
+
+    <section class="cb-card mb-8 border-2 border-primary-600">
+        <h2 class="text-lg font-semibold text-gray-900 mb-3">Find My Error Fast</h2>
+        <p class="text-sm text-gray-600 mb-4">Paste your upload error text and route directly to the best fix flow.</p>
+        <form method="get" action="/guides/router" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <div class="md:col-span-3">
+                <label for="routerQ" class="block text-sm font-medium text-gray-700 mb-1">Error Text</label>
+                <input id="routerQ" name="q" class="cb-input" placeholder="e.g. pdf/a format required, evidence file too large, no external links" value="${routerQuery != null ? routerQuery : ""}">
+            </div>
+            <div>
+                <label for="routerPlatform" class="block text-sm font-medium text-gray-700 mb-1">Platform</label>
+                <select id="routerPlatform" name="platform" class="cb-input">
+                    <option value="">All</option>
+                    <option value="stripe" selected="${routerPlatformStripe}">Stripe</option>
+                    <option value="shopify" selected="${routerPlatformShopify}">Shopify</option>
+                </select>
+            </div>
+            <div class="md:col-span-4 flex justify-end">
+                <button type="submit" class="cb-btn cb-btn-primary">Route to Fix</button>
+            </div>
+        </form>
+        @if(routerNoMatch)
+            <div class="mt-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
+                <p>No strong match found yet. Try adding platform and exact error words (e.g. <code>pdf/a</code>, <code>duplicate evidence type</code>, <code>no external links</code>).</p>
+                @if(routerStartFixUrl != null && !routerStartFixUrl.isBlank())
+                    <a href="${routerStartFixUrl}" class="mt-3 inline-block cb-btn cb-btn-primary">Start Direct Fix Anyway</a>
+                @endif
+            </div>
+        @endif
     </section>
 
     <section class="cb-card mb-8">
@@ -37,7 +73,8 @@
                 <h2 class="text-xl font-semibold text-gray-900 mb-2">${guide.title()}</h2>
                 <p class="text-sm text-gray-600 mb-4">${guide.metaDescription()}</p>
                 <p class="text-xs text-gray-500 mb-4">${guide.reasonCodeLabel()}</p>
-                <a href="${guide.path()}" class="cb-btn cb-btn-secondary">Read Guide</a>
+                <a href="/new?src=guide&platform=${guide.platformSlug()}&guide=${guide.reasonCodeSlug()}" class="cb-btn cb-btn-primary" data-seo-event="guide_start_case_click" data-seo-platform="${guide.platformSlug()}" data-seo-guide="${guide.reasonCodeSlug()}">Start 3-Minute Fix</a>
+                <a href="${guide.path()}" class="mt-3 inline-block text-sm text-primary-600 hover:underline">View guide details</a>
             </article>
         @endfor
     </section>

@@ -21,11 +21,11 @@
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
               <span class="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
             </span>
-            Win More Disputes
+            Upload-Failure Recovery
         </div>
         
         <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-neutral-800 tracking-tight leading-tight mb-6">
-            Stop Auto-Losing Disputes from <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-indigo-600">Formatting Mistakes</span>
+            Fix Stripe/Shopify Evidence Upload <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-indigo-600">Blockers Before Submission</span>
         </h1>
         
         <p class="text-lg md:text-xl text-gray-600 mb-10 max-w-2xl leading-relaxed">

@@ -21,6 +21,7 @@
 @param List<String> missingRecommendedEvidenceTypes
 @param ReasonCodeChecklistService.ReasonChecklist reasonChecklist
 @param Integer retentionDays
+@param Integer retentionDueDateBufferDays
 @param String expiresAtText
 @param String casePublicUrl
 
@@ -123,7 +124,8 @@
 
         <section class="cb-card">
             <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Retention</h2>
-            <p class="text-sm text-gray-700">Automatic deletion after <strong>${retentionDays} days</strong>.</p>
+            <p class="text-sm text-gray-700">Automatic deletion after <strong>${retentionDays} days</strong> by default.</p>
+            <p class="text-sm text-gray-700 mt-1">If due date is set, expiry extends to <strong>due date + ${retentionDueDateBufferDays} day(s)</strong> when later.</p>
             <p class="text-sm text-gray-700 mt-1">Scheduled deletion: <strong>${expiresAtText}</strong></p>
             <p class="mt-3 text-xs text-gray-500">Use Delete Case now for immediate removal of files and metadata.</p>
         </section>

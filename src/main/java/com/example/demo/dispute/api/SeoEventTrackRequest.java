@@ -8,6 +8,8 @@ public record SeoEventTrackRequest(
         String sourceChannel,
         String sessionId,
         String referrer,
-        String userAgent
+        String userAgent,
+        String queryText,
+        String matchTarget
 ) {
 }

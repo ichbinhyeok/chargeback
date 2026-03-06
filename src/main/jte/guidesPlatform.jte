@@ -28,7 +28,8 @@
                         <div class="text-xs uppercase tracking-wide text-primary-600 font-semibold mb-2">${guide.reasonCodeLabel()}</div>
                         <h3 class="text-lg font-semibold text-gray-900 mb-2">${guide.title()}</h3>
                         <p class="text-sm text-gray-600 mb-4">${guide.metaDescription()}</p>
-                        <a href="${guide.path()}" class="cb-btn cb-btn-secondary">Open Error Guide</a>
+                        <a href="/new?src=guide&platform=${guide.platformSlug()}&guide=${guide.reasonCodeSlug()}" class="cb-btn cb-btn-primary" data-seo-event="guide_start_case_click" data-seo-platform="${guide.platformSlug()}" data-seo-guide="${guide.reasonCodeSlug()}">Start 3-Minute Fix</a>
+                        <a href="${guide.path()}" class="mt-3 inline-block text-sm text-primary-600 hover:underline">View guide details</a>
                     </article>
                 @endfor
             </div>
@@ -44,7 +45,8 @@
                         <div class="text-xs uppercase tracking-wide text-primary-600 font-semibold mb-2">${guide.reasonCodeLabel()}</div>
                         <h3 class="text-lg font-semibold text-gray-900 mb-2">${guide.title()}</h3>
                         <p class="text-sm text-gray-600 mb-4">${guide.metaDescription()}</p>
-                        <a href="${guide.path()}" class="cb-btn cb-btn-secondary">Open Checklist</a>
+                        <a href="/new?src=guide&platform=${guide.platformSlug()}&guide=${guide.reasonCodeSlug()}" class="cb-btn cb-btn-primary" data-seo-event="guide_start_case_click" data-seo-platform="${guide.platformSlug()}" data-seo-guide="${guide.reasonCodeSlug()}">Start 3-Minute Fix</a>
+                        <a href="${guide.path()}" class="mt-3 inline-block text-sm text-primary-600 hover:underline">View guide details</a>
                     </article>
                 @endfor
             </div>

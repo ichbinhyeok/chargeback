@@ -65,6 +65,9 @@ public class ValidationIssueContractResolver {
         if ("ERR_SHPFY_FILE_TOO_LARGE".equals(code)) {
             return FixStrategy.COMPRESS_SHOPIFY_IMAGE_IF_IMAGE;
         }
+        if ("ERR_STRIPE_LINK_DETECTED".equals(code) || "ERR_SHPFY_LINK_DETECTED".equals(code)) {
+            return FixStrategy.REMOVE_EXTERNAL_LINKS_PDF;
+        }
         return FixStrategy.NONE;
     }
 

@@ -147,6 +147,55 @@ class CaseControllerIntegrationTest {
     }
 
     @Test
+    void autoFixRemovesExternalLinksFromPdfAndRevalidatesCase() throws Exception {
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "policy.pdf",
+                "application/pdf",
+                pdfWithExternalLink()
+        );
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(file)
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "POLICIES"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.externalLinkDetected").value(true));
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(false))
+                .andExpect(jsonPath("$.issues[0].code").value("ERR_STRIPE_LINK_DETECTED"))
+                .andExpect(jsonPath("$.issues[0].fixStrategy").value("REMOVE_EXTERNAL_LINKS_PDF"));
+
+        mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+
+        mockMvc.perform(get("/api/cases/{caseId}/files", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].externalLinkDetected").value(false));
+
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latestValidation.source").value("AUTO_FIX"))
+                .andExpect(jsonPath("$.latestValidation.passed").value(true));
+
+        CaseState state = disputeCaseRepository.findById(caseId).orElseThrow().getState();
+        org.junit.jupiter.api.Assertions.assertEquals(CaseState.READY, state);
+    }
+
+    @Test
     void autoFixDedupesFilesPerTypeAndRevalidatesCase() throws Exception {
         CaseRef caseRef = createStripeCase();
         UUID caseId = caseRef.caseId();
@@ -563,10 +612,35 @@ class CaseControllerIntegrationTest {
     void newCasePageRendersReasonPresetControls() throws Exception {
         mockMvc.perform(get("/new"))
                 .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Privacy & Trust")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Reason Code Preset")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"reasonPreset\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-platform=\"STRIPE\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-platform=\"SHOPIFY\"")));
+    }
+
+    @Test
+    void newCasePagePrefillsFromGuideAttribution() throws Exception {
+        mockMvc.perform(get("/new")
+                        .param("src", "guide")
+                        .param("platform", "stripe")
+                        .param("guide", "fraudulent"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"sourcePlatform\" value=\"stripe\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-prefill-code=\"FRAUDULENT\"")));
+    }
+
+    @Test
+    void createCaseRedirectFromGuideIncludesCreatedFlag() throws Exception {
+        mockMvc.perform(post("/new")
+                        .param("platform", "STRIPE")
+                        .param("productScope", "STRIPE_DISPUTE")
+                        .param("reasonCode", "fraudulent")
+                        .param("src", "guide")
+                        .param("guide", "fraudulent")
+                        .param("sourcePlatform", "stripe"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("src=guide&platform=stripe&guide=fraudulent&created=1")));
     }
 
     @Test
@@ -592,13 +666,69 @@ class CaseControllerIntegrationTest {
         mockMvc.perform(get("/guides/stripe/fraudulent"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Fraudulent Evidence Checklist for Upload Recovery")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Case Check")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start 3-Minute Fix")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"@type\": \"FAQPage\"")));
 
         mockMvc.perform(get("/guides/stripe/evidence-file-size-limit-4-5mb"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Evidence File Size Limit 4.5MB Evidence Upload Error Fix Guide")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe \"evidence file size limit 4.5MB\" upload fix")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Search Phrases This Page Solves")));
+    }
+
+    @Test
+    void guidesRouterRoutesErrorQueriesToNewCaseFlow() throws Exception {
+        mockMvc.perform(get("/guides/router")
+                        .param("q", "shopify pdf a format required error")
+                        .param("platform", "shopify"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/new?src=guide&platform=shopify&guide=pdf-a-format-required-error")));
+    }
+
+    @Test
+    void guidesRouterNoMatchWithPlatformRedirectsToDirectFixNewCase() throws Exception {
+        mockMvc.perform(get("/guides/router")
+                        .param("q", "shopify checksum signature mismatch parser")
+                        .param("platform", "shopify"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/new?src=guide_router_nomatch&guide=router_nomatch&platform=shopify")));
+    }
+
+    @Test
+    void newCasePageShowsRouterNoMatchBannerAndPreservesQuery() throws Exception {
+        mockMvc.perform(get("/new")
+                        .param("src", "guide_router_nomatch")
+                        .param("platform", "shopify")
+                        .param("guide", "router_nomatch")
+                        .param("q", "shopify weird embedded object parser failure"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("No exact guide match yet")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"query\" value=\"shopify weird embedded object parser failure\"")));
+    }
+
+    @Test
+    void createCaseRedirectFromRouterNoMatchIncludesCreatedFlag() throws Exception {
+        mockMvc.perform(post("/new")
+                        .param("platform", "SHOPIFY")
+                        .param("productScope", "SHOPIFY_PAYMENTS_CHARGEBACK")
+                        .param("src", "guide_router_nomatch")
+                        .param("guide", "router_nomatch")
+                        .param("sourcePlatform", "shopify")
+                        .param("query", "shopify weird embedded object parser failure"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("src=guide_router_nomatch")))
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("guide=router_nomatch")))
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("platform=shopify")))
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("created=1")))
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("q=shopify+weird+embedded+object+parser+failure")));
+    }
+
+    @Test
+    void guidesRouterRoutesReasonQueriesToGuidePage() throws Exception {
+        mockMvc.perform(get("/guides/router")
+                        .param("q", "stripe fraudulent evidence checklist")
+                        .param("platform", "stripe"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", "/guides/stripe/fraudulent"));
     }
 
     @Test

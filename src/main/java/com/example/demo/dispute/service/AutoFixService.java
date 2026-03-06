@@ -39,12 +39,16 @@ import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.cos.COSBase;
+import org.apache.pdfbox.cos.COSDictionary;
+import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -142,7 +146,7 @@ public class AutoFixService {
                 return failJob(
                         job,
                         FAIL_CODE_NOTHING_TO_FIX,
-                        "No supported auto-fix issue found. Supported: merge multi-file-per-type and Shopify oversized image compression."
+                        "No supported auto-fix issue found. Supported: merge multi-file-per-type, Shopify oversized image compression, and PDF external-link removal."
                 );
             }
 
@@ -154,7 +158,8 @@ public class AutoFixService {
             job.setStatus(FixJobStatus.SUCCEEDED);
             job.setSummary(
                     "Merged " + change.mergedTypes() + " type(s), compressed " + change.compressedImages()
-                            + " image(s). Validation passed=" + response.passed() + "."
+                            + " image(s), sanitized " + change.linkSanitizedFiles()
+                            + " PDF file(s). Validation passed=" + response.passed() + "."
             );
             job.setFailCode(null);
             job.setFailMessage(null);
@@ -166,7 +171,9 @@ public class AutoFixService {
                     "SYSTEM",
                     "AUTO_FIX_COMPLETED",
                     "jobId=" + saved.getId() + ",mergedTypes=" + change.mergedTypes()
-                            + ",compressedImages=" + change.compressedImages() + ",passed=" + response.passed()
+                            + ",compressedImages=" + change.compressedImages()
+                            + ",linkSanitizedFiles=" + change.linkSanitizedFiles()
+                            + ",passed=" + response.passed()
             );
             return saved;
         } catch (RuntimeException ex) {
@@ -178,7 +185,8 @@ public class AutoFixService {
     private FixChange applySupportedFixes(DisputeCase disputeCase) {
         int mergedTypes = mergeFilesByEvidenceType(disputeCase);
         int compressedImages = compressOversizedShopifyImages(disputeCase);
-        return new FixChange(mergedTypes, compressedImages);
+        int linkSanitizedFiles = removeExternalLinksFromPdfFiles(disputeCase);
+        return new FixChange(mergedTypes, compressedImages, linkSanitizedFiles);
     }
 
     private int mergeFilesByEvidenceType(DisputeCase disputeCase) {
@@ -296,6 +304,103 @@ public class AutoFixService {
         }
 
         return compressed;
+    }
+
+    private int removeExternalLinksFromPdfFiles(DisputeCase disputeCase) {
+        int sanitized = 0;
+        List<EvidenceFileEntity> files = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId());
+        for (EvidenceFileEntity file : files) {
+            if (file.getFileFormat() != FileFormat.PDF || !file.isExternalLinkDetected()) {
+                continue;
+            }
+
+            Path originalPath = Path.of(file.getStoragePath());
+            Path sanitizedPath = buildTargetPdfPath(file.getStoragePath());
+            if (!stripExternalLinks(originalPath, sanitizedPath)) {
+                continue;
+            }
+
+            PdfMetadata metadata = pdfMetadataExtractor.extract(sanitizedPath);
+            if (metadata.externalLinkDetected()) {
+                deletePathQuietly(sanitizedPath);
+                continue;
+            }
+
+            long sanitizedSize;
+            try {
+                sanitizedSize = Files.size(sanitizedPath);
+            } catch (IOException ex) {
+                deletePathQuietly(sanitizedPath);
+                throw new IllegalStateException("failed to read sanitized file size", ex);
+            }
+
+            file.setOriginalName(stripExtension(file.getOriginalName()) + "_autofix.pdf");
+            file.setContentType("application/pdf");
+            file.setStoragePath(sanitizedPath.toString());
+            file.setSizeBytes(sanitizedSize);
+            file.setPageCount(metadata.pageCount());
+            file.setFileFormat(FileFormat.PDF);
+            file.setPdfACompliant(metadata.pdfACompliant());
+            file.setPdfPortfolio(metadata.pdfPortfolio());
+            file.setExternalLinkDetected(metadata.externalLinkDetected());
+            evidenceFileRepository.save(file);
+            deletePathQuietly(originalPath);
+
+            sanitized++;
+            auditLogService.log(
+                    disputeCase,
+                    "SYSTEM",
+                    "AUTO_FIX_SANITIZED_EXTERNAL_LINKS",
+                    "fileId=" + file.getId() + ",newSize=" + sanitizedSize
+            );
+        }
+        return sanitized;
+    }
+
+    private boolean stripExternalLinks(Path sourcePath, Path targetPath) {
+        try (PDDocument document = Loader.loadPDF(sourcePath.toFile())) {
+            boolean changed = false;
+            for (PDPage page : document.getPages()) {
+                List<PDAnnotation> annotations = page.getAnnotations();
+                int before = annotations.size();
+                annotations.removeIf(this::isExternalLinkAnnotation);
+                if (before != annotations.size()) {
+                    page.setAnnotations(annotations);
+                    changed = true;
+                }
+            }
+
+            if (!changed) {
+                return false;
+            }
+
+            Files.createDirectories(targetPath.getParent());
+            document.save(targetPath.toFile());
+            return true;
+        } catch (IOException ex) {
+            throw new IllegalStateException("failed to sanitize PDF external links", ex);
+        }
+    }
+
+    private boolean isExternalLinkAnnotation(PDAnnotation annotation) {
+        if (annotation == null) {
+            return false;
+        }
+        if ("Link".equalsIgnoreCase(annotation.getSubtype())) {
+            return true;
+        }
+        COSDictionary dictionary = annotation.getCOSObject();
+        if (dictionary == null) {
+            return false;
+        }
+        if (dictionary.containsKey(COSName.URI)) {
+            return true;
+        }
+        COSBase action = dictionary.getDictionaryObject(COSName.A);
+        if (action instanceof COSDictionary actionDictionary && actionDictionary.containsKey(COSName.URI)) {
+            return true;
+        }
+        return false;
     }
 
     private void mergeEvidenceFilesToPdf(List<EvidenceFileEntity> files, Path targetPath) {
@@ -466,9 +571,9 @@ public class AutoFixService {
         );
     }
 
-    private record FixChange(int mergedTypes, int compressedImages) {
+    private record FixChange(int mergedTypes, int compressedImages, int linkSanitizedFiles) {
         boolean isNoop() {
-            return mergedTypes <= 0 && compressedImages <= 0;
+            return mergedTypes <= 0 && compressedImages <= 0 && linkSanitizedFiles <= 0;
         }
     }
 }
