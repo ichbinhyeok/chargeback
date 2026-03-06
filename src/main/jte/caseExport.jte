@@ -11,6 +11,8 @@
 @param String error
 @param boolean paymentConfigured
 @param boolean exportReady
+@param String validationFreshness
+@param boolean validationFresh
 
 @template.layout(
     title = "Export | " + report.caseToken(),
@@ -30,6 +32,12 @@
         <div class="mb-6 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200 flex items-center gap-3">
             <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             <span class="font-medium">${error}</span>
+        </div>
+    @endif
+    @if(!validationFresh)
+        <div class="mb-6 p-4 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-3">
+            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z"></path></svg>
+            <span class="font-medium">Validation is stale (${validationFreshness}). Run validation again before payment/export.</span>
         </div>
     @endif
 

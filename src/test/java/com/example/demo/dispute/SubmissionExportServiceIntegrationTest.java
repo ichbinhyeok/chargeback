@@ -2,6 +2,7 @@ package com.example.demo.dispute;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.demo.dispute.api.CreateCaseRequest;
@@ -9,10 +10,13 @@ import com.example.demo.dispute.domain.CaseState;
 import com.example.demo.dispute.domain.EvidenceType;
 import com.example.demo.dispute.domain.Platform;
 import com.example.demo.dispute.domain.ProductScope;
+import com.example.demo.dispute.domain.ValidationSource;
 import com.example.demo.dispute.persistence.DisputeCase;
 import com.example.demo.dispute.service.CaseService;
 import com.example.demo.dispute.service.EvidenceFileService;
 import com.example.demo.dispute.service.SubmissionExportService;
+import com.example.demo.dispute.service.ValidationHistoryService;
+import com.example.demo.dispute.service.ValidationService;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -47,8 +51,14 @@ class SubmissionExportServiceIntegrationTest {
     @Autowired
     private SubmissionExportService submissionExportService;
 
+    @Autowired
+    private ValidationService validationService;
+
+    @Autowired
+    private ValidationHistoryService validationHistoryService;
+
     @Test
-    void submissionZipUsesNormalizedNamesAndLatestFilePerEvidenceType() throws Exception {
+    void submissionZipUsesNormalizedNamesForValidFreshCase() throws Exception {
         DisputeCase disputeCase = caseService.createCase(new CreateCaseRequest(
                 Platform.STRIPE,
                 ProductScope.STRIPE_DISPUTE,
@@ -58,20 +68,13 @@ class SubmissionExportServiceIntegrationTest {
         ));
 
         try {
-            byte[] oldPdf = simplePdf("old");
-            byte[] newPdf = simplePdf("new");
+            byte[] receiptPdf = simplePdf("receipt");
             byte[] policyPng = simplePng(96, 96);
 
             evidenceFileService.upload(
                     disputeCase.getId(),
                     EvidenceType.ORDER_RECEIPT,
-                    new MockMultipartFile("file", "receipt-old.pdf", "application/pdf", oldPdf)
-            );
-            Thread.sleep(Duration.ofMillis(5));
-            evidenceFileService.upload(
-                    disputeCase.getId(),
-                    EvidenceType.ORDER_RECEIPT,
-                    new MockMultipartFile("file", "receipt-new.pdf", "application/pdf", newPdf)
+                    new MockMultipartFile("file", "receipt.pdf", "application/pdf", receiptPdf)
             );
             evidenceFileService.upload(
                     disputeCase.getId(),
@@ -79,15 +82,24 @@ class SubmissionExportServiceIntegrationTest {
                     new MockMultipartFile("file", "policy.png", "image/png", policyPng)
             );
 
-            caseService.transitionState(disputeCase, CaseState.READY);
+            moveCaseToReady(disputeCase);
+            recordValidation(disputeCase);
 
             ByteArrayOutputStream zipBytes = new ByteArrayOutputStream();
             submissionExportService.writeSubmissionZip(disputeCase.getCaseToken(), zipBytes);
 
             Map<String, byte[]> entries = unzip(zipBytes.toByteArray());
-            assertEquals(List.of("01_ORDER_RECEIPT.pdf", "02_POLICIES.png"), new ArrayList<>(entries.keySet()));
-            assertArrayEquals(newPdf, entries.get("01_ORDER_RECEIPT.pdf"));
+            assertEquals(List.of("01_ORDER_RECEIPT.pdf", "02_POLICIES.png", "manifest.json"), new ArrayList<>(entries.keySet()));
+            assertArrayEquals(receiptPdf, entries.get("01_ORDER_RECEIPT.pdf"));
             assertArrayEquals(policyPng, entries.get("02_POLICIES.png"));
+            String manifest = new String(entries.get("manifest.json"), StandardCharsets.UTF_8);
+            assertTrue(manifest.contains("\"caseId\""));
+            assertTrue(manifest.contains(disputeCase.getId().toString()));
+            assertTrue(manifest.contains("\"publicCaseRef\""));
+            assertTrue(!manifest.contains(disputeCase.getCaseToken()));
+            assertTrue(!manifest.contains("storagePath"));
+            assertTrue(manifest.contains("\"policyVersion\""));
+            assertTrue(manifest.contains("\"policyContextKey\""));
         } finally {
             caseService.deleteCase(disputeCase.getId());
         }
@@ -109,7 +121,7 @@ class SubmissionExportServiceIntegrationTest {
                     EvidenceType.ORDER_RECEIPT,
                     new MockMultipartFile("file", "receipt.pdf", "application/pdf", simplePdf("summary"))
             );
-            caseService.transitionState(disputeCase, CaseState.READY);
+            moveCaseToReady(disputeCase);
 
             ByteArrayOutputStream pdfBytes = new ByteArrayOutputStream();
             submissionExportService.writeSummaryPdf(disputeCase.getCaseToken(), pdfBytes, true);
@@ -129,6 +141,113 @@ class SubmissionExportServiceIntegrationTest {
         }
     }
 
+    @Test
+    void shopifyCreditSubmissionZipKeepsAllFilesEvenForSameEvidenceType() throws Exception {
+        DisputeCase disputeCase = caseService.createCase(new CreateCaseRequest(
+                Platform.SHOPIFY,
+                ProductScope.SHOPIFY_CREDIT_DISPUTE,
+                "shopify_credit_export",
+                null,
+                null
+        ));
+
+        try {
+            byte[] firstReceipt = simplePdf("receipt-first");
+            byte[] secondReceipt = simplePdf("receipt-second");
+            byte[] customerPng = simplePng(80, 80);
+
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.ORDER_RECEIPT,
+                    new MockMultipartFile("file", "receipt-first.pdf", "application/pdf", firstReceipt)
+            );
+            Thread.sleep(Duration.ofMillis(5));
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.CUSTOMER_DETAILS,
+                    new MockMultipartFile("file", "customer.png", "image/png", customerPng)
+            );
+            Thread.sleep(Duration.ofMillis(5));
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.ORDER_RECEIPT,
+                    new MockMultipartFile("file", "receipt-second.pdf", "application/pdf", secondReceipt)
+            );
+
+            moveCaseToReady(disputeCase);
+            recordValidation(disputeCase);
+
+            ByteArrayOutputStream zipBytes = new ByteArrayOutputStream();
+            submissionExportService.writeSubmissionZip(disputeCase.getCaseToken(), zipBytes);
+
+            Map<String, byte[]> entries = unzip(zipBytes.toByteArray());
+            assertEquals(
+                    List.of(
+                            "01_ORDER_RECEIPT_01.pdf",
+                            "02_ORDER_RECEIPT_02.pdf",
+                            "03_CUSTOMER_DETAILS.png",
+                            "manifest.json"
+                    ),
+                    new ArrayList<>(entries.keySet())
+            );
+            assertArrayEquals(firstReceipt, entries.get("01_ORDER_RECEIPT_01.pdf"));
+            assertArrayEquals(secondReceipt, entries.get("02_ORDER_RECEIPT_02.pdf"));
+            assertArrayEquals(customerPng, entries.get("03_CUSTOMER_DETAILS.png"));
+        } finally {
+            caseService.deleteCase(disputeCase.getId());
+        }
+    }
+
+    @Test
+    void submissionZipRejectsStaleValidationAfterFilesChanged() throws Exception {
+        DisputeCase disputeCase = caseService.createCase(new CreateCaseRequest(
+                Platform.STRIPE,
+                ProductScope.STRIPE_DISPUTE,
+                "stale_validation_export",
+                null,
+                null
+        ));
+
+        try {
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.ORDER_RECEIPT,
+                    new MockMultipartFile("file", "receipt.pdf", "application/pdf", simplePdf("stale-base"))
+            );
+            moveCaseToReady(disputeCase);
+
+            var firstValidation = validationService.validate(
+                    disputeCase,
+                    evidenceFileService.listAsValidationInputs(disputeCase.getId()),
+                    false
+            );
+            validationHistoryService.record(
+                    disputeCase,
+                    firstValidation,
+                    ValidationSource.STORED_FILES,
+                    false,
+                    evidenceFileService.listAsValidationInputs(disputeCase.getId())
+            );
+
+            Thread.sleep(Duration.ofMillis(5));
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.CUSTOMER_COMMUNICATION,
+                    new MockMultipartFile("file", "comm.pdf", "application/pdf", simplePdf("stale-new"))
+            );
+            // Simulate an incorrect state restoration without a fresh validation run.
+            moveCaseToReady(disputeCase);
+
+            IllegalArgumentException ex = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> submissionExportService.writeSubmissionZip(disputeCase.getCaseToken(), new ByteArrayOutputStream())
+            );
+            assertTrue(ex.getMessage().contains("stale"));
+        } finally {
+            caseService.deleteCase(disputeCase.getId());
+        }
+    }
+
     private Map<String, byte[]> unzip(byte[] bytes) throws Exception {
         Map<String, byte[]> result = new LinkedHashMap<>();
         try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(bytes))) {
@@ -143,6 +262,17 @@ class SubmissionExportServiceIntegrationTest {
         return result;
     }
 
+    private void moveCaseToReady(DisputeCase disputeCase) {
+        caseService.transitionState(disputeCase, CaseState.UPLOADING);
+        caseService.transitionState(disputeCase, CaseState.VALIDATING);
+        caseService.transitionState(disputeCase, CaseState.READY);
+    }
+
+    private void recordValidation(DisputeCase disputeCase) {
+        var inputs = evidenceFileService.listAsValidationInputs(disputeCase.getId());
+        var validation = validationService.validate(disputeCase, inputs, false);
+        validationHistoryService.record(disputeCase, validation, ValidationSource.STORED_FILES, false, inputs);
+    }
     private byte[] simplePdf(String marker) {
         String content = "%PDF-1.4\n"
                 + "% marker-" + marker + "\n"
@@ -175,3 +305,4 @@ class SubmissionExportServiceIntegrationTest {
         }
     }
 }
+

@@ -1,0 +1,234 @@
+{
+  "version": "2026.03.v1",
+  "reasons": {
+    "FRAUDULENT": {
+      "label": "Fraudulent",
+      "weakEvidenceWarnings": [
+        "Order data alone is usually weak without account-access or identity consistency signals.",
+        "Missing delivery or account-usage linkage often reduces reviewer confidence."
+      ],
+      "priorityActions": [
+        "Attach billing and shipping consistency evidence (address, IP/device or account history).",
+        "Attach fulfillment or service-access records tied to the disputed order."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements",
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding"
+      ]
+    },
+    "UNRECOGNIZED": {
+      "label": "Unrecognized",
+      "weakEvidenceWarnings": [
+        "Receipts without customer-identifying context are frequently treated as weak.",
+        "Lack of communication context can make cardholder recognition harder to establish."
+      ],
+      "priorityActions": [
+        "Attach order details and customer identifiers that connect the order to the cardholder.",
+        "Attach relevant communication proving customer awareness of the purchase."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements",
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding"
+      ]
+    },
+    "PRODUCT_NOT_RECEIVED": {
+      "label": "Product not received",
+      "weakEvidenceWarnings": [
+        "Tracking-only screenshots without delivery status and address match are often insufficient.",
+        "No timeline between shipment and customer contact can weaken the rebuttal."
+      ],
+      "priorityActions": [
+        "Attach carrier delivery confirmation with timestamp and destination details.",
+        "Attach customer communication showing delivery or post-delivery support."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements",
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding"
+      ]
+    },
+    "PRODUCT_UNACCEPTABLE": {
+      "label": "Product unacceptable / not as described",
+      "weakEvidenceWarnings": [
+        "Policy excerpts without purchase-time product details are usually weak.",
+        "Missing communication history around complaints or remediation reduces clarity."
+      ],
+      "priorityActions": [
+        "Attach product details shown at purchase time plus order receipt.",
+        "Attach complaint-response and refund/cancellation communication timeline."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements",
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding"
+      ]
+    },
+    "CREDIT_NOT_PROCESSED": {
+      "label": "Credit not processed",
+      "weakEvidenceWarnings": [
+        "Refund claim responses are weak when refund timeline evidence is missing.",
+        "Statements about policy without transaction-level refund artifacts are often insufficient."
+      ],
+      "priorityActions": [
+        "Attach refund request, processing date, and credit handling evidence.",
+        "Attach policy terms and customer communication confirming refund handling."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements",
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding"
+      ]
+    },
+    "SUBSCRIPTION_CANCELED": {
+      "label": "Subscription canceled",
+      "weakEvidenceWarnings": [
+        "No timestamped cancellation or renewal notice evidence is a common weakness.",
+        "Policy text without account event logs often fails to prove cancellation handling."
+      ],
+      "priorityActions": [
+        "Attach cancellation policy plus renewal/cancellation communication timeline.",
+        "Attach account-level cancellation and usage events around the disputed period."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements",
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding"
+      ]
+    },
+    "DUPLICATE": {
+      "label": "Duplicate",
+      "weakEvidenceWarnings": [
+        "Multiple transaction records without clear differentiation can appear inconsistent.",
+        "Missing customer context for each charge weakens duplicate-charge rebuttals."
+      ],
+      "priorityActions": [
+        "Attach transaction records that clearly differentiate each charge or order.",
+        "Attach customer communication confirming separate purchases or services."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements",
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding"
+      ]
+    },
+    "GENERAL": {
+      "label": "General",
+      "weakEvidenceWarnings": [
+        "General disputes are often weak when narrative and evidence links are vague.",
+        "Missing communication records can make reviewer reconstruction difficult."
+      ],
+      "priorityActions": [
+        "Attach a concise timeline linking each evidence file to a factual claim.",
+        "Prioritize order proof, policy terms, and dispute-relevant communication."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements",
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding"
+      ]
+    },
+    "STRIPE:FRAUDULENT": {
+      "label": "Stripe - Fraudulent",
+      "weakEvidenceWarnings": [
+        "Stripe fraud responses are weak when authorization context (customer/account linkage) is missing."
+      ],
+      "priorityActions": [
+        "Include evidence that the cardholder participated in or benefited from the transaction."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements",
+        "https://docs.stripe.com/api/disputes/object"
+      ]
+    },
+    "STRIPE:PRODUCT_NOT_RECEIVED": {
+      "label": "Stripe - Product not received",
+      "weakEvidenceWarnings": [
+        "Stripe INR responses are weak when carrier confirmation and address linkage are incomplete."
+      ],
+      "priorityActions": [
+        "Prioritize delivery confirmation and customer communication tied to shipment."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ]
+    },
+    "STRIPE:SUBSCRIPTION_CANCELED": {
+      "label": "Stripe - Subscription canceled",
+      "weakEvidenceWarnings": [
+        "Missing cancellation event logs and policy alignment is a frequent weakness."
+      ],
+      "priorityActions": [
+        "Attach cancellation logs and renewal/cancellation notice records."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ]
+    },
+    "SHOPIFY:FRAUDULENT": {
+      "label": "Shopify - Fraudulent",
+      "weakEvidenceWarnings": [
+        "Shopify fraud responses are weak when identity/location and delivery linkage are incomplete."
+      ],
+      "priorityActions": [
+        "Include customer-location consistency and fulfillment evidence in one coherent timeline."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding"
+      ]
+    },
+    "SHOPIFY:PRODUCT_NOT_RECEIVED": {
+      "label": "Shopify - Product not received",
+      "weakEvidenceWarnings": [
+        "Shopify INR responses are weak when shipping address match and delivery attempt data are missing."
+      ],
+      "priorityActions": [
+        "Include carrier tracking, delivery proof, and customer communication in chronological order."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding"
+      ]
+    },
+    "SHOPIFY:PRODUCT_UNACCEPTABLE": {
+      "label": "Shopify - Product unacceptable",
+      "weakEvidenceWarnings": [
+        "Without policy and complaint-resolution trail, product-quality disputes are hard to rebut."
+      ],
+      "priorityActions": [
+        "Attach product description at purchase time and complaint/refund handling evidence."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding"
+      ]
+    },
+    "SHOPIFY:CREDIT_NOT_PROCESSED": {
+      "label": "Shopify - Credit not processed",
+      "weakEvidenceWarnings": [
+        "Refund disputes remain weak when refund processing timestamps are absent."
+      ],
+      "priorityActions": [
+        "Attach refund request and processing events with customer communications."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding"
+      ]
+    },
+    "SHOPIFY:SUBSCRIPTION_CANCELED": {
+      "label": "Shopify - Subscription canceled",
+      "weakEvidenceWarnings": [
+        "No cancellation evidence and renewal notice trail is a common failure point."
+      ],
+      "priorityActions": [
+        "Attach subscription terms, cancellation confirmation, and service timeline."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding"
+      ]
+    },
+    "SHOPIFY:DUPLICATE": {
+      "label": "Shopify - Duplicate",
+      "weakEvidenceWarnings": [
+        "Duplicate disputes are weak when separate charges are not clearly distinguished."
+      ],
+      "priorityActions": [
+        "Attach records proving why charges are distinct or already resolved."
+      ],
+      "sourceUrls": [
+        "https://help.shopify.com/en/manual/payments/chargebacks/responding"
+      ]
+    }
+  }
+}

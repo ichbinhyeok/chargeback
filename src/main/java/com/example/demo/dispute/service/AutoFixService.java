@@ -136,7 +136,7 @@ public class AutoFixService {
             if (change.isNoop()) {
                 List<EvidenceFileInput> unchangedFiles = evidenceFileService.listAsValidationInputs(disputeCase.getId());
                 ValidateCaseResponse unchangedValidation = validationService.validate(disputeCase, unchangedFiles, false);
-                validationHistoryService.record(disputeCase, unchangedValidation, ValidationSource.AUTO_FIX, false);
+                validationHistoryService.record(disputeCase, unchangedValidation, ValidationSource.AUTO_FIX, false, unchangedFiles);
                 caseService.transitionState(disputeCase, unchangedValidation.passed() ? CaseState.READY : CaseState.BLOCKED);
 
                 return failJob(
@@ -148,7 +148,7 @@ public class AutoFixService {
 
             List<EvidenceFileInput> files = evidenceFileService.listAsValidationInputs(disputeCase.getId());
             ValidateCaseResponse response = validationService.validate(disputeCase, files, false);
-            validationHistoryService.record(disputeCase, response, ValidationSource.AUTO_FIX, false);
+            validationHistoryService.record(disputeCase, response, ValidationSource.AUTO_FIX, false, files);
             caseService.transitionState(disputeCase, response.passed() ? CaseState.READY : CaseState.BLOCKED);
 
             job.setStatus(FixJobStatus.SUCCEEDED);

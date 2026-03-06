@@ -76,7 +76,7 @@ public class CaseController {
         DisputeCase disputeCase = caseService.getCase(caseId);
         caseService.transitionState(disputeCase, CaseState.VALIDATING);
         ValidateCaseResponse response = validationService.validate(disputeCase, request);
-        validationHistoryService.record(disputeCase, response, ValidationSource.REQUEST_FILES, request.earlySubmit());
+        validationHistoryService.record(disputeCase, response, ValidationSource.REQUEST_FILES, request.earlySubmit(), request.files());
         caseService.transitionState(disputeCase, response.passed() ? CaseState.READY : CaseState.BLOCKED);
         return ResponseEntity.ok(response);
     }
@@ -129,7 +129,7 @@ public class CaseController {
         caseService.transitionState(disputeCase, CaseState.VALIDATING);
         boolean earlySubmit = request != null && request.earlySubmit();
         ValidateCaseResponse response = validationService.validate(disputeCase, files, earlySubmit);
-        validationHistoryService.record(disputeCase, response, ValidationSource.STORED_FILES, earlySubmit);
+        validationHistoryService.record(disputeCase, response, ValidationSource.STORED_FILES, earlySubmit, files);
         caseService.transitionState(disputeCase, response.passed() ? CaseState.READY : CaseState.BLOCKED);
         return ResponseEntity.ok(response);
     }

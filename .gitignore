@@ -51,3 +51,7 @@ tmp/
 
 ### Frontend ###
 node_modules/
+.nodejs/
+*.zip
+env.cmd
+env.ps1

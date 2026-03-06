@@ -1,5 +1,12 @@
 # Session Handoff (2026-03-06)
 
+Reference docs:
+- `README.md` (project definition, runbook, env, flow)
+- `PRODUCT_IDENTITY_AND_INSIGHTS_2026-03-06.md` (positioning and strategic direction)
+- `CODEX_PROGRESS_LOG_2026-03-06.md` (implementation progress and test status)
+- `POLICY_SOURCE_TRACKING_2026-03-06.md` (official source traceability and review cadence)
+- `PRELAUNCH_SMOKE_REPORT_2026-03-06.md` (platform smoke execution result)
+
 ## 1) Project Snapshot
 - Product: `Chargeback Evidence Pack Builder`
 - Goal: reduce evidence upload failures caused by Stripe/Shopify formatting policies.
@@ -76,6 +83,15 @@
   - slot cap warnings
   - total size budget warning before upload
 
+### 3.5 Reason-code input hardening (launch-prep)
+- `/new` now supports platform-aware reason preset selection.
+- Custom reason input is still allowed when preset list does not match merchant context.
+- `CaseService` now normalizes reason input:
+  - trims whitespace
+  - converts blank to null
+  - rejects overlong values (`max 80 chars`)
+- New reason preset/control regression checks added to integration tests.
+
 ## 4) Free vs Paid Output
 - Free:
   - validation visibility
@@ -136,10 +152,13 @@
 2. Stripe payment final integration hardening:
    - webhook replay/idempotency checks
    - production key/config validation page
-3. Agency mode (if B2B expansion starts):
+3. Launch checklist execution:
+   - run platform sandbox smoke scenarios (Stripe/Shopify) with real sample evidence sets
+   - verify policy-source review date before release tag
+4. Agency mode (if B2B expansion starts):
    - multi-case dashboard
    - bulk actions
-4. Optional technical hardening:
+5. Optional technical hardening:
    - policy-version stamping in validation result
    - richer PDF diagnostics and error-to-fix guidance
 

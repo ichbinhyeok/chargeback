@@ -1,0 +1,385 @@
+{
+  "version": "2026.03.v1",
+  "defaults": {
+    "coverage": {
+      "required": [],
+      "recommended": []
+    },
+    "limits": {
+      "totalSizeLimitBytes": 4194304
+    }
+  },
+  "platform": {
+    "STRIPE": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_DETAILS",
+          "CUSTOMER_COMMUNICATION"
+        ],
+        "recommended": [
+          "FULFILLMENT_DELIVERY",
+          "POLICIES",
+          "REFUND_CANCELLATION",
+          "DIGITAL_USAGE_LOGS"
+        ]
+      }
+    },
+    "SHOPIFY": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_COMMUNICATION"
+        ],
+        "recommended": [
+          "CUSTOMER_DETAILS",
+          "FULFILLMENT_DELIVERY",
+          "POLICIES"
+        ]
+      }
+    }
+  },
+  "scope": {
+    "STRIPE_DISPUTE": {
+      "limits": {
+        "totalSizeLimitBytes": 4718592
+      }
+    },
+    "SHOPIFY_PAYMENTS_CHARGEBACK": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_COMMUNICATION",
+          "FULFILLMENT_DELIVERY"
+        ],
+        "recommended": [
+          "CUSTOMER_DETAILS",
+          "POLICIES",
+          "REFUND_CANCELLATION"
+        ]
+      },
+      "limits": {
+        "totalSizeLimitBytes": 4194304
+      }
+    },
+    "SHOPIFY_CREDIT_DISPUTE": {
+      "limits": {
+        "totalSizeLimitBytes": 4718592
+      }
+    }
+  },
+  "reason": {
+    "FRAUDULENT": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_DETAILS",
+          "FULFILLMENT_DELIVERY"
+        ],
+        "recommended": [
+          "CUSTOMER_COMMUNICATION",
+          "DIGITAL_USAGE_LOGS",
+          "POLICIES"
+        ]
+      }
+    },
+    "UNRECOGNIZED": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_DETAILS",
+          "CUSTOMER_COMMUNICATION"
+        ],
+        "recommended": [
+          "FULFILLMENT_DELIVERY",
+          "DIGITAL_USAGE_LOGS",
+          "POLICIES"
+        ]
+      }
+    },
+    "PRODUCT_NOT_RECEIVED": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "FULFILLMENT_DELIVERY",
+          "CUSTOMER_DETAILS"
+        ],
+        "recommended": [
+          "CUSTOMER_COMMUNICATION",
+          "POLICIES",
+          "REFUND_CANCELLATION"
+        ]
+      }
+    },
+    "PRODUCT_UNACCEPTABLE": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_COMMUNICATION",
+          "POLICIES"
+        ],
+        "recommended": [
+          "REFUND_CANCELLATION",
+          "CUSTOMER_DETAILS",
+          "FULFILLMENT_DELIVERY"
+        ]
+      }
+    },
+    "CREDIT_NOT_PROCESSED": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "REFUND_CANCELLATION",
+          "CUSTOMER_COMMUNICATION"
+        ],
+        "recommended": [
+          "CUSTOMER_DETAILS",
+          "POLICIES"
+        ]
+      }
+    },
+    "SUBSCRIPTION_CANCELED": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "REFUND_CANCELLATION",
+          "POLICIES"
+        ],
+        "recommended": [
+          "CUSTOMER_COMMUNICATION",
+          "DIGITAL_USAGE_LOGS",
+          "CUSTOMER_DETAILS"
+        ]
+      }
+    },
+    "DUPLICATE": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_DETAILS"
+        ],
+        "recommended": [
+          "CUSTOMER_COMMUNICATION",
+          "REFUND_CANCELLATION",
+          "FULFILLMENT_DELIVERY"
+        ]
+      }
+    },
+    "GENERAL": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_COMMUNICATION"
+        ],
+        "recommended": [
+          "CUSTOMER_DETAILS",
+          "POLICIES",
+          "FULFILLMENT_DELIVERY"
+        ]
+      }
+    },
+    "STRIPE:FRAUDULENT": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_DETAILS",
+          "DIGITAL_USAGE_LOGS"
+        ],
+        "recommended": [
+          "FULFILLMENT_DELIVERY",
+          "CUSTOMER_COMMUNICATION",
+          "POLICIES"
+        ]
+      }
+    },
+    "STRIPE:UNRECOGNIZED": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_DETAILS",
+          "CUSTOMER_COMMUNICATION"
+        ],
+        "recommended": [
+          "FULFILLMENT_DELIVERY",
+          "DIGITAL_USAGE_LOGS",
+          "POLICIES"
+        ]
+      }
+    },
+    "STRIPE:PRODUCT_NOT_RECEIVED": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "FULFILLMENT_DELIVERY",
+          "CUSTOMER_DETAILS"
+        ],
+        "recommended": [
+          "CUSTOMER_COMMUNICATION",
+          "POLICIES"
+        ]
+      }
+    },
+    "STRIPE:PRODUCT_UNACCEPTABLE": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_COMMUNICATION",
+          "POLICIES"
+        ],
+        "recommended": [
+          "FULFILLMENT_DELIVERY",
+          "REFUND_CANCELLATION",
+          "CUSTOMER_DETAILS"
+        ]
+      }
+    },
+    "STRIPE:CREDIT_NOT_PROCESSED": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "REFUND_CANCELLATION",
+          "CUSTOMER_COMMUNICATION"
+        ],
+        "recommended": [
+          "CUSTOMER_DETAILS",
+          "POLICIES"
+        ]
+      }
+    },
+    "STRIPE:SUBSCRIPTION_CANCELED": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "REFUND_CANCELLATION",
+          "POLICIES"
+        ],
+        "recommended": [
+          "CUSTOMER_COMMUNICATION",
+          "DIGITAL_USAGE_LOGS",
+          "CUSTOMER_DETAILS"
+        ]
+      }
+    },
+    "STRIPE:DUPLICATE": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_DETAILS"
+        ],
+        "recommended": [
+          "CUSTOMER_COMMUNICATION",
+          "FULFILLMENT_DELIVERY"
+        ]
+      }
+    },
+    "SHOPIFY:FRAUDULENT": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_DETAILS",
+          "FULFILLMENT_DELIVERY"
+        ],
+        "recommended": [
+          "CUSTOMER_COMMUNICATION",
+          "DIGITAL_USAGE_LOGS",
+          "POLICIES"
+        ]
+      }
+    },
+    "SHOPIFY:UNRECOGNIZED": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_DETAILS",
+          "FULFILLMENT_DELIVERY"
+        ],
+        "recommended": [
+          "CUSTOMER_COMMUNICATION",
+          "DIGITAL_USAGE_LOGS",
+          "POLICIES"
+        ]
+      }
+    },
+    "SHOPIFY:PRODUCT_NOT_RECEIVED": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "FULFILLMENT_DELIVERY",
+          "CUSTOMER_DETAILS"
+        ],
+        "recommended": [
+          "CUSTOMER_COMMUNICATION",
+          "POLICIES",
+          "REFUND_CANCELLATION"
+        ]
+      }
+    },
+    "SHOPIFY:PRODUCT_UNACCEPTABLE": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_COMMUNICATION",
+          "POLICIES"
+        ],
+        "recommended": [
+          "REFUND_CANCELLATION",
+          "CUSTOMER_DETAILS",
+          "FULFILLMENT_DELIVERY"
+        ]
+      }
+    },
+    "SHOPIFY:CREDIT_NOT_PROCESSED": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "REFUND_CANCELLATION",
+          "CUSTOMER_COMMUNICATION"
+        ],
+        "recommended": [
+          "POLICIES",
+          "CUSTOMER_DETAILS"
+        ]
+      }
+    },
+    "SHOPIFY:SUBSCRIPTION_CANCELED": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "REFUND_CANCELLATION",
+          "POLICIES"
+        ],
+        "recommended": [
+          "CUSTOMER_COMMUNICATION",
+          "DIGITAL_USAGE_LOGS"
+        ]
+      }
+    },
+    "SHOPIFY:DUPLICATE": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_DETAILS"
+        ],
+        "recommended": [
+          "CUSTOMER_COMMUNICATION",
+          "REFUND_CANCELLATION",
+          "FULFILLMENT_DELIVERY"
+        ]
+      }
+    },
+    "SHOPIFY:GENERAL": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT",
+          "CUSTOMER_COMMUNICATION"
+        ],
+        "recommended": [
+          "CUSTOMER_DETAILS",
+          "POLICIES",
+          "FULFILLMENT_DELIVERY"
+        ]
+      }
+    }
+  },
+  "network": {}
+}

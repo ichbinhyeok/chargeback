@@ -1,0 +1,33 @@
+{
+  "version": "reason-alias-test.v1",
+  "defaults": {
+    "coverage": {
+      "required": [],
+      "recommended": []
+    },
+    "limits": {
+      "totalSizeLimitBytes": 12345
+    }
+  },
+  "platform": {},
+  "scope": {},
+  "reason": {
+    "PRODUCT_NOT_RECEIVED": {
+      "coverage": {
+        "required": [
+          "ORDER_RECEIPT"
+        ],
+        "recommended": []
+      }
+    },
+    "STRIPE:PRODUCT_NOT_RECEIVED": {
+      "coverage": {
+        "required": [
+          "FULFILLMENT_DELIVERY"
+        ],
+        "recommended": []
+      }
+    }
+  },
+  "network": {}
+}

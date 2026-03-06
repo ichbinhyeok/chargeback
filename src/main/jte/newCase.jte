@@ -1,9 +1,13 @@
 @import com.example.demo.dispute.domain.Platform
 @import com.example.demo.dispute.domain.ProductScope
 @import com.example.demo.dispute.domain.CardNetwork
+@import com.example.demo.dispute.service.ReasonCodeChecklistService
+@import java.util.List
 @param Platform[] platforms
 @param ProductScope[] productScopes
 @param CardNetwork[] cardNetworks
+@param List<ReasonCodeChecklistService.ReasonOption> stripeReasonOptions
+@param List<ReasonCodeChecklistService.ReasonOption> shopifyReasonOptions
 @param String error
 
 @template.layout(title = "Create New Case", content = @`
@@ -28,7 +32,7 @@
                 <p class="text-gray-500 text-sm mt-1">Select the platform and dispute scope to set up validation rules.</p>
             </div>
 
-            <form method="post" action="/new" class="space-y-6">
+            <form id="new-case-form" method="post" action="/new" class="space-y-6">
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <div class="space-y-1.5">
                         <label for="platform" class="block text-sm font-semibold text-gray-700">Platform</label>
@@ -45,7 +49,7 @@
                         <select id="productScope" name="productScope" required class="cb-input">
                             <option value="" disabled selected>Select Scope</option>
                             @for(ProductScope scope : productScopes)
-                                <option value="${scope.name()}">${scope.name()}</option>
+                                <option value="${scope.name()}" data-platform="${scope.platform().name()}">${scope.name()}</option>
                             @endfor
                         </select>
                     </div>
@@ -67,8 +71,13 @@
                     </div>
                     
                     <div class="sm:col-span-2 space-y-1.5">
-                        <label for="reasonCode" class="block text-sm font-semibold text-gray-700">Reason Code <span class="text-gray-400 font-normal ml-1">(Optional)</span></label>
-                        <input id="reasonCode" type="text" name="reasonCode" placeholder="e.g. fraudulent, product_not_received" class="cb-input bg-gray-50 text-gray-600">
+                        <label for="reasonPreset" class="block text-sm font-semibold text-gray-700">Reason Code Preset <span class="text-gray-400 font-normal ml-1">(Optional)</span></label>
+                        <select id="reasonPreset" class="cb-input bg-gray-50 text-gray-600">
+                            <option value="">Not set</option>
+                        </select>
+                        <input id="reasonCustom" type="text" placeholder="Custom reason code (e.g. 13.1, item_not_received)" class="cb-input bg-gray-50 text-gray-600 hidden mt-2">
+                        <input id="reasonCode" type="hidden" name="reasonCode">
+                        <p id="reasonHint" class="text-xs text-gray-400">Select a platform to load recommended reason presets.</p>
                     </div>
                 </div>
 
@@ -80,4 +89,118 @@
             </form>
         </div>
     </div>
+
+    <div id="reason-options-store" class="hidden">
+        @for(var option : stripeReasonOptions)
+            <div data-platform="STRIPE" data-code="${option.code()}" data-label="${option.label()}" data-hint="${option.hint()}"></div>
+        @endfor
+        @for(var option : shopifyReasonOptions)
+            <div data-platform="SHOPIFY" data-code="${option.code()}" data-label="${option.label()}" data-hint="${option.hint()}"></div>
+        @endfor
+    </div>
+
+    <script>
+        const newCaseForm = document.getElementById('new-case-form');
+        const platformSelect = document.getElementById('platform');
+        const productScopeSelect = document.getElementById('productScope');
+        const reasonPresetSelect = document.getElementById('reasonPreset');
+        const reasonCustomInput = document.getElementById('reasonCustom');
+        const reasonCodeInput = document.getElementById('reasonCode');
+        const reasonHint = document.getElementById('reasonHint');
+        const reasonOptionNodes = document.querySelectorAll('#reason-options-store [data-platform]');
+
+        const reasonOptionsByPlatform = {};
+        reasonOptionNodes.forEach((node) => {
+            const platform = node.dataset.platform;
+            const entry = {
+                code: node.dataset.code || '',
+                label: node.dataset.label || node.dataset.code || '',
+                hint: node.dataset.hint || ''
+            };
+            if (!reasonOptionsByPlatform[platform]) {
+                reasonOptionsByPlatform[platform] = [];
+            }
+            reasonOptionsByPlatform[platform].push(entry);
+        });
+
+        function refreshScopeOptions() {
+            const selectedPlatform = platformSelect.value;
+            const options = Array.from(productScopeSelect.options).filter((option) => option.value);
+
+            let firstEnabledValue = '';
+            options.forEach((option) => {
+                const optionPlatform = option.dataset.platform;
+                const enabled = !selectedPlatform || optionPlatform === selectedPlatform;
+                option.disabled = !enabled;
+                option.hidden = !enabled;
+                if (enabled && !firstEnabledValue) {
+                    firstEnabledValue = option.value;
+                }
+            });
+
+            const selectedOption = productScopeSelect.options[productScopeSelect.selectedIndex];
+            const selectedIsEnabled = selectedOption && !selectedOption.disabled && selectedOption.value;
+            if (!selectedIsEnabled) {
+                productScopeSelect.value = firstEnabledValue || '';
+            }
+        }
+
+        function refreshReasonPresetOptions() {
+            const selectedPlatform = platformSelect.value;
+            const currentValue = reasonPresetSelect.value;
+            const options = reasonOptionsByPlatform[selectedPlatform] || [];
+
+            reasonPresetSelect.innerHTML = '';
+            addReasonOption('', 'Not set', '');
+            options.forEach((option) => addReasonOption(option.code, option.label, option.hint));
+            addReasonOption('__CUSTOM__', 'Custom input', 'Use this if your reason code is not listed.');
+
+            const hasCurrentValue = Array.from(reasonPresetSelect.options).some((option) => option.value === currentValue);
+            reasonPresetSelect.value = hasCurrentValue ? currentValue : '';
+            refreshReasonInputs();
+        }
+
+        function addReasonOption(value, label, hint) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            option.dataset.hint = hint || '';
+            reasonPresetSelect.appendChild(option);
+        }
+
+        function refreshReasonInputs() {
+            const selectedValue = reasonPresetSelect.value;
+            const selectedOption = reasonPresetSelect.options[reasonPresetSelect.selectedIndex];
+            const selectedHint = selectedOption ? (selectedOption.dataset.hint || '') : '';
+
+            if (selectedValue === '__CUSTOM__') {
+                reasonCustomInput.classList.remove('hidden');
+                reasonHint.textContent = selectedHint || 'Enter a custom reason code.';
+            } else {
+                reasonCustomInput.classList.add('hidden');
+                reasonHint.textContent = selectedHint || 'Select a reason preset or leave unset.';
+            }
+            syncReasonCodeValue();
+        }
+
+        function syncReasonCodeValue() {
+            if (reasonPresetSelect.value === '__CUSTOM__') {
+                reasonCodeInput.value = reasonCustomInput.value.trim();
+                return;
+            }
+            reasonCodeInput.value = reasonPresetSelect.value || '';
+        }
+
+        platformSelect.addEventListener('change', () => {
+            refreshScopeOptions();
+            refreshReasonPresetOptions();
+        });
+
+        reasonPresetSelect.addEventListener('change', refreshReasonInputs);
+        reasonCustomInput.addEventListener('input', syncReasonCodeValue);
+        newCaseForm.addEventListener('submit', syncReasonCodeValue);
+
+        refreshScopeOptions();
+        refreshReasonPresetOptions();
+    </script>
 `)

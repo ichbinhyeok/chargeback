@@ -2,6 +2,7 @@
 @import com.example.demo.dispute.api.CaseReportResponse
 @import com.example.demo.dispute.domain.EvidenceType
 @import com.example.demo.dispute.persistence.PaymentEntity
+@import com.example.demo.dispute.service.ReasonCodeChecklistService
 @param DisputeCase disputeCase
 @param CaseReportResponse report
 @param EvidenceType[] evidenceTypes
@@ -19,6 +20,7 @@
 @param Integer stripePagesRemaining
 @param Integer mastercardPagesRemaining
 @param String sizeLimitLabel
+@param ReasonCodeChecklistService.ReasonChecklist reasonChecklist
 
 @template.layout(
     title = "Upload | " + report.caseToken(),
@@ -102,6 +104,61 @@
                 @endif
             @endif
         </div>
+    </div>
+
+    <div class="cb-card mb-8">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
+            <div>
+                <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Reason-Code Checklist</h2>
+                <p class="text-xs text-gray-500 mt-1">Upload against reason-specific evidence requirements.</p>
+            </div>
+            @if(reasonChecklist.reasonInput() != null && !reasonChecklist.reasonInput().isBlank())
+                <div class="text-xs text-gray-500">
+                    Input: <code class="bg-gray-100 px-1.5 py-0.5 rounded">${reasonChecklist.reasonInput()}</code>
+                </div>
+            @endif
+        </div>
+
+        @if(!reasonChecklist.hasReasonCode())
+            <div class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                Reason code is not set. Create the case with a reason code to unlock reason-specific guidance.
+            </div>
+        @else
+            <div class="mb-4 flex items-center gap-2 flex-wrap">
+                <span class="cb-badge cb-badge-blue">${reasonChecklist.reasonLabel()}</span>
+                <span class="text-xs text-gray-500">Canonical key: <code class="bg-gray-100 px-1 rounded">${reasonChecklist.canonicalReasonKey()}</code></span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Required</h3>
+                    <ul class="space-y-1 text-sm text-gray-700">
+                        @for(var item : reasonChecklist.requiredEvidence())
+                            <li>
+                                @if(reasonChecklist.missingRequiredEvidence().contains(item))
+                                    <span class="text-red-700 font-medium">Missing:</span> ${item}
+                                @else
+                                    <span class="text-green-700 font-medium">Ready:</span> ${item}
+                                @endif
+                            </li>
+                        @endfor
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Recommended</h3>
+                    <ul class="space-y-1 text-sm text-gray-700">
+                        @for(var item : reasonChecklist.recommendedEvidence())
+                            <li>
+                                @if(reasonChecklist.missingRecommendedEvidence().contains(item))
+                                    <span class="text-amber-700 font-medium">Missing:</span> ${item}
+                                @else
+                                    <span class="text-green-700 font-medium">Ready:</span> ${item}
+                                @endif
+                            </li>
+                        @endfor
+                    </ul>
+                </div>
+            </div>
+        @endif
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">

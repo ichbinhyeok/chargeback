@@ -66,4 +66,5 @@ jte {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	jvmArgs("-XX:+EnableDynamicAgentLoading", "-Xshare:off")
 }

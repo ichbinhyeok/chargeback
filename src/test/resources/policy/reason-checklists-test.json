@@ -1,0 +1,30 @@
+{
+  "version": "reason-checklist-test.v1",
+  "reasons": {
+    "PRODUCT_NOT_RECEIVED": {
+      "label": "Product not received",
+      "weakEvidenceWarnings": [
+        "Tracking-only evidence is weak without delivery and address linkage."
+      ],
+      "priorityActions": [
+        "Add carrier delivery confirmation and customer communication timeline."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements"
+      ]
+    },
+    "STRIPE:PRODUCT_NOT_RECEIVED": {
+      "label": "Stripe - Product not received",
+      "weakEvidenceWarnings": [
+        "Stripe INR requires clear delivery confirmation context."
+      ],
+      "priorityActions": [
+        "Include delivery confirmation and cardholder-aligned address details."
+      ],
+      "sourceUrls": [
+        "https://docs.stripe.com/disputes/reason-codes-defense-requirements",
+        "https://docs.stripe.com/api/disputes/object"
+      ]
+    }
+  }
+}

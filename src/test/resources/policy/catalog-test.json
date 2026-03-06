@@ -1,0 +1,52 @@
+{
+  "version": "test.v1",
+  "defaults": {
+    "coverage": {
+      "required": ["OTHER_SUPPORTING"],
+      "recommended": []
+    },
+    "limits": {
+      "totalSizeLimitBytes": 1000
+    }
+  },
+  "platform": {
+    "STRIPE": {
+      "coverage": {
+        "required": ["ORDER_RECEIPT"]
+      },
+      "limits": {
+        "totalSizeLimitBytes": 2000
+      }
+    }
+  },
+  "scope": {
+    "STRIPE_DISPUTE": {
+      "coverage": {
+        "required": ["CUSTOMER_DETAILS"]
+      },
+      "limits": {
+        "totalSizeLimitBytes": 3000
+      }
+    }
+  },
+  "reason": {
+    "RC_1": {
+      "coverage": {
+        "required": ["POLICIES"]
+      },
+      "limits": {
+        "totalSizeLimitBytes": 4000
+      }
+    }
+  },
+  "network": {
+    "VISA": {
+      "coverage": {
+        "required": ["FULFILLMENT_DELIVERY"]
+      },
+      "limits": {
+        "totalSizeLimitBytes": 5000
+      }
+    }
+  }
+}

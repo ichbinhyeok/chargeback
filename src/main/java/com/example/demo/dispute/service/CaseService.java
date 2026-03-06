@@ -15,7 +15,10 @@ import jakarta.persistence.EntityNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -24,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class CaseService {
+
+    private static final Map<CaseState, EnumSet<CaseState>> ALLOWED_TRANSITIONS = createTransitionMatrix();
 
     private final DisputeCaseRepository disputeCaseRepository;
     private final EvidenceFileRepository evidenceFileRepository;
@@ -72,7 +77,7 @@ public class CaseService {
         disputeCase.setCaseToken(generateUniqueCaseToken());
         disputeCase.setPlatform(request.platform());
         disputeCase.setProductScope(request.productScope());
-        disputeCase.setReasonCode(request.reasonCode());
+        disputeCase.setReasonCode(normalizeReasonCode(request.reasonCode()));
         disputeCase.setDueAt(request.dueAt());
         disputeCase.setCardNetwork(request.cardNetwork());
         disputeCase.setState(CaseState.CASE_CREATED);
@@ -100,6 +105,11 @@ public class CaseService {
 
     public DisputeCase transitionState(DisputeCase disputeCase, CaseState nextState) {
         CaseState previousState = disputeCase.getState();
+        if (previousState == nextState) {
+            return disputeCase;
+        }
+        assertTransition(previousState, nextState);
+
         disputeCase.setState(nextState);
         DisputeCase saved = disputeCaseRepository.save(disputeCase);
         auditLogService.log(
@@ -114,6 +124,14 @@ public class CaseService {
     public DisputeCase transitionState(UUID caseId, CaseState nextState) {
         DisputeCase disputeCase = getCase(caseId);
         return transitionState(disputeCase, nextState);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canTransition(CaseState from, CaseState to) {
+        if (from == to) {
+            return true;
+        }
+        return ALLOWED_TRANSITIONS.getOrDefault(from, EnumSet.noneOf(CaseState.class)).contains(to);
     }
 
     public void deleteCase(UUID caseId) {
@@ -183,5 +201,73 @@ public class CaseService {
             token = generateCaseToken();
         }
         return token;
+    }
+
+    private void assertTransition(CaseState from, CaseState to) {
+        if (!canTransition(from, to)) {
+            throw new IllegalArgumentException("illegal state transition: " + from + " -> " + to);
+        }
+    }
+
+    private String normalizeReasonCode(String reasonCode) {
+        if (reasonCode == null) {
+            return null;
+        }
+        String trimmed = reasonCode.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.length() > 80) {
+            throw new IllegalArgumentException("reason_code is too long (max 80 chars)");
+        }
+        return trimmed;
+    }
+
+    private static Map<CaseState, EnumSet<CaseState>> createTransitionMatrix() {
+        Map<CaseState, EnumSet<CaseState>> matrix = new EnumMap<>(CaseState.class);
+        matrix.put(CaseState.CASE_CREATED, EnumSet.of(
+                CaseState.UPLOADING,
+                CaseState.VALIDATING,
+                CaseState.ARCHIVED
+        ));
+        matrix.put(CaseState.UPLOADING, EnumSet.of(
+                CaseState.VALIDATING,
+                CaseState.FIXING,
+                CaseState.BLOCKED,
+                CaseState.ARCHIVED
+        ));
+        matrix.put(CaseState.VALIDATING, EnumSet.of(
+                CaseState.READY,
+                CaseState.BLOCKED,
+                CaseState.UPLOADING,
+                CaseState.ARCHIVED
+        ));
+        matrix.put(CaseState.FIXING, EnumSet.of(
+                CaseState.READY,
+                CaseState.BLOCKED,
+                CaseState.UPLOADING,
+                CaseState.ARCHIVED
+        ));
+        matrix.put(CaseState.BLOCKED, EnumSet.of(
+                CaseState.UPLOADING,
+                CaseState.VALIDATING,
+                CaseState.FIXING,
+                CaseState.ARCHIVED
+        ));
+        matrix.put(CaseState.READY, EnumSet.of(
+                CaseState.PAID,
+                CaseState.DOWNLOADED,
+                CaseState.UPLOADING,
+                CaseState.VALIDATING,
+                CaseState.FIXING,
+                CaseState.ARCHIVED
+        ));
+        matrix.put(CaseState.PAID, EnumSet.of(
+                CaseState.DOWNLOADED,
+                CaseState.ARCHIVED
+        ));
+        matrix.put(CaseState.DOWNLOADED, EnumSet.of(CaseState.ARCHIVED));
+        matrix.put(CaseState.ARCHIVED, EnumSet.noneOf(CaseState.class));
+        return matrix;
     }
 }

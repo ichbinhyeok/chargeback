@@ -2,13 +2,35 @@
 
 Spring Boot SaaS MVP for Stripe/Shopify dispute evidence packaging.
 
+## Project Identity (Current)
+
+- This product is an `upload-failure recovery and submission-readiness engine` for dispute evidence.
+- It helps merchants who failed (or are likely to fail) evidence upload due to formatting and policy constraints.
+- It is not a dispute-outcome predictor and does not promise win-rate improvement.
+- It does not provide legal advice.
+
+## Current Positioning
+
+- Primary promise: `reduce upload rejections and rework time`.
+- Practical scope:
+  - Collect and organize evidence files
+  - Show reason-code checklist (required/recommended evidence + missing warnings)
+  - Provide platform-aware reason preset input at case creation
+  - Validate against platform constraints
+  - Auto-fix supported formatting issues
+  - Export structured submission artifacts
+- Positioning line:
+  - `Stripe/Shopify evidence upload rejection prevention toolkit`
+
 Core flow:
 1. Create case
-2. Upload evidence files by type
-3. Validate against platform rules
-4. Run auto-fix (per-type merge + Shopify oversized image compression)
-5. Pay (Stripe Checkout)
-6. Download submission ZIP and one-page guide PDF
+2. Set context (platform, scope, optional reason code/network)
+3. Review reason-code evidence checklist
+4. Upload evidence files by type
+5. Validate against platform rules
+6. Run auto-fix (per-type merge + Shopify oversized image compression)
+7. Pay (Stripe Checkout)
+8. Download submission ZIP and one-page guide PDF
 
 ## Policy Baseline (as implemented)
 
@@ -94,7 +116,7 @@ General:
 Billing:
 - `APP_BILLING_AMOUNT_CENTS` (default `1900`)
 - `APP_BILLING_CURRENCY` (default `usd`)
-- `APP_BILLING_SUCCESS_URL_TEMPLATE` (default `http://localhost:8080/c/{caseToken}/export?paid=1`)
+- `APP_BILLING_SUCCESS_URL_TEMPLATE` (default `http://localhost:8080/c/{caseToken}/export?payment=success`)
 - `APP_BILLING_CANCEL_URL_TEMPLATE` (default `http://localhost:8080/c/{caseToken}/export?payment=cancelled`)
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
@@ -192,3 +214,4 @@ Prod defaults:
 - All API/web responses include trace id header (`X-Trace-Id` by default) for support and incident tracing.
 - Case pages (`/c/*`), API (`/api/*`), and webhook (`/webhooks/*`) responses include `X-Robots-Tag: noindex, nofollow, noarchive`.
 - Case/API/webhook responses also send `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+- Policy source tracking is documented in `POLICY_SOURCE_TRACKING_2026-03-06.md`.

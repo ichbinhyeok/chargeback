@@ -406,6 +406,47 @@ class CaseControllerIntegrationTest {
     }
 
     @Test
+    void createCaseTrimsReasonCode() throws Exception {
+        MvcResult create = mockMvc.perform(post("/api/cases")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "platform": "STRIPE",
+                                  "productScope": "STRIPE_DISPUTE",
+                                  "reasonCode": "  product_not_received  "
+                                }
+                                """.getBytes(StandardCharsets.UTF_8)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        UUID caseId = extractUuid(create.getResponse().getContentAsString(StandardCharsets.UTF_8), "caseId");
+        String caseToken = extractText(create.getResponse().getContentAsString(StandardCharsets.UTF_8), "caseToken");
+
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reasonCode").value("product_not_received"));
+    }
+
+    @Test
+    void createCaseRejectsTooLongReasonCode() throws Exception {
+        String longReason = "x".repeat(81);
+        String body = """
+                {
+                  "platform": "STRIPE",
+                  "productScope": "STRIPE_DISPUTE",
+                  "reasonCode": "%s"
+                }
+                """.formatted(longReason);
+
+        mockMvc.perform(post("/api/cases")
+                        .contentType("application/json")
+                        .content(body.getBytes(StandardCharsets.UTF_8)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("reason_code is too long (max 80 chars)"));
+    }
+
+    @Test
     void deleteCaseRemovesCaseRecord() throws Exception {
         CaseRef caseRef = createStripeCase();
         UUID caseId = caseRef.caseId();
@@ -516,6 +557,16 @@ class CaseControllerIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Disallow: /c/")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Disallow: /api/")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Sitemap: http://localhost:8080/sitemap.xml")));
+    }
+
+    @Test
+    void newCasePageRendersReasonPresetControls() throws Exception {
+        mockMvc.perform(get("/new"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Reason Code Preset")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"reasonPreset\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-platform=\"STRIPE\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-platform=\"SHOPIFY\"")));
     }
 
     @Test

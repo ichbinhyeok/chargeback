@@ -4,13 +4,12 @@ import com.example.demo.dispute.api.CaseReportResponse;
 import com.example.demo.dispute.api.EvidenceFileReportResponse;
 import com.example.demo.dispute.api.CreateCaseRequest;
 import com.example.demo.dispute.api.ValidateCaseResponse;
-import com.example.demo.dispute.api.ValidationIssueResponse;
 import com.example.demo.dispute.domain.CardNetwork;
 import com.example.demo.dispute.domain.CaseState;
 import com.example.demo.dispute.domain.EvidenceType;
-import com.example.demo.dispute.domain.IssueSeverity;
 import com.example.demo.dispute.domain.Platform;
 import com.example.demo.dispute.domain.ProductScope;
+import com.example.demo.dispute.domain.ValidationFreshness;
 import com.example.demo.dispute.domain.ValidationSource;
 import com.example.demo.dispute.persistence.DisputeCase;
 import com.example.demo.dispute.service.AutoFixService;
@@ -19,7 +18,11 @@ import com.example.demo.dispute.service.CaseService;
 import com.example.demo.dispute.service.CheckoutStartResult;
 import com.example.demo.dispute.service.EvidenceFileService;
 import com.example.demo.dispute.service.PaymentService;
+import com.example.demo.dispute.service.PolicyCatalogService;
+import com.example.demo.dispute.service.ReasonCodeChecklistService;
+import com.example.demo.dispute.service.ReadinessService;
 import com.example.demo.dispute.service.SubmissionExportService;
+import com.example.demo.dispute.service.ValidationFreshnessService;
 import com.example.demo.dispute.service.ValidationHistoryService;
 import com.example.demo.dispute.service.ValidationService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,7 +33,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -65,6 +67,10 @@ public class WebCaseController {
     private final AutoFixService autoFixService;
     private final SubmissionExportService submissionExportService;
     private final PaymentService paymentService;
+    private final ValidationFreshnessService validationFreshnessService;
+    private final ReadinessService readinessService;
+    private final PolicyCatalogService policyCatalogService;
+    private final ReasonCodeChecklistService reasonCodeChecklistService;
     private final int caseMaxFiles;
     private final int retentionDays;
     private final String publicBaseUrl;
@@ -78,6 +84,10 @@ public class WebCaseController {
             AutoFixService autoFixService,
             SubmissionExportService submissionExportService,
             PaymentService paymentService,
+            ValidationFreshnessService validationFreshnessService,
+            ReadinessService readinessService,
+            PolicyCatalogService policyCatalogService,
+            ReasonCodeChecklistService reasonCodeChecklistService,
             @Value("${app.case.max-files:100}") int caseMaxFiles,
             @Value("${app.retention.days:7}") int retentionDays,
             @Value("${app.public-base-url:http://localhost:8080}") String publicBaseUrl
@@ -90,6 +100,10 @@ public class WebCaseController {
         this.autoFixService = autoFixService;
         this.submissionExportService = submissionExportService;
         this.paymentService = paymentService;
+        this.validationFreshnessService = validationFreshnessService;
+        this.readinessService = readinessService;
+        this.policyCatalogService = policyCatalogService;
+        this.reasonCodeChecklistService = reasonCodeChecklistService;
         this.caseMaxFiles = caseMaxFiles;
         this.retentionDays = retentionDays;
         this.publicBaseUrl = trimTrailingSlash(publicBaseUrl);
@@ -132,6 +146,8 @@ public class WebCaseController {
         model.addAttribute("platforms", Platform.values());
         model.addAttribute("productScopes", ProductScope.values());
         model.addAttribute("cardNetworks", CardNetwork.values());
+        model.addAttribute("stripeReasonOptions", reasonCodeChecklistService.listReasonOptions(Platform.STRIPE));
+        model.addAttribute("shopifyReasonOptions", reasonCodeChecklistService.listReasonOptions(Platform.SHOPIFY));
         model.addAttribute("error", error);
         return "newCase";
     }
@@ -224,7 +240,7 @@ public class WebCaseController {
 
             caseService.transitionState(disputeCase, CaseState.VALIDATING);
             ValidateCaseResponse response = validationService.validate(disputeCase, files, false);
-            validationHistoryService.record(disputeCase, response, ValidationSource.STORED_FILES, false);
+            validationHistoryService.record(disputeCase, response, ValidationSource.STORED_FILES, false, files);
             caseService.transitionState(disputeCase, response.passed() ? CaseState.READY : CaseState.BLOCKED);
 
             String message = response.passed() ? "Validation passed." : "Validation completed with issues.";
@@ -266,12 +282,26 @@ public class WebCaseController {
             @PathVariable String caseToken,
             @RequestParam(value = "message", required = false) String message,
             @RequestParam(value = "error", required = false) String error,
+            @RequestParam(value = "payment", required = false) String payment,
+            // legacy compatibility for old success_url templates
             @RequestParam(value = "paid", required = false) String paid,
             Model model
     ) {
         populateCaseModel(caseToken, model);
-        if (paid != null && !paid.isBlank()) {
-            model.addAttribute("message", "Payment confirmed. Downloads unlocked.");
+        DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
+        ValidationFreshness freshness = validationFreshnessService.freshness(disputeCase.getId());
+        model.addAttribute("validationFreshness", freshness.name());
+        model.addAttribute("validationFresh", freshness == ValidationFreshness.FRESH);
+
+        boolean isPaid = paymentService.isPaid(caseToken);
+        if ("cancelled".equalsIgnoreCase(payment)) {
+            model.addAttribute("message", "Payment cancelled. You can retry checkout anytime.");
+        } else if ("success".equalsIgnoreCase(payment) || (paid != null && !paid.isBlank())) {
+            if (isPaid) {
+                model.addAttribute("message", "Payment confirmed. Downloads unlocked.");
+            } else {
+                model.addAttribute("message", "Payment submitted. Waiting for webhook confirmation before unlock.");
+            }
         } else {
             model.addAttribute("message", message);
         }
@@ -298,6 +328,10 @@ public class WebCaseController {
         DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
         if (!isExportableState(disputeCase.getState())) {
             response.sendRedirect("/c/" + caseToken + "/export?error=" + encode("Run validation and resolve blocked issues before export."));
+            return;
+        }
+        if (!validationFreshnessService.hasFreshPassedValidation(disputeCase.getId())) {
+            response.sendRedirect("/c/" + caseToken + "/export?error=" + encode("Validation is stale. Run validation again before export."));
             return;
         }
         if (!paymentService.isPaid(disputeCase.getId())) {
@@ -370,12 +404,14 @@ public class WebCaseController {
     private void populateCaseModel(String caseToken, Model model) {
         DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
         CaseReportResponse report = caseReportService.getReport(disputeCase.getId());
-        ReadinessSummary readiness = computeReadiness(report);
+        ReadinessService.ReadinessSummary readiness = readinessService.summarize(report);
         Instant expiresAt = disputeCase.getCreatedAt().plus(retentionDays, ChronoUnit.DAYS);
         int uploadedFileCount = report.files().size();
+        EnumSet<EvidenceType> presentEvidenceTypes = EnumSet.noneOf(EvidenceType.class);
+        report.files().forEach(file -> presentEvidenceTypes.add(file.evidenceType()));
         int remainingFileSlots = Math.max(0, caseMaxFiles - uploadedFileCount);
         long uploadedSizeBytes = report.files().stream().mapToLong(EvidenceFileReportResponse::sizeBytes).sum();
-        long totalSizeLimitBytes = totalSizeLimitFor(report.productScope());
+        long totalSizeLimitBytes = totalSizeLimitFor(report);
         long remainingSizeBytes = Math.max(0, totalSizeLimitBytes - uploadedSizeBytes);
         int totalPagesUsed = report.files().stream().mapToInt(EvidenceFileReportResponse::pageCount).sum();
         int stripePagesRemaining = report.productScope() == ProductScope.STRIPE_DISPUTE
@@ -385,6 +421,14 @@ public class WebCaseController {
                 && disputeCase.getCardNetwork() == CardNetwork.MASTERCARD
                 ? Math.max(0, 19 - totalPagesUsed)
                 : -1;
+        ValidationFreshness freshness = validationFreshnessService.freshness(disputeCase.getId());
+        ReasonCodeChecklistService.ReasonChecklist reasonChecklist = reasonCodeChecklistService.resolve(
+                report.platform(),
+                report.productScope(),
+                report.reasonCode(),
+                report.cardNetwork(),
+                List.copyOf(presentEvidenceTypes)
+        );
 
         model.addAttribute("disputeCase", disputeCase);
         model.addAttribute("report", report);
@@ -397,6 +441,8 @@ public class WebCaseController {
         model.addAttribute("readinessFixable", readiness.fixableCount());
         model.addAttribute("readinessWarning", readiness.warningCount());
         model.addAttribute("missingEvidenceTypes", readiness.missingEvidenceTypes());
+        model.addAttribute("missingRequiredEvidenceTypes", readiness.missingRequiredEvidenceTypes());
+        model.addAttribute("missingRecommendedEvidenceTypes", readiness.missingRecommendedEvidenceTypes());
         model.addAttribute("retentionDays", retentionDays);
         model.addAttribute("expiresAtText", DATE_TIME_FORMAT.format(expiresAt));
         model.addAttribute("casePublicUrl", publicBaseUrl + "/c/" + report.caseToken());
@@ -411,60 +457,9 @@ public class WebCaseController {
         model.addAttribute("stripePagesRemaining", stripePagesRemaining);
         model.addAttribute("mastercardPagesRemaining", mastercardPagesRemaining);
         model.addAttribute("sizeLimitLabel", formatSizeLabel(totalSizeLimitBytes));
-    }
-
-    private ReadinessSummary computeReadiness(CaseReportResponse report) {
-        int blocked = 0;
-        int fixable = 0;
-        int warning = 0;
-
-        if (report.latestValidation() != null) {
-            for (ValidationIssueResponse issue : report.latestValidation().issues()) {
-                if (issue.severity() == IssueSeverity.BLOCKED) {
-                    blocked++;
-                } else if (issue.severity() == IssueSeverity.FIXABLE) {
-                    fixable++;
-                } else if (issue.severity() == IssueSeverity.WARNING) {
-                    warning++;
-                }
-            }
-        }
-
-        EnumSet<EvidenceType> presentTypes = EnumSet.noneOf(EvidenceType.class);
-        report.files().forEach(file -> presentTypes.add(file.evidenceType()));
-
-        List<String> missing = new ArrayList<>();
-        for (EvidenceType type : EvidenceType.values()) {
-            if (!presentTypes.contains(type)) {
-                missing.add(type.name());
-            }
-        }
-
-        int score = 100;
-        score -= blocked * 30;
-        score -= fixable * 12;
-        score -= warning * 5;
-        score -= Math.min(20, missing.size() * 3);
-        if (report.files().isEmpty()) {
-            score = Math.min(score, 10);
-        }
-        if (report.latestValidation() == null && !report.files().isEmpty()) {
-            score = Math.min(score, 70);
-        }
-        score = Math.max(0, Math.min(100, score));
-
-        String label;
-        if (score >= 90) {
-            label = "Excellent";
-        } else if (score >= 70) {
-            label = "Good";
-        } else if (score >= 50) {
-            label = "Needs Work";
-        } else {
-            label = "Critical";
-        }
-
-        return new ReadinessSummary(score, label, blocked, fixable, warning, missing);
+        model.addAttribute("validationFreshness", freshness.name());
+        model.addAttribute("validationFresh", freshness == ValidationFreshness.FRESH);
+        model.addAttribute("reasonChecklist", reasonChecklist);
     }
 
     private void markDownloaded(String caseToken) {
@@ -506,8 +501,17 @@ public class WebCaseController {
         throw new IllegalArgumentException("Invalid case token format.");
     }
 
-    private long totalSizeLimitFor(ProductScope productScope) {
-        return switch (productScope) {
+    private long totalSizeLimitFor(CaseReportResponse report) {
+        PolicyCatalogService.ResolvedPolicy policy = policyCatalogService.resolve(
+                report.platform(),
+                report.productScope(),
+                report.reasonCode(),
+                report.cardNetwork()
+        );
+        if (policy.totalSizeLimitBytes() != null && policy.totalSizeLimitBytes() > 0) {
+            return policy.totalSizeLimitBytes();
+        }
+        return switch (report.productScope()) {
             case STRIPE_DISPUTE -> STRIPE_TOTAL_SIZE_LIMIT_BYTES;
             case SHOPIFY_PAYMENTS_CHARGEBACK -> SHOPIFY_PAYMENTS_TOTAL_SIZE_LIMIT_BYTES;
             case SHOPIFY_CREDIT_DISPUTE -> SHOPIFY_CREDIT_TOTAL_SIZE_LIMIT_BYTES;
@@ -518,13 +522,4 @@ public class WebCaseController {
         return String.format("%.1f MB", bytes / (double) MB);
     }
 
-    private record ReadinessSummary(
-            int score,
-            String label,
-            int blockedCount,
-            int fixableCount,
-            int warningCount,
-            List<String> missingEvidenceTypes
-    ) {
-    }
 }

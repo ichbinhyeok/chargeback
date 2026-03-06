@@ -30,6 +30,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final AuditLogService auditLogService;
     private final StripeWebhookVerifier stripeWebhookVerifier;
+    private final ValidationFreshnessService validationFreshnessService;
     private final ObjectMapper objectMapper;
     private final RestClient stripeRestClient;
 
@@ -45,17 +46,19 @@ public class PaymentService {
             PaymentRepository paymentRepository,
             AuditLogService auditLogService,
             StripeWebhookVerifier stripeWebhookVerifier,
+            ValidationFreshnessService validationFreshnessService,
             @Value("${app.billing.stripe.secret-key:}") String stripeSecretKey,
             @Value("${app.billing.stripe.webhook-secret:}") String stripeWebhookSecret,
             @Value("${app.billing.amount-cents:1900}") long amountCents,
             @Value("${app.billing.currency:usd}") String currency,
-            @Value("${app.billing.success-url-template:http://localhost:8080/c/{caseToken}/export?paid=1}") String successUrlTemplate,
+            @Value("${app.billing.success-url-template:http://localhost:8080/c/{caseToken}/export?payment=success}") String successUrlTemplate,
             @Value("${app.billing.cancel-url-template:http://localhost:8080/c/{caseToken}/export?payment=cancelled}") String cancelUrlTemplate
     ) {
         this.caseService = caseService;
         this.paymentRepository = paymentRepository;
         this.auditLogService = auditLogService;
         this.stripeWebhookVerifier = stripeWebhookVerifier;
+        this.validationFreshnessService = validationFreshnessService;
         this.objectMapper = new ObjectMapper();
         this.stripeSecretKey = stripeSecretKey;
         this.stripeWebhookSecret = stripeWebhookSecret;
@@ -75,12 +78,30 @@ public class PaymentService {
         if (isPaid(disputeCase.getId())) {
             return new CheckoutStartResult(null, true);
         }
+        if (!validationFreshnessService.hasFreshPassedValidation(disputeCase.getId())) {
+            throw new IllegalArgumentException("Validation is stale or failed. Run validation again before payment.");
+        }
 
         if (stripeSecretKey == null || stripeSecretKey.isBlank()) {
             throw new IllegalStateException("stripe secret key is not configured");
         }
 
         StripeCheckoutSession session = createStripeCheckoutSession(disputeCase);
+        Optional<PaymentEntity> existing = paymentRepository.findByCheckoutSessionId(session.id());
+        if (existing.isPresent()) {
+            PaymentEntity reused = existing.get();
+            if (!reused.getDisputeCase().getId().equals(disputeCase.getId())) {
+                throw new IllegalStateException("checkout session is linked to a different case");
+            }
+            auditLogService.log(
+                    disputeCase,
+                    "SYSTEM",
+                    "CHECKOUT_SESSION_REUSED",
+                    "provider=stripe,sessionId=" + session.id()
+            );
+            return new CheckoutStartResult(session.url(), false);
+        }
+
         PaymentEntity payment = new PaymentEntity();
         payment.setDisputeCase(disputeCase);
         payment.setProvider(STRIPE_PROVIDER);
@@ -188,13 +209,13 @@ public class PaymentService {
         form.add("line_items[0][price_data][unit_amount]", Long.toString(amountCents));
         form.add("line_items[0][price_data][product_data][name]", "Chargeback Submission Pack");
         form.add("metadata[case_id]", disputeCase.getId().toString());
-        form.add("metadata[case_token]", disputeCase.getCaseToken());
 
         Map<String, Object> response;
         try {
             response = stripeRestClient.post()
                     .uri("/v1/checkout/sessions")
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + stripeSecretKey)
+                    .header("Idempotency-Key", "checkout-case-" + disputeCase.getId())
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .body(form)
                     .retrieve()

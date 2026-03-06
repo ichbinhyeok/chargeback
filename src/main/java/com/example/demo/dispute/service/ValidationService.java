@@ -7,7 +7,9 @@ import com.example.demo.dispute.api.ValidationIssueResponse;
 import com.example.demo.dispute.domain.CardNetwork;
 import com.example.demo.dispute.domain.EvidenceType;
 import com.example.demo.dispute.domain.FileFormat;
+import com.example.demo.dispute.domain.FixStrategy;
 import com.example.demo.dispute.domain.IssueSeverity;
+import com.example.demo.dispute.domain.IssueTargetScope;
 import com.example.demo.dispute.domain.Platform;
 import com.example.demo.dispute.domain.ProductScope;
 import com.example.demo.dispute.persistence.DisputeCase;
@@ -33,21 +35,38 @@ public class ValidationService {
             FileFormat.PNG
     );
 
+    private final ValidationIssueContractResolver contractResolver;
+    private final PolicyCatalogService policyCatalogService;
+
+    public ValidationService(
+            ValidationIssueContractResolver contractResolver,
+            PolicyCatalogService policyCatalogService
+    ) {
+        this.contractResolver = contractResolver;
+        this.policyCatalogService = policyCatalogService;
+    }
+
     public ValidateCaseResponse validate(DisputeCase disputeCase, ValidateCaseRequest request) {
         return validate(disputeCase, request.files(), request.earlySubmit());
     }
 
     public ValidateCaseResponse validate(DisputeCase disputeCase, List<EvidenceFileInput> files, boolean earlySubmit) {
         List<ValidationIssueResponse> issues = new ArrayList<>();
+        PolicyCatalogService.ResolvedPolicy policy = policyCatalogService.resolve(
+                disputeCase.getPlatform(),
+                disputeCase.getProductScope(),
+                disputeCase.getReasonCode(),
+                disputeCase.getCardNetwork()
+        );
 
         validateAllowedFormats(disputeCase.getPlatform(), files, issues);
 
         if (disputeCase.getPlatform() == Platform.STRIPE) {
             validateSingleFilePerType(disputeCase.getPlatform(), files, issues);
             validateExternalLinks(disputeCase.getPlatform(), files, issues);
-            validateStripeRules(disputeCase, files, issues);
+            validateStripeRules(disputeCase, files, issues, policy);
         } else if (disputeCase.getPlatform() == Platform.SHOPIFY) {
-            validateShopifyRules(disputeCase, files, earlySubmit, issues);
+            validateShopifyRules(disputeCase, files, earlySubmit, issues, policy);
         }
 
         boolean passed = issues.stream()
@@ -97,20 +116,31 @@ public class ValidationService {
         if (!hasMultiple) {
             return;
         }
+        EvidenceType targetType = typeCounts.entrySet().stream()
+                .filter(entry -> entry.getValue() > 1)
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(null);
 
         if (platform == Platform.STRIPE) {
             issues.add(issue(
                     "ERR_STRIPE_MULTI_FILE_PER_TYPE",
                     "STR_FILE_001",
                     IssueSeverity.FIXABLE,
-                    "Stripe requires one file per evidence type."
+                    "Stripe requires one file per evidence type.",
+                    IssueTargetScope.EVIDENCE_TYPE,
+                    targetType,
+                    FixStrategy.MERGE_PER_TYPE
             ));
         } else {
             issues.add(issue(
                     "ERR_SHPFY_MULTI_FILE_PER_TYPE",
                     "SHP_FILE_001",
                     IssueSeverity.FIXABLE,
-                    "Shopify requires one file per evidence type."
+                    "Shopify requires one file per evidence type.",
+                    IssueTargetScope.EVIDENCE_TYPE,
+                    targetType,
+                    FixStrategy.MERGE_PER_TYPE
             ));
         }
     }
@@ -145,17 +175,19 @@ public class ValidationService {
     private void validateStripeRules(
             DisputeCase disputeCase,
             List<EvidenceFileInput> files,
-            List<ValidationIssueResponse> issues
+            List<ValidationIssueResponse> issues,
+            PolicyCatalogService.ResolvedPolicy policy
     ) {
         long totalSizeBytes = files.stream().mapToLong(EvidenceFileInput::sizeBytes).sum();
         int totalPages = files.stream().mapToInt(EvidenceFileInput::pageCount).sum();
+        long totalSizeLimit = resolveTotalSizeLimitBytes(policy, LIMIT_4_5_MB);
 
-        if (totalSizeBytes > LIMIT_4_5_MB) {
+        if (totalSizeBytes > totalSizeLimit) {
             issues.add(issue(
                     "ERR_STRIPE_TOTAL_SIZE",
                     "STR_SIZE_001",
                     IssueSeverity.BLOCKED,
-                    "Total evidence size exceeds Stripe 4.5MB limit."
+                    "Total evidence size exceeds Stripe total size limit."
             ));
         }
 
@@ -182,23 +214,28 @@ public class ValidationService {
             DisputeCase disputeCase,
             List<EvidenceFileInput> files,
             boolean earlySubmit,
-            List<ValidationIssueResponse> issues
+            List<ValidationIssueResponse> issues,
+            PolicyCatalogService.ResolvedPolicy policy
     ) {
         validateShopifyPdfPageLimit(files, issues);
 
         long totalSizeBytes = files.stream().mapToLong(EvidenceFileInput::sizeBytes).sum();
+        long defaultLimit = disputeCase.getProductScope() == ProductScope.SHOPIFY_CREDIT_DISPUTE
+                ? LIMIT_4_5_MB
+                : LIMIT_4_MB;
+        long totalSizeLimit = resolveTotalSizeLimitBytes(policy, defaultLimit);
 
         if (disputeCase.getProductScope() == ProductScope.SHOPIFY_PAYMENTS_CHARGEBACK) {
             validateSingleFilePerType(disputeCase.getPlatform(), files, issues);
             validateExternalLinks(disputeCase.getPlatform(), files, issues);
             validateShopifyPaymentsFileRules(files, issues);
 
-            if (totalSizeBytes > LIMIT_4_MB) {
+            if (totalSizeBytes > totalSizeLimit) {
                 issues.add(issue(
                         "ERR_SHPFY_TOTAL_TOO_LARGE",
                         "SHP_SIZE_002",
-                        IssueSeverity.FIXABLE,
-                        "Shopify Payments total evidence size must be 4MB or less."
+                        IssueSeverity.BLOCKED,
+                        "Shopify Payments total evidence size exceeds configured limit."
                 ));
             }
 
@@ -214,23 +251,23 @@ public class ValidationService {
         }
 
         if (disputeCase.getProductScope() == ProductScope.SHOPIFY_CREDIT_DISPUTE) {
-            if (totalSizeBytes > LIMIT_4_5_MB) {
+            if (totalSizeBytes > totalSizeLimit) {
                 issues.add(issue(
                         "ERR_SHPFY_CREDIT_TOTAL_TOO_LARGE",
                         "SHP_SIZE_003",
-                        IssueSeverity.FIXABLE,
-                        "Shopify Credit total evidence size must be 4.5MB or less."
+                        IssueSeverity.BLOCKED,
+                        "Shopify Credit total evidence size exceeds configured limit."
                 ));
             }
             return;
         }
 
-        if (totalSizeBytes > LIMIT_4_MB) {
+        if (totalSizeBytes > totalSizeLimit) {
             issues.add(issue(
                     "ERR_SHPFY_TOTAL_TOO_LARGE",
                     "SHP_SIZE_002",
-                    IssueSeverity.FIXABLE,
-                    "Shopify total evidence size must be 4MB or less."
+                    IssueSeverity.BLOCKED,
+                    "Shopify total evidence size exceeds configured limit."
             ));
         }
     }
@@ -256,13 +293,37 @@ public class ValidationService {
             List<EvidenceFileInput> files,
             List<ValidationIssueResponse> issues
     ) {
-        boolean hasLargeSingleFile = files.stream().anyMatch(file -> file.sizeBytes() > LIMIT_2_MB);
-        if (hasLargeSingleFile) {
+        EvidenceFileInput oversizedImage = files.stream()
+                .filter(file -> file.sizeBytes() > LIMIT_2_MB)
+                .filter(file -> file.format() == FileFormat.JPEG || file.format() == FileFormat.PNG)
+                .findFirst()
+                .orElse(null);
+        if (oversizedImage != null) {
             issues.add(issue(
                     "ERR_SHPFY_FILE_TOO_LARGE",
                     "SHP_SIZE_001",
                     IssueSeverity.FIXABLE,
-                    "Each Shopify Payments evidence file must be 2MB or smaller."
+                    "Each Shopify Payments evidence file must be 2MB or smaller.",
+                    IssueTargetScope.EVIDENCE_TYPE,
+                    oversizedImage.evidenceType(),
+                    FixStrategy.COMPRESS_SHOPIFY_IMAGE_IF_IMAGE
+            ));
+        }
+
+        EvidenceFileInput oversizedNonImage = files.stream()
+                .filter(file -> file.sizeBytes() > LIMIT_2_MB)
+                .filter(file -> file.format() == FileFormat.PDF)
+                .findFirst()
+                .orElse(null);
+        if (oversizedNonImage != null) {
+            issues.add(issue(
+                    "ERR_SHPFY_FILE_TOO_LARGE",
+                    "SHP_SIZE_001",
+                    IssueSeverity.BLOCKED,
+                    "Each Shopify Payments evidence file must be 2MB or smaller.",
+                    IssueTargetScope.EVIDENCE_TYPE,
+                    oversizedNonImage.evidenceType(),
+                    FixStrategy.MANUAL
             ));
         }
 
@@ -286,7 +347,7 @@ public class ValidationService {
                 issues.add(issue(
                         "ERR_SHPFY_PDF_NOT_PDFA",
                         "SHP_PDF_001",
-                        IssueSeverity.FIXABLE,
+                        IssueSeverity.BLOCKED,
                         "Shopify Payments requires PDF/A compliant documents."
                 ));
                 break;
@@ -300,6 +361,35 @@ public class ValidationService {
             IssueSeverity severity,
             String message
     ) {
-        return new ValidationIssueResponse(code, ruleId, severity, message);
+        return issue(code, ruleId, severity, message, IssueTargetScope.GLOBAL, null, severity == IssueSeverity.FIXABLE ? FixStrategy.NONE : FixStrategy.MANUAL);
+    }
+
+    private ValidationIssueResponse issue(
+            String code,
+            String ruleId,
+            IssueSeverity severity,
+            String message,
+            IssueTargetScope targetScope,
+            EvidenceType targetEvidenceType,
+            FixStrategy fixStrategy
+    ) {
+        return contractResolver.build(
+                code,
+                ruleId,
+                severity,
+                message,
+                targetScope,
+                targetEvidenceType,
+                null,
+                null,
+                fixStrategy
+        );
+    }
+
+    private long resolveTotalSizeLimitBytes(PolicyCatalogService.ResolvedPolicy policy, long fallbackLimitBytes) {
+        if (policy == null || policy.totalSizeLimitBytes() == null || policy.totalSizeLimitBytes() <= 0) {
+            return fallbackLimitBytes;
+        }
+        return policy.totalSizeLimitBytes();
     }
 }

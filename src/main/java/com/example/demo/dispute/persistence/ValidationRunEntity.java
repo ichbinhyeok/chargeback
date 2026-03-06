@@ -38,6 +38,9 @@ public class ValidationRunEntity {
     @Column(name = "early_submit", nullable = false)
     private boolean earlySubmit;
 
+    @Column(name = "input_fingerprint", length = 128)
+    private String inputFingerprint;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -97,6 +100,14 @@ public class ValidationRunEntity {
 
     public void setEarlySubmit(boolean earlySubmit) {
         this.earlySubmit = earlySubmit;
+    }
+
+    public String getInputFingerprint() {
+        return inputFingerprint;
+    }
+
+    public void setInputFingerprint(String inputFingerprint) {
+        this.inputFingerprint = inputFingerprint;
     }
 
     public Instant getCreatedAt() {

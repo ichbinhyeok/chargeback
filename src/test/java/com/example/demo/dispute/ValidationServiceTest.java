@@ -11,18 +11,25 @@ import com.example.demo.dispute.api.ValidationIssueResponse;
 import com.example.demo.dispute.domain.CaseState;
 import com.example.demo.dispute.domain.EvidenceType;
 import com.example.demo.dispute.domain.FileFormat;
+import com.example.demo.dispute.domain.FixStrategy;
 import com.example.demo.dispute.domain.IssueSeverity;
+import com.example.demo.dispute.domain.IssueTargetScope;
 import com.example.demo.dispute.domain.Platform;
 import com.example.demo.dispute.domain.ProductScope;
 import com.example.demo.dispute.domain.CardNetwork;
 import com.example.demo.dispute.persistence.DisputeCase;
+import com.example.demo.dispute.service.PolicyCatalogService;
+import com.example.demo.dispute.service.ValidationIssueContractResolver;
 import com.example.demo.dispute.service.ValidationService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class ValidationServiceTest {
 
-    private final ValidationService validationService = new ValidationService();
+    private final ValidationService validationService = new ValidationService(
+            new ValidationIssueContractResolver(),
+            new PolicyCatalogService("policy/catalog-v1.json")
+    );
 
     @Test
     void stripePassesWhenRulesSatisfied() {
@@ -54,6 +61,43 @@ class ValidationServiceTest {
 
         assertFalse(response.passed());
         assertContainsCode(response, "ERR_STRIPE_TOTAL_SIZE");
+    }
+
+    @Test
+    void stripeUsesReasonSpecificTotalLimitFromPolicyCatalog() {
+        ValidationService customPolicyService = new ValidationService(
+                new ValidationIssueContractResolver(),
+                new PolicyCatalogService("policy/catalog-validation-test.json")
+        );
+        DisputeCase disputeCase = newStripeCase(CardNetwork.OTHER);
+        disputeCase.setReasonCode("RC_TIGHT");
+
+        ValidateCaseResponse response = customPolicyService.validate(
+                disputeCase,
+                List.of(pdf(EvidenceType.ORDER_RECEIPT, 1500, 1, false, true, false)),
+                false
+        );
+
+        assertFalse(response.passed());
+        assertContainsCode(response, "ERR_STRIPE_TOTAL_SIZE");
+    }
+
+    @Test
+    void stripeNetworkRuleOverridesReasonLimitByPrecedence() {
+        ValidationService customPolicyService = new ValidationService(
+                new ValidationIssueContractResolver(),
+                new PolicyCatalogService("policy/catalog-validation-test.json")
+        );
+        DisputeCase disputeCase = newStripeCase(CardNetwork.VISA);
+        disputeCase.setReasonCode("RC_TIGHT");
+
+        ValidateCaseResponse response = customPolicyService.validate(
+                disputeCase,
+                List.of(pdf(EvidenceType.ORDER_RECEIPT, 1500, 1, false, true, false)),
+                false
+        );
+
+        assertTrue(response.passed());
     }
 
     @Test
@@ -251,7 +295,7 @@ class ValidationServiceTest {
 
         assertFalse(response.passed());
         assertContainsCode(response, "ERR_SHPFY_PDF_NOT_PDFA");
-        assertContainsSeverity(response, IssueSeverity.FIXABLE);
+        assertContainsSeverity(response, IssueSeverity.BLOCKED);
     }
 
     @Test
@@ -283,6 +327,12 @@ class ValidationServiceTest {
 
         assertFalse(response.passed());
         assertContainsCode(response, "ERR_SHPFY_MULTI_FILE_PER_TYPE");
+        ValidationIssueResponse issue = response.issues().stream()
+                .filter(item -> "ERR_SHPFY_MULTI_FILE_PER_TYPE".equals(item.code()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(IssueTargetScope.EVIDENCE_TYPE, issue.targetScope());
+        assertEquals(FixStrategy.MERGE_PER_TYPE, issue.fixStrategy());
     }
 
     @Test

@@ -22,17 +22,20 @@ public class CaseReportService {
     private final EvidenceFileRepository evidenceFileRepository;
     private final ValidationRunRepository validationRunRepository;
     private final ValidationIssueRepository validationIssueRepository;
+    private final ValidationIssueContractResolver validationIssueContractResolver;
 
     public CaseReportService(
             CaseService caseService,
             EvidenceFileRepository evidenceFileRepository,
             ValidationRunRepository validationRunRepository,
-            ValidationIssueRepository validationIssueRepository
+            ValidationIssueRepository validationIssueRepository,
+            ValidationIssueContractResolver validationIssueContractResolver
     ) {
         this.caseService = caseService;
         this.evidenceFileRepository = evidenceFileRepository;
         this.validationRunRepository = validationRunRepository;
         this.validationIssueRepository = validationIssueRepository;
+        this.validationIssueContractResolver = validationIssueContractResolver;
     }
 
     public CaseReportResponse getReport(java.util.UUID caseId) {
@@ -51,6 +54,8 @@ public class CaseReportService {
                 disputeCase.getCaseToken(),
                 disputeCase.getPlatform(),
                 disputeCase.getProductScope(),
+                disputeCase.getReasonCode(),
+                disputeCase.getCardNetwork(),
                 disputeCase.getState(),
                 disputeCase.getCreatedAt(),
                 latestValidation,
@@ -62,7 +67,7 @@ public class CaseReportService {
         List<ValidationIssueResponse> issues = validationIssueRepository
                 .findByValidationRunIdOrderByCodeAsc(run.getId())
                 .stream()
-                .map(item -> new ValidationIssueResponse(
+                .map(item -> validationIssueContractResolver.rehydrate(
                         item.getCode(),
                         item.getRuleId(),
                         item.getSeverity(),

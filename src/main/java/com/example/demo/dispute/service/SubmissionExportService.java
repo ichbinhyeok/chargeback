@@ -2,26 +2,32 @@ package com.example.demo.dispute.service;
 
 import com.example.demo.dispute.api.CaseReportResponse;
 import com.example.demo.dispute.api.EvidenceFileReportResponse;
+import com.example.demo.dispute.api.ValidationRunReportResponse;
 import com.example.demo.dispute.api.ValidationIssueResponse;
 import com.example.demo.dispute.domain.CaseState;
 import com.example.demo.dispute.domain.EvidenceType;
 import com.example.demo.dispute.domain.FileFormat;
 import com.example.demo.dispute.domain.IssueSeverity;
+import com.example.demo.dispute.domain.ProductScope;
+import com.example.demo.dispute.domain.ValidationFreshness;
 import com.example.demo.dispute.persistence.DisputeCase;
 import com.example.demo.dispute.persistence.EvidenceFileEntity;
 import com.example.demo.dispute.persistence.EvidenceFileRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -45,43 +51,69 @@ public class SubmissionExportService {
     private final CaseService caseService;
     private final CaseReportService caseReportService;
     private final EvidenceFileRepository evidenceFileRepository;
+    private final ValidationFreshnessService validationFreshnessService;
+    private final PolicyCatalogService policyCatalogService;
+    private final ObjectMapper objectMapper;
 
     public SubmissionExportService(
             CaseService caseService,
             CaseReportService caseReportService,
-            EvidenceFileRepository evidenceFileRepository
+            EvidenceFileRepository evidenceFileRepository,
+            ValidationFreshnessService validationFreshnessService,
+            PolicyCatalogService policyCatalogService
     ) {
         this.caseService = caseService;
         this.caseReportService = caseReportService;
         this.evidenceFileRepository = evidenceFileRepository;
+        this.validationFreshnessService = validationFreshnessService;
+        this.policyCatalogService = policyCatalogService;
+        this.objectMapper = new ObjectMapper();
     }
 
     public void writeSubmissionZip(String caseToken, OutputStream outputStream) {
         DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
         ensureExportableState(disputeCase);
+        ensureFreshValidationForZip(disputeCase);
+        CaseReportResponse report = caseReportService.getReport(disputeCase.getId());
         List<EvidenceFileEntity> files = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId());
         if (files.isEmpty()) {
             throw new IllegalArgumentException("no uploaded files found for export");
         }
 
-        Map<EvidenceType, EvidenceFileEntity> latestByType = keepLatestFileByEvidenceType(files);
-        try (ZipOutputStream zip = new ZipOutputStream(outputStream)) {
-            int order = 1;
-            for (EvidenceType type : EvidenceType.values()) {
-                EvidenceFileEntity file = latestByType.get(type);
-                if (file == null) {
-                    continue;
-                }
+        List<EvidenceFileEntity> selectedFiles = selectFilesForZip(disputeCase, files);
+        Map<EvidenceType, Integer> totalByType = new EnumMap<>(EvidenceType.class);
+        for (EvidenceFileEntity file : selectedFiles) {
+            totalByType.merge(file.getEvidenceType(), 1, Integer::sum);
+        }
 
+        try (ZipOutputStream zip = new ZipOutputStream(outputStream)) {
+            Map<EvidenceType, Integer> sequenceByType = new EnumMap<>(EvidenceType.class);
+            List<ZippedFileRow> zippedFileRows = new ArrayList<>();
+            int order = 1;
+            for (EvidenceFileEntity file : selectedFiles) {
+                int typeSequence = sequenceByType.merge(file.getEvidenceType(), 1, Integer::sum);
+                boolean multipleForType = totalByType.getOrDefault(file.getEvidenceType(), 0) > 1;
                 String extension = extensionFor(file.getFileFormat());
-                String zipName = String.format(Locale.ROOT, "%02d_%s%s", order, type.name(), extension);
+                String repeatedTypeSuffix = multipleForType
+                        ? String.format(Locale.ROOT, "_%02d", typeSequence)
+                        : "";
+                String zipName = String.format(
+                        Locale.ROOT,
+                        "%02d_%s%s%s",
+                        order,
+                        file.getEvidenceType().name(),
+                        repeatedTypeSuffix,
+                        extension
+                );
                 order++;
 
                 ZipEntry entry = new ZipEntry(zipName);
                 zip.putNextEntry(entry);
                 Files.copy(Path.of(file.getStoragePath()), zip);
                 zip.closeEntry();
+                zippedFileRows.add(new ZippedFileRow(zipName, file));
             }
+            writeManifestEntry(zip, disputeCase, report, zippedFileRows);
         } catch (IOException ex) {
             throw new IllegalStateException("failed to generate submission zip: " + ex.getMessage(), ex);
         }
@@ -122,6 +154,22 @@ public class SubmissionExportService {
         }
     }
 
+    private List<EvidenceFileEntity> selectFilesForZip(DisputeCase disputeCase, List<EvidenceFileEntity> files) {
+        if (disputeCase.getProductScope() == ProductScope.SHOPIFY_CREDIT_DISPUTE) {
+            return sortDeterministic(files);
+        }
+
+        Map<EvidenceType, EvidenceFileEntity> latestByType = keepLatestFileByEvidenceType(files);
+        List<EvidenceFileEntity> ordered = new ArrayList<>();
+        for (EvidenceType type : EvidenceType.values()) {
+            EvidenceFileEntity file = latestByType.get(type);
+            if (file != null) {
+                ordered.add(file);
+            }
+        }
+        return ordered;
+    }
+
     private Map<EvidenceType, EvidenceFileEntity> keepLatestFileByEvidenceType(List<EvidenceFileEntity> files) {
         Map<EvidenceType, EvidenceFileEntity> latestByType = new EnumMap<>(EvidenceType.class);
         for (EvidenceFileEntity file : files) {
@@ -131,6 +179,17 @@ public class SubmissionExportService {
             }
         }
         return latestByType;
+    }
+
+    private List<EvidenceFileEntity> sortDeterministic(List<EvidenceFileEntity> files) {
+        List<EvidenceFileEntity> sorted = new ArrayList<>(files);
+        sorted.sort(
+                Comparator
+                        .comparing(EvidenceFileEntity::getEvidenceType)
+                        .thenComparing(EvidenceFileEntity::getCreatedAt)
+                        .thenComparing(EvidenceFileEntity::getId)
+        );
+        return sorted;
     }
 
     private int compareByRecency(EvidenceFileEntity left, EvidenceFileEntity right) {
@@ -209,6 +268,77 @@ public class SubmissionExportService {
         return lines;
     }
 
+    private void ensureFreshValidationForZip(DisputeCase disputeCase) {
+        if (!validationFreshnessService.hasFreshPassedValidation(disputeCase.getId())) {
+            throw new IllegalArgumentException("validation is stale or failed; run validation before export");
+        }
+    }
+
+    private void writeManifestEntry(
+            ZipOutputStream zip,
+            DisputeCase disputeCase,
+            CaseReportResponse report,
+            List<ZippedFileRow> zippedFileRows
+    ) throws IOException {
+        ValidationRunReportResponse validation = report.latestValidation();
+        ValidationFreshness freshness = validationFreshnessService.freshness(disputeCase.getId());
+
+        Map<String, Object> root = new LinkedHashMap<>();
+        root.put("packVersion", "2.1");
+        root.put("publicCaseRef", toPublicCaseRef(disputeCase));
+        root.put("caseId", disputeCase.getId().toString());
+        root.put("platform", disputeCase.getPlatform().name());
+        root.put("productScope", disputeCase.getProductScope().name());
+        root.put("state", disputeCase.getState().name());
+        root.put("generatedAt", Instant.now().toString());
+        PolicyCatalogService.ResolvedPolicy policy = policyCatalogService.resolve(
+                disputeCase.getPlatform(),
+                disputeCase.getProductScope(),
+                disputeCase.getReasonCode(),
+                disputeCase.getCardNetwork()
+        );
+        root.put("policyVersion", policy.policyVersion());
+        root.put("policyContextKey", policy.contextKey());
+        root.put("canonicalReasonKey", policy.canonicalReasonKey());
+
+        Map<String, Object> validationNode = new LinkedHashMap<>();
+        validationNode.put("freshness", freshness.name());
+        validationNode.put("exists", validation != null);
+        if (validation != null) {
+            validationNode.put("runNo", validation.runNo());
+            validationNode.put("passed", validation.passed());
+            validationNode.put("source", validation.source().name());
+            validationNode.put("validatedAt", validation.createdAt().toString());
+        }
+        root.put("validation", validationNode);
+
+        List<Map<String, Object>> fileNodes = new ArrayList<>();
+        for (ZippedFileRow row : zippedFileRows) {
+            Map<String, Object> fileNode = new LinkedHashMap<>();
+            fileNode.put("zipName", row.zipName());
+            fileNode.put("evidenceType", row.file().getEvidenceType().name());
+            fileNode.put("format", row.file().getFileFormat().name());
+            fileNode.put("sizeBytes", row.file().getSizeBytes());
+            fileNode.put("pageCount", row.file().getPageCount());
+            fileNodes.add(fileNode);
+        }
+        root.put("files", fileNodes);
+
+        byte[] manifestBytes = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(root);
+        ZipEntry manifest = new ZipEntry("manifest.json");
+        zip.putNextEntry(manifest);
+        zip.write(manifestBytes);
+        zip.closeEntry();
+    }
+
+    private String toPublicCaseRef(DisputeCase disputeCase) {
+        String date = DateTimeFormatter.BASIC_ISO_DATE
+                .withZone(ZoneId.systemDefault())
+                .format(disputeCase.getCreatedAt());
+        String idSuffix = disputeCase.getId().toString().replace("-", "").substring(0, 6);
+        return "cb_" + date + "_" + idSuffix;
+    }
+
     private String extensionFor(FileFormat format) {
         return switch (format) {
             case PDF -> ".pdf";
@@ -252,5 +382,8 @@ public class SubmissionExportService {
             watermarkLayer.showText("WATERMARKED");
             watermarkLayer.endText();
         }
+    }
+
+    private record ZippedFileRow(String zipName, EvidenceFileEntity file) {
     }
 }

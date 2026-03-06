@@ -1,5 +1,6 @@
 package com.example.demo.dispute.service;
 
+import com.example.demo.dispute.api.EvidenceFileInput;
 import com.example.demo.dispute.api.ValidateCaseResponse;
 import com.example.demo.dispute.api.ValidationIssueResponse;
 import com.example.demo.dispute.domain.ValidationSource;
@@ -19,22 +20,26 @@ public class ValidationHistoryService {
     private final ValidationRunRepository validationRunRepository;
     private final ValidationIssueRepository validationIssueRepository;
     private final AuditLogService auditLogService;
+    private final InputFingerprintService inputFingerprintService;
 
     public ValidationHistoryService(
             ValidationRunRepository validationRunRepository,
             ValidationIssueRepository validationIssueRepository,
-            AuditLogService auditLogService
+            AuditLogService auditLogService,
+            InputFingerprintService inputFingerprintService
     ) {
         this.validationRunRepository = validationRunRepository;
         this.validationIssueRepository = validationIssueRepository;
         this.auditLogService = auditLogService;
+        this.inputFingerprintService = inputFingerprintService;
     }
 
     public ValidationRunEntity record(
             DisputeCase disputeCase,
             ValidateCaseResponse response,
             ValidationSource source,
-            boolean earlySubmit
+            boolean earlySubmit,
+            List<EvidenceFileInput> validationInputs
     ) {
         int nextRunNo = validationRunRepository.findFirstByDisputeCaseIdOrderByRunNoDesc(disputeCase.getId())
                 .map(run -> run.getRunNo() + 1)
@@ -46,6 +51,7 @@ public class ValidationHistoryService {
         run.setPassed(response.passed());
         run.setSource(source);
         run.setEarlySubmit(earlySubmit);
+        run.setInputFingerprint(inputFingerprintService.fingerprint(disputeCase, validationInputs, earlySubmit));
         ValidationRunEntity savedRun = validationRunRepository.save(run);
 
         List<ValidationIssueEntity> issueEntities = response.issues().stream()

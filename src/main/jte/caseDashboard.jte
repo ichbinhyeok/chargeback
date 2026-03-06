@@ -2,6 +2,7 @@
 @import com.example.demo.dispute.api.CaseReportResponse
 @import com.example.demo.dispute.domain.EvidenceType
 @import com.example.demo.dispute.persistence.PaymentEntity
+@import com.example.demo.dispute.service.ReasonCodeChecklistService
 @import java.util.List
 @param DisputeCase disputeCase
 @param CaseReportResponse report
@@ -16,6 +17,9 @@
 @param Integer readinessFixable
 @param Integer readinessWarning
 @param List<String> missingEvidenceTypes
+@param List<String> missingRequiredEvidenceTypes
+@param List<String> missingRecommendedEvidenceTypes
+@param ReasonCodeChecklistService.ReasonChecklist reasonChecklist
 @param Integer retentionDays
 @param String expiresAtText
 @param String casePublicUrl
@@ -92,9 +96,14 @@
                 <div>Fixable: <strong class="text-gray-900">${readinessFixable}</strong></div>
                 <div>Warnings: <strong class="text-gray-900">${readinessWarning}</strong></div>
                 <div>Missing Types: <strong class="text-gray-900">${missingEvidenceTypes.size()}</strong></div>
+                <div>Missing Required: <strong class="text-gray-900">${missingRequiredEvidenceTypes.size()}</strong></div>
+                <div>Missing Recommended: <strong class="text-gray-900">${missingRecommendedEvidenceTypes.size()}</strong></div>
             </div>
-            @if(!missingEvidenceTypes.isEmpty())
-                <p class="mt-3 text-xs text-gray-500">Missing: ${String.join(", ", missingEvidenceTypes.subList(0, Math.min(4, missingEvidenceTypes.size())))}@if(missingEvidenceTypes.size() > 4), ...@endif</p>
+            @if(!missingRequiredEvidenceTypes.isEmpty())
+                <p class="mt-3 text-xs text-red-700">Required: ${String.join(", ", missingRequiredEvidenceTypes.subList(0, Math.min(4, missingRequiredEvidenceTypes.size())))}@if(missingRequiredEvidenceTypes.size() > 4), ...@endif</p>
+            @endif
+            @if(!missingRecommendedEvidenceTypes.isEmpty())
+                <p class="mt-2 text-xs text-gray-500">Recommended: ${String.join(", ", missingRecommendedEvidenceTypes.subList(0, Math.min(4, missingRecommendedEvidenceTypes.size())))}@if(missingRecommendedEvidenceTypes.size() > 4), ...@endif</p>
             @endif
         </section>
 
@@ -118,6 +127,103 @@
             <p class="mt-3 text-xs text-gray-500">Use Delete Case now for immediate removal of files and metadata.</p>
         </section>
     </div>
+
+    <section class="cb-card mb-8">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
+            <div>
+                <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Reason-Code Evidence Checklist</h2>
+                <p class="text-xs text-gray-500 mt-1">Policy-aware evidence requirements for the selected dispute reason.</p>
+            </div>
+            @if(reasonChecklist.reasonInput() != null && !reasonChecklist.reasonInput().isBlank())
+                <div class="text-xs text-gray-500">
+                    Input: <code class="bg-gray-100 px-1.5 py-0.5 rounded">${reasonChecklist.reasonInput()}</code>
+                </div>
+            @endif
+        </div>
+
+        @if(!reasonChecklist.hasReasonCode())
+            <div class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                Reason code is not set. Add a reason code to get reason-specific evidence guidance.
+            </div>
+        @else
+            <div class="mb-4 flex flex-wrap items-center gap-2">
+                <span class="cb-badge cb-badge-blue">${reasonChecklist.reasonLabel()}</span>
+                <span class="text-xs text-gray-500">Canonical key: <code class="bg-gray-100 px-1 rounded">${reasonChecklist.canonicalReasonKey()}</code></span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Required Evidence</h3>
+                    @if(reasonChecklist.requiredEvidence().isEmpty())
+                        <p class="text-sm text-gray-500">No required evidence mapped for this reason.</p>
+                    @else
+                        <ul class="space-y-1 text-sm text-gray-700">
+                            @for(var item : reasonChecklist.requiredEvidence())
+                                <li>
+                                    @if(reasonChecklist.missingRequiredEvidence().contains(item))
+                                        <span class="text-red-700 font-medium">Missing:</span> ${item}
+                                    @else
+                                        <span class="text-green-700 font-medium">Ready:</span> ${item}
+                                    @endif
+                                </li>
+                            @endfor
+                        </ul>
+                    @endif
+                </div>
+                <div>
+                    <h3 class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Recommended Evidence</h3>
+                    @if(reasonChecklist.recommendedEvidence().isEmpty())
+                        <p class="text-sm text-gray-500">No recommended evidence mapped for this reason.</p>
+                    @else
+                        <ul class="space-y-1 text-sm text-gray-700">
+                            @for(var item : reasonChecklist.recommendedEvidence())
+                                <li>
+                                    @if(reasonChecklist.missingRecommendedEvidence().contains(item))
+                                        <span class="text-amber-700 font-medium">Missing:</span> ${item}
+                                    @else
+                                        <span class="text-green-700 font-medium">Ready:</span> ${item}
+                                    @endif
+                                </li>
+                            @endfor
+                        </ul>
+                    @endif
+                </div>
+            </div>
+
+            @if(!reasonChecklist.weakEvidenceWarnings().isEmpty())
+                <div class="mt-5">
+                    <h3 class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Weak-Evidence Warnings</h3>
+                    <ul class="space-y-1 text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        @for(var warning : reasonChecklist.weakEvidenceWarnings())
+                            <li>${warning}</li>
+                        @endfor
+                    </ul>
+                </div>
+            @endif
+
+            @if(!reasonChecklist.priorityActions().isEmpty())
+                <div class="mt-5">
+                    <h3 class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Priority Actions</h3>
+                    <ul class="space-y-1 text-sm text-gray-700">
+                        @for(var action : reasonChecklist.priorityActions())
+                            <li>${action}</li>
+                        @endfor
+                    </ul>
+                </div>
+            @endif
+
+            @if(!reasonChecklist.sourceUrls().isEmpty())
+                <div class="mt-5">
+                    <h3 class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Policy Sources</h3>
+                    <div class="flex flex-wrap gap-2 text-xs">
+                        @for(var url : reasonChecklist.sourceUrls())
+                            <a href="${url}" target="_blank" rel="noreferrer noopener" class="inline-flex items-center px-2 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">${url}</a>
+                        @endfor
+                    </div>
+                </div>
+            @endif
+        @endif
+    </section>
 
     <!-- Main Content -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">

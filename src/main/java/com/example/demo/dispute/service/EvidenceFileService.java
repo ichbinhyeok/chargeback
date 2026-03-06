@@ -131,6 +131,7 @@ public class EvidenceFileService {
 
     public UploadFileResponse reclassify(UUID caseId, UUID fileId, ReclassifyFileRequest request) {
         DisputeCase disputeCase = caseService.getCase(caseId);
+        caseService.transitionState(disputeCase, CaseState.UPLOADING);
         EvidenceFileEntity entity = evidenceFileRepository.findByIdAndDisputeCaseId(fileId, caseId)
                 .orElseThrow(() -> new IllegalArgumentException("file not found in case"));
 
