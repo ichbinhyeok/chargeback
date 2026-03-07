@@ -5,8 +5,8 @@
 Scale guide pages without falling into thin-page or doorway patterns.
 
 Current target:
-- 40 guide pages total
-- 20 `reason` pages
+- 52 guide pages total
+- 32 `reason` pages
 - 20 `error` pages
 
 ## Data Source
@@ -69,7 +69,7 @@ Core funnel rates:
 1. `guide_start_case_click / guide_view`
 2. `new_case_view_from_guide / guide_start_case_click`
 
-## Expansion Rule for Next Batch (40 -> 100)
+## Expansion Rule for Next Batch (52 -> 100)
 
 1. Add reason-code + error matrix rows first, not random keyword pages.
 2. Keep one clear user-intent per page.

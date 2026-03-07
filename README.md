@@ -191,7 +191,7 @@ Prod defaults:
 ## SEO Guide Catalog (pSEO Data Source)
 
 - Guide pages are data-driven from `src/main/resources/seo/guides-v1.json`.
-- Current catalog target volume: 40 pages (20 reason + 20 error).
+- Current catalog target volume: 52 pages (32 reason + 20 error).
 - Each entry defines:
   - platform + slug
   - `guideType` (`reason` or `error`)
