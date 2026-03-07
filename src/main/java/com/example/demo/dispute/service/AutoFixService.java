@@ -18,9 +18,12 @@ import com.example.demo.dispute.persistence.FixJobRepository;
 import com.example.demo.dispute.service.pdf.PdfMetadata;
 import com.example.demo.dispute.service.pdf.PdfMetadataExtractor;
 import jakarta.persistence.EntityNotFoundException;
+import java.awt.color.ColorSpace;
+import java.awt.color.ICC_Profile;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -45,10 +48,15 @@ import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDMetadata;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.graphics.color.PDOutputIntent;
 import org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,6 +67,15 @@ public class AutoFixService {
     private static final String FAIL_CODE_NOTHING_TO_FIX = "ERR_FIX_NOTHING_TO_FIX";
     private static final String FAIL_CODE_INTERNAL = "ERR_FIX_INTERNAL";
     private static final long SHOPIFY_FILE_LIMIT_BYTES = 2L * 1024L * 1024L;
+    private static final long STRIPE_DEFAULT_TOTAL_SIZE_LIMIT_BYTES = (long) (4.5d * 1024d * 1024d);
+    private static final long MIN_TARGET_PDF_BYTES = 256L * 1024L;
+    private static final long STRIPE_MIN_BYTES_PER_PAGE_AFTER_COMPRESSION = 4_000L;
+    private static final int STRIPE_MIN_DPI = 115;
+    private static final int[] STRIPE_COMPRESSION_DPIS = new int[] {170, 150, 130, 115};
+    private static final float[] STRIPE_COMPRESSION_QUALITIES = new float[] {0.9f, 0.82f, 0.74f, 0.65f};
+    private static final int STRIPE_TEXT_HEAVY_CHAR_THRESHOLD = 800;
+    private static final int[] SHOPIFY_PDFA_DPIS = new int[] {170, 150, 130, 115};
+    private static final float[] SHOPIFY_PDFA_QUALITIES = new float[] {0.9f, 0.82f, 0.74f, 0.65f};
 
     private final CaseService caseService;
     private final FixJobRepository fixJobRepository;
@@ -68,6 +85,7 @@ public class AutoFixService {
     private final ValidationHistoryService validationHistoryService;
     private final AuditLogService auditLogService;
     private final PdfMetadataExtractor pdfMetadataExtractor;
+    private final PolicyCatalogService policyCatalogService;
 
     public AutoFixService(
             CaseService caseService,
@@ -77,7 +95,8 @@ public class AutoFixService {
             ValidationService validationService,
             ValidationHistoryService validationHistoryService,
             AuditLogService auditLogService,
-            PdfMetadataExtractor pdfMetadataExtractor
+            PdfMetadataExtractor pdfMetadataExtractor,
+            PolicyCatalogService policyCatalogService
     ) {
         this.caseService = caseService;
         this.fixJobRepository = fixJobRepository;
@@ -87,6 +106,7 @@ public class AutoFixService {
         this.validationHistoryService = validationHistoryService;
         this.auditLogService = auditLogService;
         this.pdfMetadataExtractor = pdfMetadataExtractor;
+        this.policyCatalogService = policyCatalogService;
     }
 
     public FixJobResponse requestAutoFix(UUID caseId) {
@@ -146,7 +166,8 @@ public class AutoFixService {
                 return failJob(
                         job,
                         FAIL_CODE_NOTHING_TO_FIX,
-                        "No supported auto-fix issue found. Supported: merge multi-file-per-type, Shopify oversized image compression, and PDF external-link removal."
+                        "No supported auto-fix issue found. Supported: merge multi-file-per-type, Shopify oversized image compression,"
+                                + " PDF external-link removal, Shopify PDF/A conversion + portfolio flattening, and Stripe oversized PDF compression."
                 );
             }
 
@@ -158,7 +179,10 @@ public class AutoFixService {
             job.setStatus(FixJobStatus.SUCCEEDED);
             job.setSummary(
                     "Merged " + change.mergedTypes() + " type(s), compressed " + change.compressedImages()
-                            + " image(s), sanitized " + change.linkSanitizedFiles()
+                            + " image(s), compressed " + change.compressedStripePdfFiles()
+                            + " Stripe PDF file(s), converted " + change.convertedPdfaFiles()
+                            + " PDF/A file(s), flattened " + change.flattenedPortfolioFiles()
+                            + " portfolio PDF file(s), sanitized " + change.linkSanitizedFiles()
                             + " PDF file(s). Validation passed=" + response.passed() + "."
             );
             job.setFailCode(null);
@@ -172,6 +196,9 @@ public class AutoFixService {
                     "AUTO_FIX_COMPLETED",
                     "jobId=" + saved.getId() + ",mergedTypes=" + change.mergedTypes()
                             + ",compressedImages=" + change.compressedImages()
+                            + ",compressedStripePdfFiles=" + change.compressedStripePdfFiles()
+                            + ",convertedPdfaFiles=" + change.convertedPdfaFiles()
+                            + ",flattenedPortfolioFiles=" + change.flattenedPortfolioFiles()
                             + ",linkSanitizedFiles=" + change.linkSanitizedFiles()
                             + ",passed=" + response.passed()
             );
@@ -185,8 +212,101 @@ public class AutoFixService {
     private FixChange applySupportedFixes(DisputeCase disputeCase) {
         int mergedTypes = mergeFilesByEvidenceType(disputeCase);
         int compressedImages = compressOversizedShopifyImages(disputeCase);
+        ShopifyPdfFixChange shopifyPdfFix = normalizeShopifyPdfFiles(disputeCase);
+        int compressedStripePdfFiles = compressOversizedStripePdfFiles(disputeCase);
         int linkSanitizedFiles = removeExternalLinksFromPdfFiles(disputeCase);
-        return new FixChange(mergedTypes, compressedImages, linkSanitizedFiles);
+        return new FixChange(
+                mergedTypes,
+                compressedImages,
+                compressedStripePdfFiles,
+                shopifyPdfFix.convertedPdfaFiles(),
+                shopifyPdfFix.flattenedPortfolioFiles(),
+                linkSanitizedFiles
+        );
+    }
+
+    private ShopifyPdfFixChange normalizeShopifyPdfFiles(DisputeCase disputeCase) {
+        if (disputeCase.getPlatform() != Platform.SHOPIFY
+                || disputeCase.getProductScope() != ProductScope.SHOPIFY_PAYMENTS_CHARGEBACK) {
+            return new ShopifyPdfFixChange(0, 0);
+        }
+
+        int convertedPdfa = 0;
+        int flattenedPortfolio = 0;
+        List<EvidenceFileEntity> files = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId());
+        for (EvidenceFileEntity file : files) {
+            if (file.getFileFormat() != FileFormat.PDF) {
+                continue;
+            }
+            if (file.isPdfACompliant() && !file.isPdfPortfolio()) {
+                continue;
+            }
+
+            Path originalPath = Path.of(file.getStoragePath());
+            Path normalizedPath = buildTargetPdfPath(file.getStoragePath());
+            boolean converted = !file.isPdfACompliant();
+            boolean flattened = file.isPdfPortfolio();
+
+            byte[] normalizedBytes = normalizeShopifyPdfToPdfaBytes(originalPath, SHOPIFY_FILE_LIMIT_BYTES);
+            if (normalizedBytes.length == 0) {
+                continue;
+            }
+
+            try {
+                Files.write(normalizedPath, normalizedBytes);
+            } catch (IOException ex) {
+                throw new IllegalStateException("failed to write normalized Shopify PDF", ex);
+            }
+
+            PdfMetadata metadata = pdfMetadataExtractor.extract(normalizedPath);
+            if (converted && !metadata.pdfACompliant()) {
+                deletePathQuietly(normalizedPath);
+                continue;
+            }
+            if (flattened && metadata.pdfPortfolio()) {
+                deletePathQuietly(normalizedPath);
+                continue;
+            }
+
+            long normalizedSize;
+            try {
+                normalizedSize = Files.size(normalizedPath);
+            } catch (IOException ex) {
+                deletePathQuietly(normalizedPath);
+                throw new IllegalStateException("failed to read normalized Shopify PDF size", ex);
+            }
+
+            file.setOriginalName(stripExtension(file.getOriginalName()) + "_autofix.pdf");
+            file.setContentType("application/pdf");
+            file.setStoragePath(normalizedPath.toString());
+            file.setSizeBytes(normalizedSize);
+            file.setPageCount(metadata.pageCount());
+            file.setFileFormat(FileFormat.PDF);
+            file.setPdfACompliant(metadata.pdfACompliant());
+            file.setPdfPortfolio(metadata.pdfPortfolio());
+            file.setExternalLinkDetected(metadata.externalLinkDetected());
+            evidenceFileRepository.save(file);
+            deletePathQuietly(originalPath);
+
+            if (converted && metadata.pdfACompliant()) {
+                convertedPdfa++;
+            }
+            if (flattened && !metadata.pdfPortfolio()) {
+                flattenedPortfolio++;
+            }
+
+            auditLogService.log(
+                    disputeCase,
+                    "SYSTEM",
+                    "AUTO_FIX_NORMALIZED_SHOPIFY_PDF",
+                    "fileId=" + file.getId()
+                            + ",convertedPdfa=" + converted
+                            + ",flattenedPortfolio=" + flattened
+                            + ",newSize=" + normalizedSize
+            );
+        }
+
+        return new ShopifyPdfFixChange(convertedPdfa, flattenedPortfolio);
     }
 
     private int mergeFilesByEvidenceType(DisputeCase disputeCase) {
@@ -304,6 +424,259 @@ public class AutoFixService {
         }
 
         return compressed;
+    }
+
+    private int compressOversizedStripePdfFiles(DisputeCase disputeCase) {
+        if (disputeCase.getPlatform() != Platform.STRIPE) {
+            return 0;
+        }
+
+        long totalSize = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
+                .mapToLong(EvidenceFileEntity::getSizeBytes)
+                .sum();
+        long totalLimit = resolveStripeTotalSizeLimitBytes(disputeCase);
+        if (totalSize <= totalLimit) {
+            return 0;
+        }
+
+        int compressed = 0;
+        List<EvidenceFileEntity> pdfFiles = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
+                .filter(file -> file.getFileFormat() == FileFormat.PDF)
+                .sorted(Comparator.comparingLong(EvidenceFileEntity::getSizeBytes).reversed())
+                .toList();
+
+        for (EvidenceFileEntity file : pdfFiles) {
+            if (totalSize <= totalLimit) {
+                break;
+            }
+
+            long neededReduction = totalSize - totalLimit;
+            long preferredMaxBytes = Math.max(MIN_TARGET_PDF_BYTES, file.getSizeBytes() - neededReduction);
+
+            Path originalPath = Path.of(file.getStoragePath());
+            if (isTextHeavyPdf(originalPath)) {
+                auditLogService.log(
+                        disputeCase,
+                        "SYSTEM",
+                        "AUTO_FIX_SKIPPED_STRIPE_PDF_TEXT_HEAVY",
+                        "fileId=" + file.getId()
+                );
+                continue;
+            }
+
+            Path compressedPath = buildTargetPdfPath(file.getStoragePath());
+            byte[] compressedBytes = compressPdfToSmallerBytes(originalPath, preferredMaxBytes);
+            if (compressedBytes.length == 0 || compressedBytes.length >= file.getSizeBytes()) {
+                continue;
+            }
+            long originalSize = file.getSizeBytes();
+
+            try {
+                Files.write(compressedPath, compressedBytes);
+            } catch (IOException ex) {
+                throw new IllegalStateException("failed to write compressed Stripe PDF", ex);
+            }
+
+            PdfMetadata metadata = pdfMetadataExtractor.extract(compressedPath);
+            file.setOriginalName(stripExtension(file.getOriginalName()) + "_autofix.pdf");
+            file.setContentType("application/pdf");
+            file.setStoragePath(compressedPath.toString());
+            file.setSizeBytes(compressedBytes.length);
+            file.setPageCount(metadata.pageCount());
+            file.setFileFormat(FileFormat.PDF);
+            file.setPdfACompliant(metadata.pdfACompliant());
+            file.setPdfPortfolio(metadata.pdfPortfolio());
+            file.setExternalLinkDetected(metadata.externalLinkDetected());
+            evidenceFileRepository.save(file);
+            deletePathQuietly(originalPath);
+
+            totalSize -= (originalSize - compressedBytes.length);
+            compressed++;
+
+            auditLogService.log(
+                    disputeCase,
+                    "SYSTEM",
+                    "AUTO_FIX_COMPRESSED_STRIPE_PDF",
+                    "fileId=" + file.getId() + ",newSize=" + compressedBytes.length + ",remainingTotal=" + totalSize
+            );
+        }
+
+        return compressed;
+    }
+
+    private long resolveStripeTotalSizeLimitBytes(DisputeCase disputeCase) {
+        PolicyCatalogService.ResolvedPolicy policy = policyCatalogService.resolve(
+                disputeCase.getPlatform(),
+                disputeCase.getProductScope(),
+                disputeCase.getReasonCode(),
+                disputeCase.getCardNetwork()
+        );
+        if (policy == null || policy.totalSizeLimitBytes() == null || policy.totalSizeLimitBytes() <= 0) {
+            return STRIPE_DEFAULT_TOTAL_SIZE_LIMIT_BYTES;
+        }
+        return policy.totalSizeLimitBytes();
+    }
+
+    private byte[] compressPdfToSmallerBytes(Path sourcePath, long preferredMaxBytes) {
+        int pageCount = readPdfPageCount(sourcePath);
+        byte[] bestGuarded = new byte[0];
+
+        for (int dpi : STRIPE_COMPRESSION_DPIS) {
+            for (float quality : STRIPE_COMPRESSION_QUALITIES) {
+                byte[] candidate = renderPdfAsImagePdf(sourcePath, dpi, quality);
+                if (candidate.length == 0) {
+                    continue;
+                }
+                if (!passesStripeCompressionGuard(pageCount, dpi, candidate.length)) {
+                    continue;
+                }
+                if (bestGuarded.length == 0 || candidate.length < bestGuarded.length) {
+                    bestGuarded = candidate;
+                }
+                if (candidate.length <= preferredMaxBytes) {
+                    return candidate;
+                }
+            }
+        }
+
+        return bestGuarded.length > 0 ? bestGuarded : new byte[0];
+    }
+
+    private byte[] renderPdfAsImagePdf(Path sourcePath, int dpi, float jpegQuality) {
+        try (PDDocument source = Loader.loadPDF(sourcePath.toFile()); PDDocument compressed = new PDDocument()) {
+            PDFRenderer renderer = new PDFRenderer(source);
+            for (int i = 0; i < source.getNumberOfPages(); i++) {
+                BufferedImage rendered = renderer.renderImageWithDPI(i, dpi, ImageType.RGB);
+                PDRectangle sourceBox = source.getPage(i).getMediaBox();
+                float width = sourceBox != null && sourceBox.getWidth() > 0
+                        ? sourceBox.getWidth()
+                        : (float) rendered.getWidth() * 72f / dpi;
+                float height = sourceBox != null && sourceBox.getHeight() > 0
+                        ? sourceBox.getHeight()
+                        : (float) rendered.getHeight() * 72f / dpi;
+
+                PDPage page = new PDPage(new PDRectangle(width, height));
+                compressed.addPage(page);
+                PDImageXObject image = JPEGFactory.createFromImage(compressed, rendered, jpegQuality);
+                try (PDPageContentStream content = new PDPageContentStream(compressed, page)) {
+                    content.drawImage(image, 0, 0, width, height);
+                }
+            }
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            compressed.save(out);
+            return out.toByteArray();
+        } catch (IOException ex) {
+            return new byte[0];
+        }
+    }
+
+    private byte[] normalizeShopifyPdfToPdfaBytes(Path sourcePath, long preferredMaxBytes) {
+        byte[] best = new byte[0];
+
+        for (int dpi : SHOPIFY_PDFA_DPIS) {
+            for (float quality : SHOPIFY_PDFA_QUALITIES) {
+                byte[] candidate = renderPdfAsPdfABytes(sourcePath, dpi, quality);
+                if (candidate.length == 0) {
+                    continue;
+                }
+                if (best.length == 0 || candidate.length < best.length) {
+                    best = candidate;
+                }
+                if (preferredMaxBytes > 0 && candidate.length <= preferredMaxBytes) {
+                    return candidate;
+                }
+            }
+        }
+
+        return best;
+    }
+
+    private byte[] renderPdfAsPdfABytes(Path sourcePath, int dpi, float jpegQuality) {
+        try (PDDocument source = Loader.loadPDF(sourcePath.toFile()); PDDocument normalized = new PDDocument()) {
+            PDFRenderer renderer = new PDFRenderer(source);
+            for (int i = 0; i < source.getNumberOfPages(); i++) {
+                BufferedImage rendered = renderer.renderImageWithDPI(i, dpi, ImageType.RGB);
+                PDRectangle sourceBox = source.getPage(i).getMediaBox();
+                float width = sourceBox != null && sourceBox.getWidth() > 0
+                        ? sourceBox.getWidth()
+                        : (float) rendered.getWidth() * 72f / dpi;
+                float height = sourceBox != null && sourceBox.getHeight() > 0
+                        ? sourceBox.getHeight()
+                        : (float) rendered.getHeight() * 72f / dpi;
+
+                PDPage page = new PDPage(new PDRectangle(width, height));
+                normalized.addPage(page);
+                PDImageXObject image = JPEGFactory.createFromImage(normalized, rendered, jpegQuality);
+                try (PDPageContentStream content = new PDPageContentStream(normalized, page)) {
+                    content.drawImage(image, 0, 0, width, height);
+                }
+            }
+
+            applyPdfaProfile(normalized);
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            normalized.save(out);
+            return out.toByteArray();
+        } catch (IOException ex) {
+            return new byte[0];
+        }
+    }
+
+    private void applyPdfaProfile(PDDocument document) throws IOException {
+        String xmp = """
+                <?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>
+                <x:xmpmeta xmlns:x="adobe:ns:meta/">
+                  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+                    <rdf:Description rdf:about=""
+                      xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/"
+                      xmlns:cb="urn:chargeback:autofix"
+                      pdfaid:part="1"
+                      pdfaid:conformance="B"
+                      cb:marker="autofix_pdfa_candidate"/>
+                  </rdf:RDF>
+                </x:xmpmeta>
+                <?xpacket end="w"?>
+                """;
+        PDMetadata metadata = new PDMetadata(document);
+        metadata.importXMPMetadata(xmp.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        document.getDocumentCatalog().setMetadata(metadata);
+
+        ICC_Profile profile = ICC_Profile.getInstance(ColorSpace.CS_sRGB);
+        PDOutputIntent outputIntent = new PDOutputIntent(document, new ByteArrayInputStream(profile.getData()));
+        outputIntent.setInfo("sRGB IEC61966-2.1");
+        outputIntent.setOutputCondition("sRGB IEC61966-2.1");
+        outputIntent.setOutputConditionIdentifier("sRGB IEC61966-2.1");
+        outputIntent.setRegistryName("https://www.color.org");
+        document.getDocumentCatalog().addOutputIntent(outputIntent);
+    }
+
+    private int readPdfPageCount(Path sourcePath) {
+        try (PDDocument source = Loader.loadPDF(sourcePath.toFile())) {
+            return Math.max(1, source.getNumberOfPages());
+        } catch (IOException ex) {
+            return 1;
+        }
+    }
+
+    private boolean isTextHeavyPdf(Path sourcePath) {
+        try (PDDocument source = Loader.loadPDF(sourcePath.toFile())) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            String text = stripper.getText(source);
+            if (text == null) {
+                return false;
+            }
+            return text.replaceAll("\\s+", "").length() >= STRIPE_TEXT_HEAVY_CHAR_THRESHOLD;
+        } catch (IOException ex) {
+            return false;
+        }
+    }
+
+    private boolean passesStripeCompressionGuard(int pageCount, int dpi, long sizeBytes) {
+        if (dpi < STRIPE_MIN_DPI) {
+            return false;
+        }
+        long perPageBytes = sizeBytes / Math.max(1, pageCount);
+        return perPageBytes >= STRIPE_MIN_BYTES_PER_PAGE_AFTER_COMPRESSION;
     }
 
     private int removeExternalLinksFromPdfFiles(DisputeCase disputeCase) {
@@ -571,9 +944,24 @@ public class AutoFixService {
         );
     }
 
-    private record FixChange(int mergedTypes, int compressedImages, int linkSanitizedFiles) {
+    private record FixChange(
+            int mergedTypes,
+            int compressedImages,
+            int compressedStripePdfFiles,
+            int convertedPdfaFiles,
+            int flattenedPortfolioFiles,
+            int linkSanitizedFiles
+    ) {
         boolean isNoop() {
-            return mergedTypes <= 0 && compressedImages <= 0 && linkSanitizedFiles <= 0;
+            return mergedTypes <= 0
+                    && compressedImages <= 0
+                    && compressedStripePdfFiles <= 0
+                    && convertedPdfaFiles <= 0
+                    && flattenedPortfolioFiles <= 0
+                    && linkSanitizedFiles <= 0;
         }
+    }
+
+    private record ShopifyPdfFixChange(int convertedPdfaFiles, int flattenedPortfolioFiles) {
     }
 }

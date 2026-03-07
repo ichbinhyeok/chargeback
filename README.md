@@ -29,7 +29,7 @@ Core flow:
 4. Upload evidence files by type
 5. Validate against platform rules
 6. Generate dispute explanation draft (editable)
-7. Run auto-fix (per-type merge + Shopify oversized image compression + PDF external-link removal)
+7. Run auto-fix (per-type merge + Shopify oversized image compression + Shopify PDF/A conversion + PDF portfolio flatten + Stripe oversized PDF compression + PDF external-link removal)
 8. Pay (Stripe Checkout) only when validation is fresh and required evidence coverage is complete
 9. Download submission ZIP (same required-evidence gate), explanation TXT, and one-page guide PDF
 
@@ -121,19 +121,27 @@ Billing:
 - `APP_BILLING_CURRENCY` (default `usd`)
 - `APP_BILLING_SUCCESS_URL_TEMPLATE` (default `http://localhost:8080/c/{caseToken}/export?payment=success`)
 - `APP_BILLING_CANCEL_URL_TEMPLATE` (default `http://localhost:8080/c/{caseToken}/export?payment=cancelled`)
+- `APP_BILLING_PROVIDER` (default `stripe`, allowed: `stripe`, `lemonsqueezy`)
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
+- `LEMONSQUEEZY_API_KEY`
+- `LEMONSQUEEZY_WEBHOOK_SECRET`
+- `LEMONSQUEEZY_STORE_ID`
+- `LEMONSQUEEZY_VARIANT_ID`
 
-## Stripe Webhook
+## Billing Webhooks
 
-Endpoint:
+Endpoints:
 - `POST /webhooks/stripe`
+- `POST /webhooks/lemonsqueezy`
 
-Expected event:
+Expected events:
 - `checkout.session.completed`
+- `order_created`
 
 Signature:
 - Verified with `Stripe-Signature` header using `STRIPE_WEBHOOK_SECRET`.
+- Verified with `X-Signature` header using `LEMONSQUEEZY_WEBHOOK_SECRET`.
 
 ## Docker Compose (Prod Profile)
 
@@ -169,7 +177,7 @@ Prod defaults:
 - `/c/{caseToken}/explanation` dispute explanation draft editor
 - `/c/{caseToken}/report` case report
 - `/c/{caseToken}/export` paywall + download
-- `POST /c/{caseToken}/pay` start Stripe Checkout
+- `POST /c/{caseToken}/pay` start provider checkout (Stripe/Lemon Squeezy)
 - `/c/{caseToken}/download/submission.zip` paid only
 - `/c/{caseToken}/download/summary.pdf` free with watermark, paid without watermark
 - `/c/{caseToken}/download/explanation.txt` explanation draft text download

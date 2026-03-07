@@ -297,6 +297,145 @@ class CaseControllerIntegrationTest {
     }
 
     @Test
+    void stripeAutoFixCompressesOversizedPdf() throws Exception {
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        MockMultipartFile oversizedPdf = new MockMultipartFile(
+                "file",
+                "oversized.pdf",
+                "application/pdf",
+                oversizedPdfByPadding()
+        );
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(oversizedPdf)
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fileFormat").value("PDF"));
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(false))
+                .andExpect(jsonPath("$.issues[0].code").value("ERR_STRIPE_TOTAL_SIZE"))
+                .andExpect(jsonPath("$.issues[0].fixStrategy").value("COMPRESS_STRIPE_PDF"));
+
+        mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+
+        mockMvc.perform(get("/api/cases/{caseId}/files", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].sizeBytes").value(org.hamcrest.Matchers.lessThan(4_718_592)));
+
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latestValidation.source").value("AUTO_FIX"))
+                .andExpect(jsonPath("$.latestValidation.passed").value(true));
+    }
+
+    @Test
+    void shopifyAutoFixConvertsPdfToPdfa() throws Exception {
+        CaseRef caseRef = createShopifyPaymentsCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        MockMultipartFile nonPdfa = new MockMultipartFile(
+                "file",
+                "non-pdfa.pdf",
+                "application/pdf",
+                simplePdf()
+        );
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(nonPdfa)
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pdfACompliant").value(false));
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(false))
+                .andExpect(jsonPath("$.issues[0].code").value("ERR_SHPFY_PDF_NOT_PDFA"))
+                .andExpect(jsonPath("$.issues[0].fixStrategy").value("CONVERT_PDF_TO_PDFA"));
+
+        mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+
+        mockMvc.perform(get("/api/cases/{caseId}/files", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].pdfACompliant").value(true));
+
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latestValidation.source").value("AUTO_FIX"))
+                .andExpect(jsonPath("$.latestValidation.passed").value(true));
+    }
+
+    @Test
+    void shopifyAutoFixFlattensPortfolioPdf() throws Exception {
+        CaseRef caseRef = createShopifyPaymentsCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        MockMultipartFile portfolioFile = new MockMultipartFile(
+                "file",
+                "portfolio.pdf",
+                "application/pdf",
+                portfolioPdf()
+        );
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(portfolioFile)
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pdfPortfolio").value(true));
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(false))
+                .andExpect(jsonPath("$.issues[0].code").value("ERR_SHPFY_PDF_PORTFOLIO"))
+                .andExpect(jsonPath("$.issues[0].fixStrategy").value("FLATTEN_PDF_PORTFOLIO"));
+
+        mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+
+        mockMvc.perform(get("/api/cases/{caseId}/files", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].pdfPortfolio").value(false))
+                .andExpect(jsonPath("$[0].pdfACompliant").value(true));
+
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latestValidation.source").value("AUTO_FIX"))
+                .andExpect(jsonPath("$.latestValidation.passed").value(true));
+    }
+
+    @Test
     void validateEndpointBlocksMastercardWhenPagesExceed19() throws Exception {
         CaseRef caseRef = createStripeMastercardCase();
         UUID caseId = caseRef.caseId();
@@ -897,6 +1036,34 @@ class CaseControllerIntegrationTest {
                 trailer << /Root 1 0 R >>
                 %%EOF
                 """.getBytes(StandardCharsets.ISO_8859_1);
+    }
+
+    private byte[] portfolioPdf() {
+        return """
+                %PDF-1.4
+                1 0 obj << /Type /Catalog /Pages 2 0 R /Collection << /Type /Collection >> >>
+                endobj
+                2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >>
+                endobj
+                3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] >>
+                endobj
+                trailer << /Root 1 0 R >>
+                %%EOF
+                """.getBytes(StandardCharsets.ISO_8859_1);
+    }
+
+    private byte[] oversizedPdfByPadding() throws Exception {
+        byte[] base = simplePdf();
+        int target = 5_300_000;
+        if (base.length >= target) {
+            return base;
+        }
+        byte[] padded = new byte[target];
+        System.arraycopy(base, 0, padded, 0, base.length);
+        for (int i = base.length; i < padded.length; i++) {
+            padded[i] = '0';
+        }
+        return padded;
     }
 
     private byte[] pdfWithExternalLink() throws Exception {

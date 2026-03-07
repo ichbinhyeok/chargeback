@@ -18,9 +18,13 @@ import org.springframework.stereotype.Component;
 public class PdfMetadataExtractor {
 
     private static final Pattern PAGE_PATTERN = Pattern.compile("/Type\\s*/Page\\b");
-    private static final Pattern EXTERNAL_LINK_PATTERN = Pattern.compile("/URI\\s*\\(|https?://");
-    private static final Pattern PDFA_PATTERN = Pattern.compile("pdfaid:part", Pattern.CASE_INSENSITIVE);
+    private static final Pattern EXTERNAL_LINK_PATTERN = Pattern.compile("/URI\\s*\\(");
     private static final Pattern PORTFOLIO_PATTERN = Pattern.compile("/Collection\\b");
+    private final PdfAComplianceService pdfAComplianceService;
+
+    public PdfMetadataExtractor(PdfAComplianceService pdfAComplianceService) {
+        this.pdfAComplianceService = pdfAComplianceService;
+    }
 
     public PdfMetadata extract(Path path) {
         try {
@@ -37,7 +41,7 @@ public class PdfMetadataExtractor {
             try (PDDocument document = Loader.loadPDF(path.toFile())) {
                 int pageCount = Math.max(document.getNumberOfPages(), 1);
                 boolean externalLinkDetected = hasExternalLink(document) || hasExternalLinkRaw(path);
-                boolean pdfACompliant = hasPdfAFlag(document);
+                boolean pdfACompliant = pdfAComplianceService.isPdfACompliant(path);
                 boolean pdfPortfolio = isPortfolio(document);
                 return new PdfMetadata(pageCount, externalLinkDetected, pdfACompliant, pdfPortfolio);
             }
@@ -53,7 +57,7 @@ public class PdfMetadataExtractor {
 
             int pageCount = countPages(content);
             boolean externalLinkDetected = EXTERNAL_LINK_PATTERN.matcher(content).find();
-            boolean pdfACompliant = PDFA_PATTERN.matcher(content).find();
+            boolean pdfACompliant = pdfAComplianceService.isPdfACompliant(path);
             boolean pdfPortfolio = PORTFOLIO_PATTERN.matcher(content).find();
             return new PdfMetadata(pageCount, externalLinkDetected, pdfACompliant, pdfPortfolio);
         } catch (IOException e) {
@@ -86,18 +90,6 @@ public class PdfMetadataExtractor {
     private boolean hasExternalLinkRaw(Path path) throws IOException {
         String content = new String(Files.readAllBytes(path), StandardCharsets.ISO_8859_1);
         return EXTERNAL_LINK_PATTERN.matcher(content).find();
-    }
-
-    private boolean hasPdfAFlag(PDDocument document) throws IOException {
-        PDDocumentCatalog catalog = document.getDocumentCatalog();
-        if (catalog == null || catalog.getMetadata() == null) {
-            return false;
-        }
-
-        try (var metadataStream = catalog.getMetadata().createInputStream()) {
-            String xmp = new String(metadataStream.readAllBytes(), StandardCharsets.UTF_8);
-            return PDFA_PATTERN.matcher(xmp).find();
-        }
     }
 
     private boolean isPortfolio(PDDocument document) {

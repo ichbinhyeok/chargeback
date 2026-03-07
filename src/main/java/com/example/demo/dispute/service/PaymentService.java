@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,20 +30,28 @@ import org.springframework.web.client.RestClient;
 public class PaymentService {
 
     private static final String STRIPE_PROVIDER = "stripe";
+    private static final String LEMON_PROVIDER = "lemonsqueezy";
 
     private final CaseService caseService;
     private final PaymentRepository paymentRepository;
     private final AuditLogService auditLogService;
     private final StripeWebhookVerifier stripeWebhookVerifier;
+    private final LemonWebhookVerifier lemonWebhookVerifier;
     private final ValidationFreshnessService validationFreshnessService;
     private final CaseReportService caseReportService;
     private final ReadinessService readinessService;
     private final PolicyCatalogService policyCatalogService;
     private final ObjectMapper objectMapper;
     private final RestClient stripeRestClient;
+    private final RestClient lemonRestClient;
 
+    private final String billingProvider;
     private final String stripeSecretKey;
     private final String stripeWebhookSecret;
+    private final String lemonApiKey;
+    private final String lemonWebhookSecret;
+    private final String lemonStoreId;
+    private final String lemonVariantId;
     private final long amountCents;
     private final String currency;
     private final String successUrlTemplate;
@@ -53,12 +62,18 @@ public class PaymentService {
             PaymentRepository paymentRepository,
             AuditLogService auditLogService,
             StripeWebhookVerifier stripeWebhookVerifier,
+            LemonWebhookVerifier lemonWebhookVerifier,
             ValidationFreshnessService validationFreshnessService,
             CaseReportService caseReportService,
             ReadinessService readinessService,
             PolicyCatalogService policyCatalogService,
+            @Value("${app.billing.provider:stripe}") String billingProvider,
             @Value("${app.billing.stripe.secret-key:}") String stripeSecretKey,
             @Value("${app.billing.stripe.webhook-secret:}") String stripeWebhookSecret,
+            @Value("${app.billing.lemonsqueezy.api-key:}") String lemonApiKey,
+            @Value("${app.billing.lemonsqueezy.webhook-secret:}") String lemonWebhookSecret,
+            @Value("${app.billing.lemonsqueezy.store-id:}") String lemonStoreId,
+            @Value("${app.billing.lemonsqueezy.variant-id:}") String lemonVariantId,
             @Value("${app.billing.amount-cents:1900}") long amountCents,
             @Value("${app.billing.currency:usd}") String currency,
             @Value("${app.billing.success-url-template:http://localhost:8080/c/{caseToken}/export?payment=success}") String successUrlTemplate,
@@ -68,18 +83,25 @@ public class PaymentService {
         this.paymentRepository = paymentRepository;
         this.auditLogService = auditLogService;
         this.stripeWebhookVerifier = stripeWebhookVerifier;
+        this.lemonWebhookVerifier = lemonWebhookVerifier;
         this.validationFreshnessService = validationFreshnessService;
         this.caseReportService = caseReportService;
         this.readinessService = readinessService;
         this.policyCatalogService = policyCatalogService;
         this.objectMapper = new ObjectMapper();
+        this.billingProvider = billingProvider;
         this.stripeSecretKey = stripeSecretKey;
         this.stripeWebhookSecret = stripeWebhookSecret;
+        this.lemonApiKey = lemonApiKey;
+        this.lemonWebhookSecret = lemonWebhookSecret;
+        this.lemonStoreId = lemonStoreId;
+        this.lemonVariantId = lemonVariantId;
         this.amountCents = amountCents;
         this.currency = currency;
         this.successUrlTemplate = successUrlTemplate;
         this.cancelUrlTemplate = cancelUrlTemplate;
         this.stripeRestClient = RestClient.builder().baseUrl("https://api.stripe.com").build();
+        this.lemonRestClient = RestClient.builder().baseUrl("https://api.lemonsqueezy.com").build();
     }
 
     public CheckoutStartResult startCheckout(String caseToken) {
@@ -109,12 +131,9 @@ public class PaymentService {
                 disputeCase.getCardNetwork()
         );
         String requiredEvidenceSnapshot = serializeRequiredEvidence(policy.requiredEvidenceTypes());
-
-        if (stripeSecretKey == null || stripeSecretKey.isBlank()) {
-            throw new IllegalStateException("stripe secret key is not configured");
-        }
-
-        StripeCheckoutSession session = createStripeCheckoutSession(disputeCase);
+        String provider = activeProvider();
+        assertCheckoutConfigured(provider);
+        CheckoutSession session = createCheckoutSession(disputeCase, provider);
         Optional<PaymentEntity> existing = paymentRepository.findByCheckoutSessionId(session.id());
         if (existing.isPresent()) {
             PaymentEntity reused = existing.get();
@@ -125,7 +144,7 @@ public class PaymentService {
                     disputeCase,
                     "SYSTEM",
                     "CHECKOUT_SESSION_REUSED",
-                    "provider=stripe,sessionId=" + session.id()
+                    "provider=" + provider + ",sessionId=" + session.id()
             );
             backfillSnapshotIfMissing(reused, policy.policyVersion(), requiredEvidenceSnapshot);
             return new CheckoutStartResult(session.url(), false);
@@ -133,7 +152,7 @@ public class PaymentService {
 
         PaymentEntity payment = new PaymentEntity();
         payment.setDisputeCase(disputeCase);
-        payment.setProvider(STRIPE_PROVIDER);
+        payment.setProvider(provider);
         payment.setCheckoutSessionId(session.id());
         payment.setPaymentIntentId(null);
         payment.setStatus(PaymentStatus.CREATED);
@@ -148,7 +167,7 @@ public class PaymentService {
                 disputeCase,
                 "SYSTEM",
                 "CHECKOUT_SESSION_CREATED",
-                "provider=stripe,sessionId=" + session.id()
+                "provider=" + provider + ",sessionId=" + session.id()
         );
 
         return new CheckoutStartResult(session.url(), false);
@@ -161,7 +180,21 @@ public class PaymentService {
 
     @Transactional(readOnly = true)
     public boolean isCheckoutConfigured() {
+        String provider = activeProvider();
+        if (LEMON_PROVIDER.equals(provider)) {
+            return lemonApiKey != null
+                    && !lemonApiKey.isBlank()
+                    && lemonStoreId != null
+                    && !lemonStoreId.isBlank()
+                    && lemonVariantId != null
+                    && !lemonVariantId.isBlank();
+        }
         return stripeSecretKey != null && !stripeSecretKey.isBlank();
+    }
+
+    @Transactional(readOnly = true)
+    public String checkoutProviderDisplayName() {
+        return LEMON_PROVIDER.equals(activeProvider()) ? "Lemon Squeezy" : "Stripe";
     }
 
     @Transactional(readOnly = true)
@@ -228,6 +261,48 @@ public class PaymentService {
         paymentRepository.findByCheckoutSessionId(sessionId).ifPresent(payment -> markPaid(payment, paymentIntentId, email));
     }
 
+    public void processLemonWebhook(String payload, String signatureHeader) {
+        if (lemonWebhookSecret == null || lemonWebhookSecret.isBlank()) {
+            throw new IllegalStateException("lemonsqueezy webhook secret is not configured");
+        }
+        if (!lemonWebhookVerifier.isValid(payload, signatureHeader, lemonWebhookSecret)) {
+            throw new IllegalArgumentException("invalid lemonsqueezy signature");
+        }
+
+        JsonNode event;
+        try {
+            event = objectMapper.readTree(payload);
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("invalid webhook payload");
+        }
+
+        String eventName = event.path("meta").path("event_name").asText("");
+        if (!"order_created".equals(eventName)) {
+            return;
+        }
+
+        String caseToken = event.path("meta").path("custom_data").path("case_token").asText(null);
+        if (caseToken == null || caseToken.isBlank()) {
+            return;
+        }
+
+        DisputeCase disputeCase;
+        try {
+            disputeCase = caseService.getCaseByToken(caseToken);
+        } catch (RuntimeException ex) {
+            return;
+        }
+
+        String orderId = event.path("data").path("id").asText(null);
+        String email = firstNonBlank(
+                event.path("data").path("attributes").path("user_email").asText(null),
+                event.path("data").path("attributes").path("customer_email").asText(null)
+        );
+
+        paymentRepository.findFirstByDisputeCaseIdAndProviderOrderByCreatedAtDesc(disputeCase.getId(), LEMON_PROVIDER)
+                .ifPresent(payment -> markPaid(payment, orderId, email));
+    }
+
     private void markPaid(PaymentEntity payment, String paymentIntentId, String email) {
         if (payment.getStatus() == PaymentStatus.PAID) {
             return;
@@ -248,11 +323,52 @@ public class PaymentService {
                 disputeCase,
                 "SYSTEM",
                 "PAYMENT_COMPLETED",
-                "provider=stripe,sessionId=" + payment.getCheckoutSessionId()
+                "provider=" + payment.getProvider() + ",sessionId=" + payment.getCheckoutSessionId()
         );
     }
 
-    private StripeCheckoutSession createStripeCheckoutSession(DisputeCase disputeCase) {
+    private String activeProvider() {
+        if (billingProvider == null || billingProvider.isBlank()) {
+            return STRIPE_PROVIDER;
+        }
+        String normalized = billingProvider.trim().toLowerCase(Locale.ROOT);
+        if ("lemon".equals(normalized) || "lemonsqueezy".equals(normalized) || "lemon_squeezy".equals(normalized)) {
+            return LEMON_PROVIDER;
+        }
+        return STRIPE_PROVIDER;
+    }
+
+    private void assertCheckoutConfigured(String provider) {
+        if (LEMON_PROVIDER.equals(provider)) {
+            if (lemonApiKey == null || lemonApiKey.isBlank()
+                    || lemonStoreId == null || lemonStoreId.isBlank()
+                    || lemonVariantId == null || lemonVariantId.isBlank()) {
+                throw new IllegalStateException("lemonsqueezy checkout is not configured");
+            }
+            return;
+        }
+        if (stripeSecretKey == null || stripeSecretKey.isBlank()) {
+            throw new IllegalStateException("stripe secret key is not configured");
+        }
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private CheckoutSession createCheckoutSession(DisputeCase disputeCase, String provider) {
+        if (LEMON_PROVIDER.equals(provider)) {
+            return createLemonCheckoutSession(disputeCase);
+        }
+        return createStripeCheckoutSession(disputeCase);
+    }
+
+    private CheckoutSession createStripeCheckoutSession(DisputeCase disputeCase) {
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("mode", "payment");
         form.add("success_url", interpolateCaseToken(successUrlTemplate, disputeCase.getCaseToken()));
@@ -287,7 +403,60 @@ public class PaymentService {
             throw new IllegalStateException("stripe response missing id/url");
         }
 
-        return new StripeCheckoutSession(sessionId, url);
+        return new CheckoutSession(sessionId, url);
+    }
+
+    private CheckoutSession createLemonCheckoutSession(DisputeCase disputeCase) {
+        Map<String, Object> payload = Map.of(
+                "data", Map.of(
+                        "type", "checkouts",
+                        "attributes", Map.of(
+                                "checkout_data", Map.of(
+                                        "custom", Map.of(
+                                                "case_token", disputeCase.getCaseToken()
+                                        )
+                                ),
+                                "product_options", Map.of(
+                                        "redirect_url", interpolateCaseToken(successUrlTemplate, disputeCase.getCaseToken())
+                                )
+                        ),
+                        "relationships", Map.of(
+                                "store", Map.of(
+                                        "data", Map.of("type", "stores", "id", lemonStoreId)
+                                ),
+                                "variant", Map.of(
+                                        "data", Map.of("type", "variants", "id", lemonVariantId)
+                                )
+                        )
+                )
+        );
+
+        Map<String, Object> response;
+        try {
+            response = lemonRestClient.post()
+                    .uri("/v1/checkouts")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + lemonApiKey)
+                    .header(HttpHeaders.ACCEPT, "application/vnd.api+json")
+                    .contentType(MediaType.parseMediaType("application/vnd.api+json"))
+                    .body(payload)
+                    .retrieve()
+                    .body(Map.class);
+        } catch (Exception ex) {
+            throw new IllegalStateException("failed to create lemonsqueezy checkout: " + ex.getMessage(), ex);
+        }
+
+        if (response == null) {
+            throw new IllegalStateException("lemonsqueezy returned empty response");
+        }
+
+        JsonNode node = objectMapper.valueToTree(response);
+        String checkoutId = node.path("data").path("id").asText(null);
+        String url = node.path("data").path("attributes").path("url").asText(null);
+        if (checkoutId == null || url == null || checkoutId.isBlank() || url.isBlank()) {
+            throw new IllegalStateException("lemonsqueezy response missing id/url");
+        }
+
+        return new CheckoutSession(checkoutId, url);
     }
 
     private String interpolateCaseToken(String template, String caseToken) {
@@ -351,6 +520,6 @@ public class PaymentService {
         return state == CaseState.READY || state == CaseState.PAID || state == CaseState.DOWNLOADED;
     }
 
-    private record StripeCheckoutSession(String id, String url) {
+    private record CheckoutSession(String id, String url) {
     }
 }

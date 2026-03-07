@@ -27,7 +27,7 @@
                 
                 <div>
                     <h2 class="text-lg font-bold text-gray-900 mb-2">Payment Data</h2>
-                    <p>All payments are processed securely by Stripe. We do not process, parse, or store raw credit card details on our infrastructure.</p>
+                    <p>All payments are processed by our configured payment provider (for example, Lemon Squeezy or Stripe). We do not process, parse, or store raw credit card details on our infrastructure.</p>
                 </div>
                 
                 <div>

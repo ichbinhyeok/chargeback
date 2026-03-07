@@ -358,6 +358,7 @@ public class WebCaseController {
         }
         model.addAttribute("error", error);
         model.addAttribute("paymentConfigured", paymentService.isCheckoutConfigured());
+        model.addAttribute("paymentProviderLabel", paymentService.checkoutProviderDisplayName());
         return "caseExport";
     }
 
@@ -509,6 +510,7 @@ public class WebCaseController {
         model.addAttribute("evidenceTypes", EvidenceType.values());
         model.addAttribute("isPaid", paymentService.isPaid(disputeCase.getId()));
         model.addAttribute("latestPayment", paymentService.latestPayment(disputeCase.getId()).orElse(null));
+        model.addAttribute("paymentProviderLabel", paymentService.checkoutProviderDisplayName());
         model.addAttribute("readinessScore", readiness.score());
         model.addAttribute("readinessLabel", readiness.label());
         model.addAttribute("readinessBlocked", readiness.blockedCount());

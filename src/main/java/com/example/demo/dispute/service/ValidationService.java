@@ -193,7 +193,10 @@ public class ValidationService {
                     "ERR_STRIPE_TOTAL_SIZE",
                     "STR_SIZE_001",
                     IssueSeverity.BLOCKED,
-                    "Total evidence size exceeds Stripe total size limit."
+                    "Total evidence size exceeds Stripe total size limit.",
+                    IssueTargetScope.GLOBAL,
+                    null,
+                    FixStrategy.COMPRESS_STRIPE_PDF
             ));
         }
 
@@ -342,7 +345,10 @@ public class ValidationService {
                         "ERR_SHPFY_PDF_PORTFOLIO",
                         "SHP_PDF_002",
                         IssueSeverity.BLOCKED,
-                        "PDF Portfolio is not accepted by Shopify Payments."
+                        "PDF Portfolio is not accepted by Shopify Payments.",
+                        IssueTargetScope.EVIDENCE_TYPE,
+                        file.evidenceType(),
+                        FixStrategy.FLATTEN_PDF_PORTFOLIO
                 ));
                 break;
             }
@@ -354,7 +360,10 @@ public class ValidationService {
                         "ERR_SHPFY_PDF_NOT_PDFA",
                         "SHP_PDF_001",
                         IssueSeverity.BLOCKED,
-                        "Shopify Payments requires PDF/A compliant documents."
+                        "Shopify Payments requires PDF/A compliant documents.",
+                        IssueTargetScope.EVIDENCE_TYPE,
+                        file.evidenceType(),
+                        FixStrategy.CONVERT_PDF_TO_PDFA
                 ));
                 break;
             }

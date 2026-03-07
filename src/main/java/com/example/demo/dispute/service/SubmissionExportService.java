@@ -224,7 +224,6 @@ public class SubmissionExportService {
         java.util.ArrayList<String> lines = new java.util.ArrayList<>();
         lines.add("Chargeback Submission Guide");
         lines.add("");
-        lines.add("Case token: " + report.caseToken());
         lines.add("Platform: " + report.platform());
         lines.add("Scope: " + report.productScope());
         lines.add("State: " + report.state());
@@ -291,7 +290,6 @@ public class SubmissionExportService {
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("packVersion", "2.1");
         root.put("publicCaseRef", toPublicCaseRef(disputeCase));
-        root.put("caseId", disputeCase.getId().toString());
         root.put("platform", disputeCase.getPlatform().name());
         root.put("productScope", disputeCase.getProductScope().name());
         root.put("state", disputeCase.getState().name());

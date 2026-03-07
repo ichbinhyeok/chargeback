@@ -120,9 +120,8 @@ class SubmissionExportServiceIntegrationTest {
             assertTrue(explanation.contains("Dispute Explanation Draft"));
             assertTrue(explanation.contains("Disclaimer: This draft is a submission-writing aid only."));
             String manifest = new String(entries.get("manifest.json"), StandardCharsets.UTF_8);
-            assertTrue(manifest.contains("\"caseId\""));
-            assertTrue(manifest.contains(disputeCase.getId().toString()));
             assertTrue(manifest.contains("\"publicCaseRef\""));
+            assertTrue(!manifest.contains("\"caseId\""));
             assertTrue(!manifest.contains(disputeCase.getCaseToken()));
             assertTrue(!manifest.contains("storagePath"));
             assertTrue(manifest.contains("\"policyVersion\""));

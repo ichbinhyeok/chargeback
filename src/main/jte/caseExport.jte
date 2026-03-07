@@ -15,6 +15,7 @@
 @param String validationFreshness
 @param boolean validationFresh
 @param List<String> missingRequiredEvidenceTypes
+@param String paymentProviderLabel
 
 @template.layout(
     title = "Export | " + report.caseToken(),
@@ -137,12 +138,12 @@
                         @elseif(paymentConfigured)
                             <form method="post" action="/c/${report.caseToken()}/pay">
                                 <button type="submit" class="flex justify-center items-center w-full px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                                    Pay via Stripe to Unlock
+                                    Pay via ${paymentProviderLabel} to Unlock
                                 </button>
                             </form>
                         @else
                             <div class="p-3 bg-red-50 border-l-4 border-red-400 text-red-700 text-xs rounded shadow-sm">
-                                <strong>Setup required:</strong> Stripe checkout is not configured. Set billing environment variables (e.g., <code class="bg-red-100 font-bold px-1 rounded">STRIPE_SECRET_KEY</code>, <code class="bg-red-100 font-bold px-1 rounded">STRIPE_WEBHOOK_SECRET</code>) to enable payment.
+                                <strong>Setup required:</strong> Checkout is not configured. Set billing environment variables (provider and credentials) to enable payment.
                             </div>
                         @endif
                         <p class="text-center text-xs text-gray-400 mt-3 flex items-center justify-center gap-1">
