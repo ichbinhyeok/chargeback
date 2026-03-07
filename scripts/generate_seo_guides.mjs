@@ -319,9 +319,193 @@ function errorQueries(platformSlug, slug, label) {
 }
 
 function errorCommonErrors(platformSlug, slug) {
-  const specific = ERROR_ROUTER_PHRASES[`${platformSlug}/${slug}`] || [];
-  const phraseLines = specific.slice(0, 4).map((phrase) => `Raw uploader message often appears as: "${phrase}".`);
+  const phraseLines = rawUploaderPhraseLines(platformSlug, slug);
   return [...ERROR_COMMON_ERRORS, ...phraseLines];
+}
+
+function rawUploaderPhraseLines(platformSlug, slug) {
+  const specific = ERROR_ROUTER_PHRASES[`${platformSlug}/${slug}`] || [];
+  return specific.slice(0, 4).map((phrase) => `Raw uploader message often appears as: "${phrase}".`);
+}
+
+function specificErrorOverride(platformSlug, slug) {
+  const key = `${platformSlug}/${slug}`;
+
+  if (key === "stripe/evidence-file-size-limit-4-5mb") {
+    return {
+      metaDescription:
+        "Fix Stripe evidence file size limit 4.5MB errors by isolating the oversized file, trimming low-signal pages, preserving readability, and revalidating before export.",
+      keyChecks: [
+        "Measure the final upload package first and identify which file or merged evidence type is pushing the Stripe pack over 4.5MB.",
+        "Cut duplicated screenshots, full chat exports, and appendix pages before compressing decisive proof files.",
+        "Keep receipts, delivery proof, and policy excerpts readable at reviewer zoom level after any compression pass.",
+        "Merge by evidence type only after trimming low-signal pages, otherwise the merged output often stays oversized.",
+        "Keep strongest claim-linked proof in the first pages so size reduction does not bury the evidence that matters.",
+        "Revalidate after each size-reduction step so page-count, duplicate-file, or link blockers do not replace the original size error.",
+      ],
+      commonErrors: [
+        "One PDF is doing all the damage: full chat exports, repeated invoices, and low-signal screenshots push the package over the Stripe limit.",
+        "Compression is applied to every file instead of isolating the one oversized document that is causing the rejection.",
+        "The pack becomes smaller but less persuasive because receipts or delivery logs are compressed until timestamps and totals are hard to read.",
+        "Duplicate screenshots appear across communication, policy, and order files, inflating the total package without adding proof value.",
+        "Files are merged too early, turning several acceptable documents into one oversized evidence-type upload.",
+        "Teams retry the upload after editing pages but never measure the final combined package before another submission attempt.",
+        ...rawUploaderPhraseLines(platformSlug, slug),
+      ],
+      nextSteps: [
+        "Sort the pack by file size and isolate the one PDF or image-heavy document that is causing the over-limit rejection.",
+        "Remove duplicate pages, long chat tails, and appendix material that does not directly support the dispute reason.",
+        "Re-export the oversized file with readable compression settings and verify totals, timestamps, and policy text still hold up on zoom.",
+        "Only after trimming should you merge same-type files into one final reviewer document per evidence category.",
+        "Run validation again immediately and fix any new blocker that appears after the size reduction pass.",
+        "Export the final pack only when size checks are clear and required evidence coverage is still complete.",
+      ],
+      explanationPreviewLines: [
+        "The oversized evidence package was reduced by removing duplicate pages and low-signal appendix material before submission.",
+        "Compression was applied only where needed, with receipts, timestamps, and order facts kept readable for manual review.",
+        "Evidence files remain grouped by reviewer-relevant type rather than merged into one oversized catch-all bundle.",
+        "Only claim-linked excerpts are included so package size is lower without weakening the chronology.",
+        "The final submission set was revalidated after each size-reduction step to catch regressions early.",
+        "This packaging is intended to pass Stripe upload limits without sacrificing proof quality.",
+      ],
+      faq: [
+        {
+          question: "What should be reduced first when the Stripe pack is over 4.5MB?",
+          answer: "Cut duplicated screenshots, long chat exports, and appendix pages first. Reduce low-signal pages before compressing decisive records.",
+        },
+        {
+          question: "Should every file be compressed?",
+          answer: "No. Usually one oversized file is driving the rejection. Compressing everything can damage readability without solving the actual blocker quickly.",
+        },
+        {
+          question: "How do I know compression went too far?",
+          answer: "If totals, timestamps, delivery scans, or policy text are hard to read at reviewer zoom, the file may be smaller but weaker. Re-export with readable settings.",
+        },
+        {
+          question: "What does Chargeback Builder help with on this issue?",
+          answer: "It helps surface the size blocker, rerun validation after each change, and catch follow-on issues before you export the final submission pack.",
+        },
+      ],
+    };
+  }
+
+  if (key === "stripe/upload-failed-no-external-links") {
+    return {
+      metaDescription:
+        "Fix Stripe no external links errors by removing hyperlink annotations, attaching proof directly, and revalidating reviewer-safe PDFs before export.",
+      keyChecks: [
+        "Inspect the failing PDF for hyperlink annotations, clickable URLs, and embedded references that point outside the uploaded file set.",
+        "Replace link-only proof with attached screenshots, receipts, or exported pages so the reviewer can verify the claim without leaving the pack.",
+        "Flatten or re-export PDFs after link cleanup because office tools often preserve hidden annotations even when the text looks unchanged.",
+        "Keep references readable in plain text only when the underlying proof is also attached directly inside the package.",
+        "Recheck policy documents, help-center screenshots, and tracking exports because they often carry accidental external links.",
+        "Rerun validation after every export pass so the same PDF does not come back with hidden annotations still attached.",
+      ],
+      commonErrors: [
+        "The PDF looks normal in preview, but clickable link annotations remain attached to policy pages, receipts, or tracking references.",
+        "Merchants cite Google Drive, support center, or tracking URLs instead of attaching the underlying proof directly in the evidence pack.",
+        "A document is printed to PDF visually, yet hidden hyperlink metadata survives the export and triggers the same rejection again.",
+        "Help-center references and policy citations are included as clickable links instead of plain text plus attached screenshots or excerpts.",
+        "Link cleanup happens in one file, while another appendix PDF still contains a clickable tracking or support URL.",
+        "Teams remove visible URLs from the page but miss the annotation objects that still make the PDF fail validation.",
+        ...rawUploaderPhraseLines(platformSlug, slug),
+      ],
+      nextSteps: [
+        "Identify the exact PDF causing the rejection and inspect it for hyperlink annotations or linked objects, not just visible URL text.",
+        "Remove or flatten clickable links, then replace any link-only evidence with attached screenshots, excerpts, or exported records.",
+        "Re-export the cleaned PDF using a workflow that removes interactive annotations rather than preserving them invisibly.",
+        "Check every supporting appendix file again because one remaining linked page can keep the whole pack blocked.",
+        "Run validation immediately after each cleanup pass so hidden annotations are caught before final export.",
+        "Export only when the pack contains direct reviewer artifacts and no external-link blocker remains.",
+      ],
+      explanationPreviewLines: [
+        "All reviewer evidence is attached directly in the submission package without dependence on external URLs.",
+        "Clickable hyperlink annotations were removed from PDFs that previously triggered the upload blocker.",
+        "Policy, tracking, and communication references are preserved as attached excerpts rather than off-platform links.",
+        "Supporting files were re-exported as reviewer-safe documents after annotation cleanup.",
+        "The evidence pack was revalidated to confirm no hidden external-link metadata remained.",
+        "This structure is intended to keep the reviewer inside one complete, self-contained evidence package.",
+      ],
+      faq: [
+        {
+          question: "Why does the same PDF keep failing even after I delete visible URLs?",
+          answer: "Because the blocker is often the hidden hyperlink annotation, not the text on the page. The PDF must be flattened or re-exported without interactive links.",
+        },
+        {
+          question: "Can I reference a tracking page or drive folder instead of attaching files?",
+          answer: "No. This blocker usually means the reviewer needs direct file evidence inside the package, not a link to external material.",
+        },
+        {
+          question: "Which files most often carry accidental links?",
+          answer: "Policy PDFs, help-center screenshots converted to PDF, tracking exports, and office-generated appendices commonly preserve clickable annotations.",
+        },
+        {
+          question: "What does Chargeback Builder help with on this issue?",
+          answer: "It helps catch link-related blockers during validation and is designed to support a clean, self-contained evidence package before export.",
+        },
+      ],
+    };
+  }
+
+  if (key === "shopify/pdf-a-format-required-error") {
+    return {
+      metaDescription:
+        "Fix Shopify PDF/A format required errors by isolating the failing PDF, re-exporting it as PDF/A, revalidating metadata, and preserving readability before submission.",
+      keyChecks: [
+        "Confirm the rejection is truly a PDF/A compliance issue and not a portfolio, embedded-object, or duplicate-file problem showing up in the same pack.",
+        "Identify which exact PDF failed because one non-compliant file can block an otherwise valid submission set.",
+        "Re-export the source document as PDF/A instead of relying on a normal save-as PDF workflow that keeps non-compliant metadata.",
+        "Check that fonts, scanned pages, and image-heavy receipts remain readable after PDF/A conversion.",
+        "Flatten embedded attachments or portfolio-style exports before the PDF/A pass if the source document contains nested content.",
+        "Rerun validation after conversion because visually identical PDFs can still fail Shopify metadata checks.",
+      ],
+      commonErrors: [
+        "The PDF opens fine locally, but Shopify rejects it because the file metadata is not actually PDF/A compliant.",
+        "A standard office export is treated as 'good enough', even though it does not create a real PDF/A output.",
+        "The original PDF is converted once, then edited again, which breaks compliance before the final upload.",
+        "Teams chase the wrong file because several PDFs are attached and only one of them is failing the PDF/A requirement.",
+        "Portfolio or embedded-object problems are mistaken for a pure PDF/A issue, so the same blocker returns after conversion.",
+        "The converted file technically passes export, but readability drops because scans, totals, or notes are degraded in the process.",
+        ...rawUploaderPhraseLines(platformSlug, slug),
+      ],
+      nextSteps: [
+        "Find the exact PDF causing the rejection and isolate it from the rest of the evidence pack before editing anything else.",
+        "Re-export that source file using a true PDF/A workflow, not a generic print or save-as PDF option.",
+        "If the source contains embedded attachments or portfolio-style structure, flatten it first and then run the PDF/A export.",
+        "Open the converted file and verify timestamps, order totals, policy excerpts, and delivery scans still read clearly.",
+        "Run validation again immediately so metadata-level failures are confirmed before the file goes back into the final pack.",
+        "Replace only the failing document in the evidence set and export when the PDF/A blocker is fully cleared.",
+      ],
+      explanationPreviewLines: [
+        "The failing PDF was isolated and re-exported using a PDF/A-compliant workflow for Shopify submission.",
+        "Embedded or unsupported document structure was removed before the final compliant export pass.",
+        "The replacement file was checked again to confirm metadata compliance without sacrificing document readability.",
+        "Only the non-compliant artifact was replaced so the rest of the evidence package stayed stable.",
+        "Validation was rerun after conversion to catch metadata failures before final submission.",
+        "This package is intended to meet Shopify PDF/A handling requirements with reviewer-safe readability preserved.",
+      ],
+      faq: [
+        {
+          question: "Why does Shopify reject a PDF that opens normally on my computer?",
+          answer: "Because the visual file can still be non-compliant at the metadata level. Shopify may require a true PDF/A export, not just a normal PDF that looks correct.",
+        },
+        {
+          question: "Is print-to-PDF enough to fix this?",
+          answer: "Not always. Many print and save-as flows do not create a real PDF/A file, so the blocker can return even though the document looks unchanged.",
+        },
+        {
+          question: "Should I convert the whole pack or just one file?",
+          answer: "Start by isolating the exact failing PDF. Often one non-compliant file is enough to block the full submission set.",
+        },
+        {
+          question: "What does Chargeback Builder help with on this issue?",
+          answer: "It helps validate PDF/A compliance in the workflow, rerun checks after conversion, and keep the final export package aligned to the blocker you are fixing.",
+        },
+      ],
+    };
+  }
+
+  return null;
 }
 
 function reasonEntry(platformSlug, slug, label) {
@@ -424,6 +608,11 @@ function errorEntry(platformSlug, slug, label) {
         answer: "Use Stripe official pricing and disputes docs as primary source, not stale forum screenshots or third-party summaries.",
       },
     ];
+  }
+
+  const specificOverride = specificErrorOverride(platformSlug, slug);
+  if (specificOverride) {
+    Object.assign(entry, specificOverride);
   }
 
   return entry;

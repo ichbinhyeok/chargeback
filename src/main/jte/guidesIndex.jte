@@ -19,10 +19,10 @@
     content = @`
     <section class="mb-10">
         <h1 class="text-3xl font-bold text-gray-900 mb-3">Error Fixes &amp; Evidence Checklists</h1>
-        <p class="text-gray-600 max-w-2xl">
+        <p class="max-w-3xl text-lg leading-8 text-gray-700">
             Get the manual checklist fast, then move into Chargeback Builder to validate files, auto-fix supported blockers, and finish the submission pack.
         </p>
-        <div class="mt-5 flex flex-wrap gap-3 text-sm">
+        <div class="mt-5 flex flex-wrap gap-2 text-[13px]">
             <span class="inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-3 py-1 font-medium text-blue-800">Free validation first</span>
             <span class="inline-flex items-center rounded-full border border-green-100 bg-green-50 px-3 py-1 font-medium text-green-800">Auto-fix supported blockers</span>
             <span class="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1 font-medium text-gray-700">ZIP + PDF + TXT when ready</span>
@@ -31,7 +31,7 @@
 
     <section class="cb-card mb-8 border-2 border-primary-600">
         <h2 class="text-lg font-semibold text-gray-900 mb-3">Find My Error Fast</h2>
-        <p class="text-sm text-gray-600 mb-4">Paste the exact upload error and jump straight into the best fix flow instead of reading platform docs first.</p>
+        <p class="mb-4 max-w-2xl text-base leading-7 text-gray-700">Paste the exact upload error and jump straight into the best fix flow instead of reading platform docs first.</p>
         <form method="get" action="/guides/router" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
             <div class="md:col-span-3">
                 <label for="routerQ" class="block text-sm font-medium text-gray-700 mb-1">Error Text</label>
@@ -76,7 +76,7 @@
                     <span class="cb-badge cb-badge-gray">${guide.guideTypeLabel()}</span>
                 </div>
                 <h2 class="text-xl font-semibold text-gray-900 mb-2">${guide.title()}</h2>
-                <p class="text-sm text-gray-600 mb-4">${guide.metaDescription()}</p>
+                <p class="mb-4 text-base leading-7 text-gray-700">${guide.metaDescription()}</p>
                 <p class="text-xs text-gray-500 mb-4">${guide.reasonCodeLabel()}</p>
                 <a href="/new?src=guide&platform=${guide.platformSlug()}&guide=${guide.reasonCodeSlug()}" class="cb-btn cb-btn-primary" data-seo-event="guide_start_case_click" data-seo-platform="${guide.platformSlug()}" data-seo-guide="${guide.reasonCodeSlug()}">Start Free Validation</a>
                 <a href="${guide.path()}" class="mt-3 inline-block text-sm text-primary-600 hover:underline">See checklist &amp; steps</a>

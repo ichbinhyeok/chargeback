@@ -35,6 +35,7 @@ public class SeoController {
 
     private static final Map<String, FailureSnapshot> TOP_ERROR_FAILURE_SNAPSHOTS = createTopErrorFailureSnapshots();
     private static final Map<String, GuideHeroCopy> TOP_ERROR_HERO_COPY = createTopErrorHeroCopy();
+    private static final Map<String, IssueSupportCopy> TOP_ERROR_ISSUE_SUPPORT = createTopErrorIssueSupport();
     private static final Set<String> RELATED_TOKEN_STOPWORDS = Set.of(
             "stripe",
             "shopify",
@@ -256,6 +257,10 @@ public class SeoController {
         model.addAttribute("failureBefore", failureSnapshot != null ? failureSnapshot.beforeFix() : null);
         model.addAttribute("failureAfter", failureSnapshot != null ? failureSnapshot.afterFix() : null);
         model.addAttribute("failureResult", failureSnapshot != null ? failureSnapshot.expectedResult() : null);
+        IssueSupportCopy issueSupportCopy = TOP_ERROR_ISSUE_SUPPORT.get(guide.slugKey());
+        model.addAttribute("issueSupportValidation", issueSupportCopy != null ? issueSupportCopy.validationScope() : null);
+        model.addAttribute("issueSupportAutoFix", issueSupportCopy != null ? issueSupportCopy.autoFixScope() : null);
+        model.addAttribute("issueSupportManual", issueSupportCopy != null ? issueSupportCopy.manualWork() : null);
         return "guideDetail";
     }
 
@@ -803,6 +808,35 @@ public class SeoController {
         );
     }
 
+    private static Map<String, IssueSupportCopy> createTopErrorIssueSupport() {
+        return Map.ofEntries(
+                Map.entry(
+                        "stripe/evidence-file-size-limit-4-5mb",
+                        new IssueSupportCopy(
+                                "Validation highlights total package size pressure and helps surface related blockers that often appear after trimming or merging files.",
+                                "Auto-fix can help on supported packaging blockers, but you still need to decide which pages, screenshots, and appendices are low-signal enough to remove safely.",
+                                "You still need to protect readability and choose what evidence stays in the pack so the file gets smaller without becoming weaker."
+                        )
+                ),
+                Map.entry(
+                        "stripe/upload-failed-no-external-links",
+                        new IssueSupportCopy(
+                                "Validation is designed to catch external-link blockers in uploaded evidence so hidden PDF annotations do not slip into the final pack.",
+                                "For supported PDFs, auto-fix can remove external-link annotations and let you rerun checks before export.",
+                                "You still need to replace link-only proof with attached screenshots, excerpts, or exported records when the evidence depends on off-platform material."
+                        )
+                ),
+                Map.entry(
+                        "shopify/pdf-a-format-required-error",
+                        new IssueSupportCopy(
+                                "Validation checks whether the failing Shopify document is still non-compliant after conversion and helps confirm the blocker is really PDF/A-related.",
+                                "Auto-fix can convert supported PDFs into PDF/A and rerun validation so the same file is checked again inside the workflow.",
+                                "You still need to confirm the source file is the right one, flatten problematic structures when needed, and verify readability after conversion."
+                        )
+                )
+        );
+    }
+
     private record GuideCatalog(
             String version,
             List<GuideEntry> guides
@@ -843,6 +877,13 @@ public class SeoController {
     private record GuideHeroCopy(
             String title,
             String metaDescription
+    ) {
+    }
+
+    private record IssueSupportCopy(
+            String validationScope,
+            String autoFixScope,
+            String manualWork
     ) {
     }
 
