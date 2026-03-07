@@ -35,9 +35,35 @@
         <p class="text-lg md:text-xl text-gray-600 mb-10 max-w-2xl leading-relaxed">
             Validate Stripe and Shopify evidence for free, auto-fix supported issues, and unlock the ZIP, summary PDF, and explanation draft merchants actually submit.
         </p>
-        
+
+        <div class="mb-8 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-end">
+                <div class="flex-1">
+                    <div class="text-sm font-semibold text-gray-900">Start From The Platform Error</div>
+                    <p class="mt-1 text-sm text-gray-600">Paste the exact Stripe or Shopify upload error and jump into the closest fix flow first.</p>
+                </div>
+            </div>
+            <form method="get" action="/guides/router" class="mt-4 grid gap-3 md:grid-cols-[180px,1fr,auto]">
+                <select name="platform" class="cb-input">
+                    <option value="">Auto-detect platform</option>
+                    <option value="stripe">Stripe</option>
+                    <option value="shopify">Shopify</option>
+                </select>
+                <input
+                    type="text"
+                    name="q"
+                    class="cb-input"
+                    placeholder="e.g. pdf/a format required, duplicate evidence type file, no external links"
+                    required
+                >
+                <button type="submit" class="cb-btn cb-btn-primary px-6">
+                    Find My Fix Flow
+                </button>
+            </form>
+        </div>
+
         <div class="flex flex-col sm:flex-row gap-4">
-            <a href="/new" class="cb-btn cb-btn-primary px-8 py-4 text-base bg-primary-600 hover:bg-primary-700 w-full sm:w-auto">
+            <a href="/new" class="cb-btn cb-btn-secondary px-8 py-4 text-base w-full sm:w-auto justify-center">
                 Start Free Validation
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </a>

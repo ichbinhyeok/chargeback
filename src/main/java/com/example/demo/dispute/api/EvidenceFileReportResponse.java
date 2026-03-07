@@ -8,6 +8,7 @@ import java.util.UUID;
 public record EvidenceFileReportResponse(
         UUID fileId,
         EvidenceType evidenceType,
+        String originalName,
         FileFormat fileFormat,
         long sizeBytes,
         int pageCount,

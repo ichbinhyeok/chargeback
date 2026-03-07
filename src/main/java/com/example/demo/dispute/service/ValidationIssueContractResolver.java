@@ -56,17 +56,27 @@ public class ValidationIssueContractResolver {
     }
 
     private FixStrategy inferFixStrategy(String code, IssueSeverity severity) {
-        if (severity != IssueSeverity.FIXABLE) {
-            return FixStrategy.MANUAL;
-        }
         if (code != null && code.contains("MULTI_FILE_PER_TYPE")) {
             return FixStrategy.MERGE_PER_TYPE;
         }
         if ("ERR_SHPFY_FILE_TOO_LARGE".equals(code)) {
             return FixStrategy.COMPRESS_SHOPIFY_IMAGE_IF_IMAGE;
         }
+        if ("ERR_STRIPE_TOTAL_SIZE".equals(code)
+                || "ERR_SHPFY_TOTAL_TOO_LARGE".equals(code)
+                || "ERR_SHPFY_CREDIT_TOTAL_TOO_LARGE".equals(code)) {
+            return FixStrategy.REDUCE_TOTAL_SIZE;
+        }
+        if ("ERR_STRIPE_TOTAL_PAGES".equals(code)
+                || "ERR_STRIPE_MC_19P".equals(code)
+                || "ERR_SHPFY_PDF_PAGES_EXCEEDED".equals(code)) {
+            return FixStrategy.REDUCE_TOTAL_PAGES;
+        }
         if ("ERR_STRIPE_LINK_DETECTED".equals(code) || "ERR_SHPFY_LINK_DETECTED".equals(code)) {
             return FixStrategy.REMOVE_EXTERNAL_LINKS_PDF;
+        }
+        if (severity != IssueSeverity.FIXABLE) {
+            return FixStrategy.MANUAL;
         }
         return FixStrategy.NONE;
     }

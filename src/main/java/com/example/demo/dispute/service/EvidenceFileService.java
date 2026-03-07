@@ -11,6 +11,10 @@ import com.example.demo.dispute.persistence.EvidenceFileEntity;
 import com.example.demo.dispute.persistence.EvidenceFileRepository;
 import com.example.demo.dispute.service.pdf.PdfMetadata;
 import com.example.demo.dispute.service.pdf.PdfMetadataExtractor;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -66,9 +70,9 @@ public class EvidenceFileService {
             );
         }
 
-        FileFormat format = detectFormat(file.getOriginalFilename(), file.getContentType());
-        String extension = extensionFor(format);
-        Path savedPath = saveFile(disputeCase.getId(), file, extension);
+        StoredUpload storedUpload = storeUpload(disputeCase.getId(), file);
+        FileFormat format = storedUpload.format();
+        Path savedPath = storedUpload.savedPath();
 
         try {
             validateBinaryContent(format, savedPath);
@@ -80,10 +84,10 @@ public class EvidenceFileService {
             EvidenceFileEntity entity = new EvidenceFileEntity();
             entity.setDisputeCase(disputeCase);
             entity.setEvidenceType(evidenceType);
-            entity.setOriginalName(defaultString(file.getOriginalFilename(), "uploaded" + extension));
-            entity.setContentType(file.getContentType());
+            entity.setOriginalName(storedUpload.storedOriginalName());
+            entity.setContentType(storedUpload.contentType());
             entity.setStoragePath(savedPath.toString());
-            entity.setSizeBytes(file.getSize());
+            entity.setSizeBytes(storedUpload.sizeBytes());
             entity.setPageCount(pdfMetadata.pageCount());
             entity.setFileFormat(format);
             entity.setPdfACompliant(pdfMetadata.pdfACompliant());
@@ -95,7 +99,11 @@ public class EvidenceFileService {
                     disputeCase,
                     "SYSTEM",
                     "FILE_UPLOADED",
-                    "fileId=" + saved.getId() + ",evidenceType=" + saved.getEvidenceType() + ",format=" + saved.getFileFormat()
+                    "fileId=" + saved.getId()
+                            + ",evidenceType=" + saved.getEvidenceType()
+                            + ",format=" + saved.getFileFormat()
+                            + ",autoConverted=" + storedUpload.autoConverted()
+                            + (storedUpload.sourceContentType() == null ? "" : ",sourceContentType=" + storedUpload.sourceContentType())
             );
 
             return toUploadResponse(saved);
@@ -147,6 +155,25 @@ public class EvidenceFileService {
         return toUploadResponse(saved);
     }
 
+    private StoredUpload storeUpload(UUID caseId, MultipartFile file) {
+        FileFormat directFormat = detectDirectFormat(file.getOriginalFilename(), file.getContentType());
+        if (directFormat != null) {
+            String extension = extensionFor(directFormat);
+            Path savedPath = saveFile(caseId, file, extension);
+            return new StoredUpload(
+                    savedPath,
+                    directFormat,
+                    defaultString(file.getOriginalFilename(), "uploaded" + extension),
+                    normalizedContentType(file.getContentType(), directFormat),
+                    readStoredFileSize(savedPath),
+                    false,
+                    file.getContentType()
+            );
+        }
+
+        return convertUnsupportedImageUpload(caseId, file);
+    }
+
     private Path saveFile(UUID caseId, MultipartFile file, String extension) {
         try {
             Path caseDir = storageRoot.resolve(caseId.toString());
@@ -161,7 +188,19 @@ public class EvidenceFileService {
         }
     }
 
-    private FileFormat detectFormat(String originalName, String contentType) {
+    private Path saveBytes(UUID caseId, byte[] bytes, String extension) {
+        try {
+            Path caseDir = storageRoot.resolve(caseId.toString());
+            Files.createDirectories(caseDir);
+            Path target = caseDir.resolve(UUID.randomUUID() + extension);
+            Files.write(target, bytes);
+            return target;
+        } catch (IOException e) {
+            throw new IllegalStateException("failed to store uploaded file: " + e.getMessage(), e);
+        }
+    }
+
+    private FileFormat detectDirectFormat(String originalName, String contentType) {
         String lowerName = defaultString(originalName, "").toLowerCase(Locale.ROOT);
         String lowerContentType = defaultString(contentType, "").toLowerCase(Locale.ROOT);
 
@@ -175,7 +214,32 @@ public class EvidenceFileService {
             return FileFormat.PNG;
         }
 
-        throw new IllegalArgumentException("unsupported file format");
+        return null;
+    }
+
+    private StoredUpload convertUnsupportedImageUpload(UUID caseId, MultipartFile file) {
+        BufferedImage original;
+        try (InputStream inputStream = file.getInputStream()) {
+            original = ImageIO.read(inputStream);
+        } catch (IOException ex) {
+            throw unsupportedFormatException(ex);
+        }
+
+        if (original == null || original.getWidth() <= 0 || original.getHeight() <= 0) {
+            throw unsupportedFormatException(null);
+        }
+
+        byte[] jpegBytes = writeImageAsJpeg(original);
+        Path savedPath = saveBytes(caseId, jpegBytes, ".jpg");
+        return new StoredUpload(
+                savedPath,
+                FileFormat.JPEG,
+                convertedName(file.getOriginalFilename(), ".jpg"),
+                "image/jpeg",
+                jpegBytes.length,
+                true,
+                file.getContentType()
+        );
     }
 
     private String extensionFor(FileFormat format) {
@@ -188,6 +252,17 @@ public class EvidenceFileService {
 
     private String defaultString(String value, String defaultValue) {
         return value == null || value.isBlank() ? defaultValue : value;
+    }
+
+    private String normalizedContentType(String contentType, FileFormat format) {
+        if (contentType != null && !contentType.isBlank()) {
+            return contentType;
+        }
+        return switch (format) {
+            case PDF -> "application/pdf";
+            case JPEG -> "image/jpeg";
+            case PNG -> "image/png";
+        };
     }
 
     private void validateBinaryContent(FileFormat format, Path savedPath) {
@@ -213,6 +288,54 @@ public class EvidenceFileService {
         }
     }
 
+    private long readStoredFileSize(Path savedPath) {
+        try {
+            return Files.size(savedPath);
+        } catch (IOException ex) {
+            deleteStoredFileQuietly(savedPath);
+            throw new IllegalStateException("failed to read uploaded file size", ex);
+        }
+    }
+
+    private byte[] writeImageAsJpeg(BufferedImage original) {
+        BufferedImage rgbImage = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = rgbImage.createGraphics();
+        try {
+            graphics.setColor(Color.WHITE);
+            graphics.fillRect(0, 0, rgbImage.getWidth(), rgbImage.getHeight());
+            graphics.drawImage(original, 0, 0, null);
+        } finally {
+            graphics.dispose();
+        }
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            if (!ImageIO.write(rgbImage, "jpeg", out)) {
+                throw unsupportedFormatException(null);
+            }
+        } catch (IOException ex) {
+            throw new IllegalStateException("failed to auto-convert image to JPEG", ex);
+        }
+        return out.toByteArray();
+    }
+
+    private String convertedName(String originalName, String extension) {
+        String baseName = defaultString(originalName, "uploaded").trim();
+        int dotIndex = baseName.lastIndexOf('.');
+        if (dotIndex > 0) {
+            baseName = baseName.substring(0, dotIndex);
+        }
+        if (baseName.isBlank()) {
+            baseName = "uploaded";
+        }
+        return baseName + "_autoconvert" + extension;
+    }
+
+    private IllegalArgumentException unsupportedFormatException(Exception cause) {
+        String message = "unsupported file format. Upload PDF, JPEG, or PNG directly, or use a decodable image file that can be auto-converted to JPEG.";
+        return cause == null ? new IllegalArgumentException(message) : new IllegalArgumentException(message, cause);
+    }
+
     private UploadFileResponse toUploadResponse(EvidenceFileEntity saved) {
         return new UploadFileResponse(
                 saved.getId(),
@@ -224,5 +347,16 @@ public class EvidenceFileService {
                 saved.isPdfACompliant(),
                 saved.isPdfPortfolio()
         );
+    }
+
+    private record StoredUpload(
+            Path savedPath,
+            FileFormat format,
+            String storedOriginalName,
+            String contentType,
+            long sizeBytes,
+            boolean autoConverted,
+            String sourceContentType
+    ) {
     }
 }

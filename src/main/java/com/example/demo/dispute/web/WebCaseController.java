@@ -2,16 +2,20 @@ package com.example.demo.dispute.web;
 
 import com.example.demo.dispute.api.CaseReportResponse;
 import com.example.demo.dispute.api.EvidenceFileReportResponse;
+import com.example.demo.dispute.api.ValidationIssueResponse;
 import com.example.demo.dispute.api.CreateCaseRequest;
 import com.example.demo.dispute.api.ValidateCaseResponse;
 import com.example.demo.dispute.domain.CardNetwork;
 import com.example.demo.dispute.domain.CaseState;
 import com.example.demo.dispute.domain.EvidenceType;
+import com.example.demo.dispute.domain.FixJobStatus;
+import com.example.demo.dispute.domain.FixStrategy;
 import com.example.demo.dispute.domain.Platform;
 import com.example.demo.dispute.domain.ProductScope;
 import com.example.demo.dispute.domain.ValidationFreshness;
 import com.example.demo.dispute.domain.ValidationSource;
 import com.example.demo.dispute.persistence.DisputeCase;
+import com.example.demo.dispute.persistence.FixJobRepository;
 import com.example.demo.dispute.service.AutoFixService;
 import com.example.demo.dispute.service.CaseReportService;
 import com.example.demo.dispute.service.CaseService;
@@ -36,9 +40,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Value;
@@ -77,6 +83,7 @@ public class WebCaseController {
     private final PaymentService paymentService;
     private final ValidationFreshnessService validationFreshnessService;
     private final ReadinessService readinessService;
+    private final FixJobRepository fixJobRepository;
     private final PolicyCatalogService policyCatalogService;
     private final ReasonCodeChecklistService reasonCodeChecklistService;
     private final DisputeExplanationService disputeExplanationService;
@@ -96,6 +103,7 @@ public class WebCaseController {
             PaymentService paymentService,
             ValidationFreshnessService validationFreshnessService,
             ReadinessService readinessService,
+            FixJobRepository fixJobRepository,
             PolicyCatalogService policyCatalogService,
             ReasonCodeChecklistService reasonCodeChecklistService,
             DisputeExplanationService disputeExplanationService,
@@ -114,6 +122,7 @@ public class WebCaseController {
         this.paymentService = paymentService;
         this.validationFreshnessService = validationFreshnessService;
         this.readinessService = readinessService;
+        this.fixJobRepository = fixJobRepository;
         this.policyCatalogService = policyCatalogService;
         this.reasonCodeChecklistService = reasonCodeChecklistService;
         this.disputeExplanationService = disputeExplanationService;
@@ -559,6 +568,10 @@ public class WebCaseController {
         model.addAttribute("validationFreshness", freshness.name());
         model.addAttribute("validationFresh", freshness == ValidationFreshness.FRESH);
         model.addAttribute("reasonChecklist", reasonChecklist);
+        model.addAttribute("nextStepGuidance", resolveNextStepGuidance(disputeCase.getId(), report, readiness, reasonChecklist));
+        DisplayStateSummary displayState = resolveDisplayState(report, readiness, reasonChecklist);
+        model.addAttribute("displayCaseState", displayState.label());
+        model.addAttribute("displayCaseStateBadgeClass", displayState.badgeClass());
     }
 
     private void markDownloaded(String caseToken) {
@@ -724,6 +737,430 @@ public class WebCaseController {
 
     private String formatSizeLabel(long bytes) {
         return String.format("%.1f MB", bytes / (double) MB);
+    }
+
+    private DisplayStateSummary resolveDisplayState(
+            CaseReportResponse report,
+            ReadinessService.ReadinessSummary readiness,
+            ReasonCodeChecklistService.ReasonChecklist reasonChecklist
+    ) {
+        if (report.state() == CaseState.PAID || report.state() == CaseState.DOWNLOADED) {
+            return new DisplayStateSummary(report.state().name(), badgeClassForState(report.state()));
+        }
+        if (report.state() == CaseState.CASE_CREATED
+                || report.state() == CaseState.UPLOADING
+                || report.state() == CaseState.VALIDATING
+                || report.state() == CaseState.FIXING
+                || report.state() == CaseState.ARCHIVED) {
+            return new DisplayStateSummary(report.state().name(), badgeClassForState(report.state()));
+        }
+        if (readiness.blockedCount() > 0 || readiness.fixableCount() > 0) {
+            return new DisplayStateSummary(CaseState.BLOCKED.name(), badgeClassForState(CaseState.BLOCKED));
+        }
+        if (!reasonChecklist.missingRequiredEvidence().isEmpty()) {
+            return new DisplayStateSummary("NEEDS_EVIDENCE", "cb-badge-amber");
+        }
+        return new DisplayStateSummary(CaseState.READY.name(), badgeClassForState(CaseState.READY));
+    }
+
+    private String badgeClassForState(CaseState state) {
+        return switch (state) {
+            case READY, PAID, DOWNLOADED -> "cb-badge-green";
+            case BLOCKED -> "cb-badge-red";
+            case UPLOADING, VALIDATING, FIXING -> "cb-badge-amber";
+            case ARCHIVED -> "cb-badge-gray";
+            case CASE_CREATED -> "cb-badge-blue";
+        };
+    }
+
+    private NextStepGuidance resolveNextStepGuidance(
+            UUID caseId,
+            CaseReportResponse report,
+            ReadinessService.ReadinessSummary readiness,
+            ReasonCodeChecklistService.ReasonChecklist reasonChecklist
+    ) {
+        if (report.latestValidation() == null) {
+            return null;
+        }
+
+        boolean autoFixRun = report.latestValidation().source() == ValidationSource.AUTO_FIX;
+        String autoFixProgressNote = autoFixRun ? latestAutoFixProgressNote(caseId) : null;
+        ValidationIssueResponse primaryIssue = pickPrimaryIssue(report.latestValidation().issues());
+        if (primaryIssue != null) {
+            if (!autoFixRun && supportsAutoFix(primaryIssue.fixStrategy())) {
+                return new NextStepGuidance(
+                        "Run auto-fix next.",
+                        autoFixPrompt(primaryIssue),
+                        null,
+                        "Run Auto-Fix",
+                        "/c/" + report.caseToken() + "/fix",
+                        true,
+                        List.of()
+                );
+            }
+
+            if (isTotalSizeIssue(primaryIssue.code())) {
+                EvidenceFileReportResponse largestFile = report.files().stream()
+                        .max((left, right) -> Long.compare(left.sizeBytes(), right.sizeBytes()))
+                        .orElse(null);
+                String targetFileLabel = largestFile != null
+                        ? fileLabel(largestFile)
+                        : "largest file";
+                return new NextStepGuidance(
+                        autoFixRun ? "Auto-fix helped, but total size is still too high." : "Reduce one large file next.",
+                        "Best next move: replace or remove " + targetFileLabel
+                                + " first. It is the largest file in the pack and is the safest place to start shrinking below "
+                                + formatSizeLabel(totalSizeLimitFor(report)) + ".",
+                        autoFixProgressNote,
+                        largestFile != null ? "Replace " + shortenFileName(largestFile.originalName()) : "Replace A Large File",
+                        "/c/" + report.caseToken() + "/upload",
+                        false,
+                        sizePriorityList(report)
+                );
+            }
+
+            if (isPageLimitIssue(primaryIssue.code())) {
+                EvidenceFileReportResponse largestPagedFile = report.files().stream()
+                        .max((left, right) -> Integer.compare(left.pageCount(), right.pageCount()))
+                        .orElse(null);
+                String targetFileLabel = largestPagedFile != null
+                        ? fileLabel(largestPagedFile)
+                        : "largest PDF";
+                return new NextStepGuidance(
+                        autoFixRun ? "Auto-fix helped, but page count is still over the limit." : "Replace one long PDF next.",
+                        "Best next move: replace " + targetFileLabel
+                                + " with a shorter export so the total page count drops below the platform limit.",
+                        autoFixProgressNote,
+                        largestPagedFile != null ? "Replace " + shortenFileName(largestPagedFile.originalName()) : "Replace Long PDF",
+                        "/c/" + report.caseToken() + "/upload",
+                        false,
+                        pagePriorityList(report)
+                );
+            }
+
+            if (primaryIssue.targetEvidenceType() != null) {
+                String targetType = humanizeEvidenceType(primaryIssue.targetEvidenceType());
+                EvidenceFileReportResponse targetFile = report.files().stream()
+                        .filter(file -> file.evidenceType() == primaryIssue.targetEvidenceType())
+                        .findFirst()
+                        .orElse(null);
+                String targetFileLabel = targetFile != null ? fileLabel(targetFile) : targetType + " file";
+                return new NextStepGuidance(
+                        autoFixRun ? "One evidence type still needs manual cleanup." : "Replace the remaining blocked evidence.",
+                        "Best next move: re-export or replace " + targetFileLabel + ". " + primaryIssue.message(),
+                        autoFixProgressNote,
+                        targetFile != null ? "Replace " + shortenFileName(targetFile.originalName()) : "Replace " + targetType,
+                        "/c/" + report.caseToken() + "/upload",
+                        false,
+                        matchingEvidenceTypePriorityList(report, primaryIssue.targetEvidenceType())
+                );
+            }
+
+            return new NextStepGuidance(
+                    autoFixRun ? "Auto-fix finished. One manual step remains." : "Resolve the remaining blocker.",
+                    primaryIssue.message(),
+                    autoFixProgressNote,
+                    "Review Uploads",
+                    "/c/" + report.caseToken() + "/upload",
+                    false,
+                    List.of()
+            );
+        }
+
+        if (!reasonChecklist.missingRequiredEvidence().isEmpty()) {
+            EvidenceType firstMissingType = firstMissingEvidenceType(readiness);
+            String firstMissing = firstMissingType != null
+                    ? guidanceLabel(firstMissingType)
+                    : reasonChecklist.missingRequiredEvidence().getFirst();
+            String description = autoFixRun
+                    ? "Auto-fix cleared the supported file blockers. Upload " + firstMissing
+                            + " next so the case can move closer to export-ready."
+                    : "Validation passed on file rules, but export is still blocked until you upload "
+                            + firstMissing + ".";
+            return new NextStepGuidance(
+                    autoFixRun ? "Auto-fix finished. Upload the next required evidence." : "Upload the next required evidence.",
+                    description,
+                    autoFixProgressNote,
+                    "Upload " + firstMissing,
+                    "/c/" + report.caseToken() + "/upload",
+                    false,
+                    missingEvidencePlaybook(firstMissingType, reasonChecklist)
+            );
+        }
+
+        return null;
+    }
+
+    private ValidationIssueResponse pickPrimaryIssue(List<ValidationIssueResponse> issues) {
+        if (issues == null || issues.isEmpty()) {
+            return null;
+        }
+        return issues.stream()
+                .sorted((left, right) -> {
+                    int severityCompare = Integer.compare(issuePriority(left), issuePriority(right));
+                    if (severityCompare != 0) {
+                        return severityCompare;
+                    }
+                    return left.code().compareToIgnoreCase(right.code());
+                })
+                .findFirst()
+                .orElse(null);
+    }
+
+    private int issuePriority(ValidationIssueResponse issue) {
+        if (issue == null || issue.severity() == null) {
+            return 99;
+        }
+        return switch (issue.severity()) {
+            case BLOCKED -> 0;
+            case FIXABLE -> 1;
+            case WARNING -> 2;
+        };
+    }
+
+    private boolean supportsAutoFix(FixStrategy fixStrategy) {
+        return fixStrategy == FixStrategy.MERGE_PER_TYPE
+                || fixStrategy == FixStrategy.COMPRESS_SHOPIFY_IMAGE_IF_IMAGE
+                || fixStrategy == FixStrategy.COMPRESS_STRIPE_PDF
+                || fixStrategy == FixStrategy.REDUCE_TOTAL_SIZE
+                || fixStrategy == FixStrategy.REDUCE_TOTAL_PAGES
+                || fixStrategy == FixStrategy.CONVERT_PDF_TO_PDFA
+                || fixStrategy == FixStrategy.FLATTEN_PDF_PORTFOLIO
+                || fixStrategy == FixStrategy.REMOVE_EXTERNAL_LINKS_PDF;
+    }
+
+    private boolean isTotalSizeIssue(String code) {
+        return "ERR_STRIPE_TOTAL_SIZE".equals(code)
+                || "ERR_SHPFY_TOTAL_TOO_LARGE".equals(code)
+                || "ERR_SHPFY_CREDIT_TOTAL_TOO_LARGE".equals(code);
+    }
+
+    private boolean isPageLimitIssue(String code) {
+        return "ERR_STRIPE_TOTAL_PAGES".equals(code)
+                || "ERR_STRIPE_MC_19P".equals(code)
+                || "ERR_SHPFY_PDF_PAGES_EXCEEDED".equals(code);
+    }
+
+    private String autoFixPrompt(ValidationIssueResponse issue) {
+        return switch (issue.fixStrategy()) {
+            case MERGE_PER_TYPE -> "We can merge duplicate files in one evidence type automatically. Run auto-fix and then validate again.";
+            case COMPRESS_SHOPIFY_IMAGE_IF_IMAGE -> "We can compress oversized Shopify image files automatically. Run auto-fix and then recheck the case.";
+            case COMPRESS_STRIPE_PDF -> "We can compress oversized Stripe PDFs automatically. Run auto-fix and then recheck total size.";
+            case REDUCE_TOTAL_SIZE -> "We can shrink large images and supported PDFs automatically when the pack is over the total-size limit. Run auto-fix and then recheck the case.";
+            case REDUCE_TOTAL_PAGES -> "We can remove blank pages and exact duplicate PDF pages automatically. Run auto-fix and then recheck the page count.";
+            case CONVERT_PDF_TO_PDFA -> "We can convert supported PDFs into PDF/A automatically. Run auto-fix and revalidate the case.";
+            case FLATTEN_PDF_PORTFOLIO -> "We can flatten supported PDF portfolios automatically. Run auto-fix and then validate again.";
+            case REMOVE_EXTERNAL_LINKS_PDF -> "We can remove external-link annotations from supported PDFs automatically. Run auto-fix and revalidate.";
+            default -> issue.message();
+        };
+    }
+
+    private String humanizeEvidenceType(EvidenceType evidenceType) {
+        String[] parts = evidenceType.name().split("_");
+        StringBuilder text = new StringBuilder();
+        for (int index = 0; index < parts.length; index++) {
+            if (index > 0) {
+                text.append(' ');
+            }
+            String part = parts[index].toLowerCase(Locale.ROOT);
+            text.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1));
+        }
+        return text.toString();
+    }
+
+    private EvidenceType firstMissingEvidenceType(ReadinessService.ReadinessSummary readiness) {
+        if (readiness == null || readiness.missingRequiredEvidenceTypes() == null) {
+            return null;
+        }
+        return readiness.missingRequiredEvidenceTypes().stream()
+                .map(this::parseEvidenceType)
+                .filter(type -> type != null)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private EvidenceType parseEvidenceType(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return EvidenceType.valueOf(value);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    private String guidanceLabel(EvidenceType evidenceType) {
+        if (evidenceType == null) {
+            return "the next required evidence";
+        }
+        return switch (evidenceType) {
+            case ORDER_RECEIPT -> "order receipt or checkout confirmation";
+            case CUSTOMER_DETAILS -> "customer details or billing profile";
+            case CUSTOMER_COMMUNICATION -> "customer communication or support chat";
+            case POLICIES -> "refund or return policy";
+            case FULFILLMENT_DELIVERY -> "delivery proof or carrier tracking page";
+            case DIGITAL_USAGE_LOGS -> "digital usage logs or access records";
+            case REFUND_CANCELLATION -> "refund or cancellation proof";
+            case OTHER_SUPPORTING -> "supporting evidence";
+        };
+    }
+
+    private List<String> missingEvidencePlaybook(
+            EvidenceType evidenceType,
+            ReasonCodeChecklistService.ReasonChecklist reasonChecklist
+    ) {
+        List<String> actions = new ArrayList<>();
+        if (evidenceType != null) {
+            switch (evidenceType) {
+                case ORDER_RECEIPT -> actions.add("Upload a checkout receipt, invoice, or order confirmation that shows the amount, order number, and cardholder identity.");
+                case CUSTOMER_DETAILS -> actions.add("Upload a customer profile, billing record, or account page that ties the order to the cardholder.");
+                case CUSTOMER_COMMUNICATION -> actions.add("Upload support chat, email thread, or message screenshots showing the customer reported the problem.");
+                case POLICIES -> actions.add("Upload the refund, return, cancellation, or service policy that applied at the time of purchase.");
+                case FULFILLMENT_DELIVERY -> actions.add("Upload a carrier tracking page, delivery scan, or signed proof that shows shipped or delivered status.");
+                case DIGITAL_USAGE_LOGS -> actions.add("Upload login history, device activity, or service access logs that show the digital product was used.");
+                case REFUND_CANCELLATION -> actions.add("Upload refund approval, cancellation confirmation, or support message confirming the merchant outcome.");
+                case OTHER_SUPPORTING -> actions.add("Upload the clearest supporting file that directly proves the disputed event.");
+            }
+        }
+        if (reasonChecklist != null && reasonChecklist.priorityActions() != null) {
+            reasonChecklist.priorityActions().stream()
+                    .filter(action -> action != null && !action.isBlank())
+                    .limit(2)
+                    .forEach(actions::add);
+        }
+        return actions.stream()
+                .distinct()
+                .limit(3)
+                .toList();
+    }
+
+    private String latestAutoFixProgressNote(UUID caseId) {
+        if (caseId == null) {
+            return null;
+        }
+        return fixJobRepository.findFirstByDisputeCaseIdAndStatusOrderByCreatedAtDesc(caseId, FixJobStatus.SUCCEEDED)
+                .map(job -> firstSentence(job.getSummary()))
+                .filter(summary -> summary != null && !summary.isBlank())
+                .orElse(null);
+    }
+
+    private String firstSentence(String text) {
+        if (text == null) {
+            return null;
+        }
+        String normalized = text.trim();
+        if (normalized.isBlank()) {
+            return null;
+        }
+        int periodIndex = normalized.indexOf('.');
+        if (periodIndex < 0) {
+            return normalized;
+        }
+        return normalized.substring(0, periodIndex + 1).trim();
+    }
+
+    private String fileLabel(EvidenceFileReportResponse file) {
+        return "'" + shortenFileName(file.originalName()) + "' (" + formatBytesLabel(file.sizeBytes()) + ")";
+    }
+
+    private String formatBytesLabel(long bytes) {
+        if (bytes < 1024) {
+            return bytes + " B";
+        }
+        if (bytes < 1024 * 1024) {
+            return String.format(Locale.ROOT, "%.0f KB", bytes / 1024.0);
+        }
+        return String.format(Locale.ROOT, "%.2f MB", bytes / 1048576.0);
+    }
+
+    private String shortenFileName(String originalName) {
+        if (originalName == null || originalName.isBlank()) {
+            return "selected file";
+        }
+        return originalName.length() > 40 ? originalName.substring(0, 37) + "..." : originalName;
+    }
+
+    private List<String> sizePriorityList(CaseReportResponse report) {
+        long totalSize = report.files().stream().mapToLong(EvidenceFileReportResponse::sizeBytes).sum();
+        long overflow = Math.max(0L, totalSize - totalSizeLimitFor(report));
+        return report.files().stream()
+                .sorted((left, right) -> Long.compare(right.sizeBytes(), left.sizeBytes()))
+                .limit(3)
+                .map(file -> shortenFileName(file.originalName()) + " - " + formatBytesLabel(file.sizeBytes()) + " - "
+                        + sizeImpactHint(file.sizeBytes(), overflow))
+                .toList();
+    }
+
+    private List<String> pagePriorityList(CaseReportResponse report) {
+        int totalPages = report.files().stream().mapToInt(EvidenceFileReportResponse::pageCount).sum();
+        int pageLimit = pageLimitFor(report);
+        int overflowPages = pageLimit > 0 ? Math.max(0, totalPages - pageLimit) : 0;
+        return report.files().stream()
+                .filter(file -> file.pageCount() > 0)
+                .sorted((left, right) -> Integer.compare(right.pageCount(), left.pageCount()))
+                .limit(3)
+                .map(file -> shortenFileName(file.originalName()) + " - " + file.pageCount() + " page(s) - "
+                        + pageImpactHint(file.pageCount(), overflowPages))
+                .toList();
+    }
+
+    private List<String> matchingEvidenceTypePriorityList(CaseReportResponse report, EvidenceType targetEvidenceType) {
+        if (targetEvidenceType == null) {
+            return List.of();
+        }
+        return report.files().stream()
+                .filter(file -> file.evidenceType() == targetEvidenceType)
+                .sorted((left, right) -> Long.compare(right.sizeBytes(), left.sizeBytes()))
+                .limit(3)
+                .map(file -> shortenFileName(file.originalName()) + " - " + formatBytesLabel(file.sizeBytes()))
+                .toList();
+    }
+
+    private String sizeImpactHint(long fileSizeBytes, long overflowBytes) {
+        if (overflowBytes <= 0) {
+            return "largest size impact";
+        }
+        long residual = Math.max(0L, overflowBytes - fileSizeBytes);
+        if (residual == 0L) {
+            return "enough to clear the " + formatBytesLabel(overflowBytes) + " overage";
+        }
+        return "still leaves " + formatBytesLabel(residual) + " over limit";
+    }
+
+    private String pageImpactHint(int filePages, int overflowPages) {
+        if (overflowPages <= 0) {
+            return "largest page-count impact";
+        }
+        int residual = Math.max(0, overflowPages - filePages);
+        if (residual == 0) {
+            return "enough to clear the " + overflowPages + " page overage";
+        }
+        return "still leaves " + residual + " page(s) over limit";
+    }
+
+    private int pageLimitFor(CaseReportResponse report) {
+        if (report.productScope() == null) {
+            return 0;
+        }
+        return switch (report.productScope()) {
+            case STRIPE_DISPUTE -> report.cardNetwork() == CardNetwork.MASTERCARD ? 19 : 50;
+            case SHOPIFY_PAYMENTS_CHARGEBACK, SHOPIFY_CREDIT_DISPUTE -> 50;
+        };
+    }
+
+    private record DisplayStateSummary(String label, String badgeClass) {
+    }
+
+    public record NextStepGuidance(
+            String title,
+            String description,
+            String progressNote,
+            String ctaLabel,
+            String ctaTarget,
+            boolean postAction,
+            List<String> supportingActions
+    ) {
     }
 
 }

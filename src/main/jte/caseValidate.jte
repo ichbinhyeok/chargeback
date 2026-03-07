@@ -3,6 +3,7 @@
 @import com.example.demo.dispute.domain.EvidenceType
 @import com.example.demo.dispute.persistence.PaymentEntity
 @import com.example.demo.dispute.service.ReasonCodeChecklistService
+@import com.example.demo.dispute.web.WebCaseController.NextStepGuidance
 @param DisputeCase disputeCase
 @param CaseReportResponse report
 @param EvidenceType[] evidenceTypes
@@ -11,13 +12,16 @@
 @param String message
 @param String error
 @param ReasonCodeChecklistService.ReasonChecklist reasonChecklist
+@param String displayCaseState
+@param String displayCaseStateBadgeClass
+@param NextStepGuidance nextStepGuidance
 
 @template.layout(
     title = "Validate | " + report.caseToken(),
     robotsMeta = "noindex,nofollow,noarchive",
     caseTokenForVault = report.caseToken(),
     casePlatformForVault = report.platform().name(),
-    caseStateForVault = report.state().name(),
+    caseStateForVault = displayCaseState,
     content = @`
     <!-- Alerts -->
     @if(message != null && !message.isBlank())
@@ -38,8 +42,8 @@
         <div>
             <div class="flex items-center gap-3 mb-2">
                 <h1 class="text-3xl font-bold text-neutral-900 tracking-tight">Case ${report.caseToken()}</h1>
-                <span class="cb-badge ${(report.state().name().equals("READY") || report.state().name().equals("PAID") || report.state().name().equals("DOWNLOADED")) ? "cb-badge-green" : (report.state().name().equals("BLOCKED") ? "cb-badge-red" : "cb-badge-blue")}">
-                    ${report.state()}
+                <span class="cb-badge ${displayCaseStateBadgeClass}">
+                    ${displayCaseState}
                 </span>
             </div>
             <div class="flex gap-2 text-sm text-gray-500">
@@ -130,6 +134,40 @@
                 </div>
             @endif
 
+            @if(nextStepGuidance != null)
+                <div class="mb-6 rounded-xl border border-sky-200 bg-sky-50 p-5 text-sky-950">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div class="max-w-2xl">
+                            <div class="text-xs font-semibold uppercase tracking-wide text-sky-700">Primary next action</div>
+                            <h3 class="mt-1 text-lg font-bold text-sky-950">${nextStepGuidance.title()}</h3>
+                            @if(nextStepGuidance.progressNote() != null && !nextStepGuidance.progressNote().isBlank())
+                                <div class="mt-2 inline-flex items-center rounded-full border border-sky-200 bg-white px-3 py-1 text-xs font-semibold tracking-wide text-sky-800">
+                                    Auto-fix changed: ${nextStepGuidance.progressNote()}
+                                </div>
+                            @endif
+                            <p class="mt-2 text-sm leading-6 text-sky-900">${nextStepGuidance.description()}</p>
+                            @if(!nextStepGuidance.supportingActions().isEmpty())
+                                <div class="mt-4">
+                                    <div class="text-xs font-semibold uppercase tracking-wide text-sky-700">Priority order</div>
+                                    <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm text-sky-900">
+                                        @for(String action : nextStepGuidance.supportingActions())
+                                            <li>${action}</li>
+                                        @endfor
+                                    </ol>
+                                </div>
+                            @endif
+                        </div>
+                        @if(nextStepGuidance.postAction())
+                            <form method="post" action="${nextStepGuidance.ctaTarget()}">
+                                <button type="submit" class="cb-btn cb-btn-primary shrink-0 shadow-sm">${nextStepGuidance.ctaLabel()}</button>
+                            </form>
+                        @else
+                            <a href="${nextStepGuidance.ctaTarget()}" class="cb-btn cb-btn-primary shrink-0 shadow-sm">${nextStepGuidance.ctaLabel()}</a>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
             @if(report.latestValidation().issues().isEmpty())
                 @if(reasonChecklist.missingRequiredEvidence().isEmpty())
                     <div class="bg-green-50 border border-green-200 rounded-xl p-8 text-center text-green-900 flex flex-col items-center">
@@ -190,7 +228,7 @@
                 <div class="mt-8 bg-blue-50 border border-blue-100 rounded-xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
                         <h4 class="font-bold text-blue-900 mb-1">Let us fix these issues automatically</h4>
-                        <p class="text-sm text-blue-800">Our auto-fix engine merges multi-file types, compresses oversized Shopify images, and removes PDF external-link annotations when detected.</p>
+                        <p class="text-sm text-blue-800">Our auto-fix engine merges duplicate per-type files, compresses supported oversized packs, removes blank or duplicate PDF pages, and strips PDF external links when detected.</p>
                     </div>
                     <form method="post" action="/c/${report.caseToken()}/fix">
                         <button type="submit" class="cb-btn cb-btn-primary bg-blue-600 hover:bg-blue-700 hover:-translate-y-0.5 transition-transform shrink-0 shadow">Run Auto-Fix Engine</button>

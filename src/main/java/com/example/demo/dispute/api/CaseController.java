@@ -6,13 +6,15 @@ import com.example.demo.dispute.domain.ValidationSource;
 import com.example.demo.dispute.persistence.DisputeCase;
 import com.example.demo.dispute.service.CaseReportService;
 import com.example.demo.dispute.service.CaseService;
-import com.example.demo.dispute.service.EvidenceFileService;
 import com.example.demo.dispute.service.AutoFixService;
+import com.example.demo.dispute.service.EvidenceFileService;
+import com.example.demo.dispute.service.EvidenceSuggestionService;
 import com.example.demo.dispute.service.ValidationHistoryService;
 import com.example.demo.dispute.service.ValidationService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,6 +38,7 @@ public class CaseController {
     private final ValidationHistoryService validationHistoryService;
     private final CaseReportService caseReportService;
     private final AutoFixService autoFixService;
+    private final EvidenceSuggestionService evidenceSuggestionService;
 
     public CaseController(
             CaseService caseService,
@@ -43,7 +46,8 @@ public class CaseController {
             ValidationService validationService,
             ValidationHistoryService validationHistoryService,
             CaseReportService caseReportService,
-            AutoFixService autoFixService
+            AutoFixService autoFixService,
+            EvidenceSuggestionService evidenceSuggestionService
     ) {
         this.caseService = caseService;
         this.evidenceFileService = evidenceFileService;
@@ -51,6 +55,7 @@ public class CaseController {
         this.validationHistoryService = validationHistoryService;
         this.caseReportService = caseReportService;
         this.autoFixService = autoFixService;
+        this.evidenceSuggestionService = evidenceSuggestionService;
     }
 
     @PostMapping
@@ -100,6 +105,19 @@ public class CaseController {
     ) {
         caseService.assertCaseToken(caseId, caseToken);
         return ResponseEntity.ok(evidenceFileService.listFiles(caseId));
+    }
+
+    @PostMapping(
+            path = "/{caseId}/file-suggestions",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<List<PreviewEvidenceSuggestionResponse>> previewSuggestions(
+            @PathVariable UUID caseId,
+            @RequestHeader(value = "X-Case-Token", required = false) String caseToken,
+            @RequestParam("files") List<MultipartFile> files
+    ) {
+        caseService.assertCaseToken(caseId, caseToken);
+        return ResponseEntity.ok(evidenceSuggestionService.previewSuggestions(caseId, files));
     }
 
     @PatchMapping("/{caseId}/files/{fileId}/classification")

@@ -321,10 +321,12 @@ class WebExportPageIntegrationTest {
 
             mockMvc.perform(get("/c/{caseToken}/export", disputeCase.getCaseToken()))
                     .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("NEEDS_EVIDENCE")))
                     .andExpect(content().string(containsString("Submission readiness")))
                     .andExpect(content().string(containsString("Actionable now")))
                     .andExpect(content().string(containsString("Required evidence coverage")))
-                    .andExpect(content().string(containsString("2 / 2 required evidence files ready")))
+                    .andExpect(content().string(containsString("2 / 3 required evidence files ready")))
+                    .andExpect(content().string(containsString("1 required item(s) still missing before checkout.")))
                     .andExpect(content().string(containsString("Since previous scan")))
                     .andExpect(content().string(containsString("1 fewer actionable than previous scan")))
                     .andExpect(content().string(containsString("Previous scan #1 had 1 actionable issue(s).")))

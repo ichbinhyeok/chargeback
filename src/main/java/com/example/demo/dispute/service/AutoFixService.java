@@ -3,6 +3,7 @@ package com.example.demo.dispute.service;
 import com.example.demo.dispute.api.EvidenceFileInput;
 import com.example.demo.dispute.api.FixJobResponse;
 import com.example.demo.dispute.api.ValidateCaseResponse;
+import com.example.demo.dispute.domain.CardNetwork;
 import com.example.demo.dispute.domain.CaseState;
 import com.example.demo.dispute.domain.EvidenceType;
 import com.example.demo.dispute.domain.FileFormat;
@@ -28,10 +29,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -66,8 +71,15 @@ public class AutoFixService {
 
     private static final String FAIL_CODE_NOTHING_TO_FIX = "ERR_FIX_NOTHING_TO_FIX";
     private static final String FAIL_CODE_INTERNAL = "ERR_FIX_INTERNAL";
+    private static final long MB = 1024L * 1024L;
     private static final long SHOPIFY_FILE_LIMIT_BYTES = 2L * 1024L * 1024L;
     private static final long STRIPE_DEFAULT_TOTAL_SIZE_LIMIT_BYTES = (long) (4.5d * 1024d * 1024d);
+    private static final long SHOPIFY_DEFAULT_TOTAL_SIZE_LIMIT_BYTES = 4L * MB;
+    private static final long[] TOTAL_SIZE_IMAGE_TARGET_FLOORS = new long[] {
+            SHOPIFY_FILE_LIMIT_BYTES,
+            MB,
+            512L * 1024L
+    };
     private static final long MIN_TARGET_PDF_BYTES = 256L * 1024L;
     private static final long STRIPE_MIN_BYTES_PER_PAGE_AFTER_COMPRESSION = 4_000L;
     private static final int STRIPE_MIN_DPI = 115;
@@ -166,8 +178,10 @@ public class AutoFixService {
                 return failJob(
                         job,
                         FAIL_CODE_NOTHING_TO_FIX,
-                        "No supported auto-fix issue found. Supported: merge multi-file-per-type, Shopify oversized image compression,"
-                                + " PDF external-link removal, Shopify PDF/A conversion + portfolio flattening, and Stripe oversized PDF compression."
+                        "No supported auto-fix issue found. Supported: merge multi-file-per-type, PDF blank/duplicate page"
+                                + " cleanup, image total-size compression, Shopify oversized image compression, PDF"
+                                + " external-link removal, Shopify PDF/A conversion + portfolio flattening, and Stripe"
+                                + " oversized PDF compression."
                 );
             }
 
@@ -178,7 +192,8 @@ public class AutoFixService {
 
             job.setStatus(FixJobStatus.SUCCEEDED);
             job.setSummary(
-                    "Merged " + change.mergedTypes() + " type(s), compressed " + change.compressedImages()
+                    fixSummary(change)
+                            + " Merged " + change.mergedTypes() + " type(s), compressed " + change.compressedImages()
                             + " image(s), compressed " + change.compressedStripePdfFiles()
                             + " Stripe PDF file(s), converted " + change.convertedPdfaFiles()
                             + " PDF/A file(s), flattened " + change.flattenedPortfolioFiles()
@@ -195,6 +210,7 @@ public class AutoFixService {
                     "SYSTEM",
                     "AUTO_FIX_COMPLETED",
                     "jobId=" + saved.getId() + ",mergedTypes=" + change.mergedTypes()
+                            + ",removedPdfPages=" + change.pagesReduced()
                             + ",compressedImages=" + change.compressedImages()
                             + ",compressedStripePdfFiles=" + change.compressedStripePdfFiles()
                             + ",convertedPdfaFiles=" + change.convertedPdfaFiles()
@@ -210,13 +226,32 @@ public class AutoFixService {
     }
 
     private FixChange applySupportedFixes(DisputeCase disputeCase) {
+        long totalBytesBefore = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
+                .mapToLong(EvidenceFileEntity::getSizeBytes)
+                .sum();
+        int totalPagesBefore = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
+                .mapToInt(EvidenceFileEntity::getPageCount)
+                .sum();
         int mergedTypes = mergeFilesByEvidenceType(disputeCase);
+        int reducedPdfPages = reducePdfPagesForLimits(disputeCase);
         int compressedImages = compressOversizedShopifyImages(disputeCase);
+        compressedImages += compressImagesForTotalSize(disputeCase);
         ShopifyPdfFixChange shopifyPdfFix = normalizeShopifyPdfFiles(disputeCase);
         int compressedStripePdfFiles = compressOversizedStripePdfFiles(disputeCase);
         int linkSanitizedFiles = removeExternalLinksFromPdfFiles(disputeCase);
+        long totalBytesAfter = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
+                .mapToLong(EvidenceFileEntity::getSizeBytes)
+                .sum();
+        int totalPagesAfter = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
+                .mapToInt(EvidenceFileEntity::getPageCount)
+                .sum();
         return new FixChange(
+                totalBytesBefore,
+                totalBytesAfter,
+                totalPagesBefore,
+                totalPagesAfter,
                 mergedTypes,
+                reducedPdfPages,
                 compressedImages,
                 compressedStripePdfFiles,
                 shopifyPdfFix.convertedPdfaFiles(),
@@ -426,6 +461,86 @@ public class AutoFixService {
         return compressed;
     }
 
+    private int compressImagesForTotalSize(DisputeCase disputeCase) {
+        long totalLimit = resolveTotalSizeLimitBytes(disputeCase);
+        if (totalLimit <= 0) {
+            return 0;
+        }
+
+        long totalSize = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
+                .mapToLong(EvidenceFileEntity::getSizeBytes)
+                .sum();
+        if (totalSize <= totalLimit) {
+            return 0;
+        }
+
+        int compressed = 0;
+        for (long floorBytes : TOTAL_SIZE_IMAGE_TARGET_FLOORS) {
+            if (totalSize <= totalLimit) {
+                break;
+            }
+
+            List<EvidenceFileEntity> imageFiles = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
+                    .filter(file -> isImage(file.getFileFormat()))
+                    .sorted(Comparator.comparingLong(EvidenceFileEntity::getSizeBytes).reversed())
+                    .toList();
+
+            for (EvidenceFileEntity file : imageFiles) {
+                if (totalSize <= totalLimit) {
+                    break;
+                }
+
+                long neededReduction = totalSize - totalLimit;
+                long preferredMaxBytes = Math.max(floorBytes, file.getSizeBytes() - neededReduction);
+                if (preferredMaxBytes >= file.getSizeBytes()) {
+                    continue;
+                }
+
+                Path originalPath = Path.of(file.getStoragePath());
+                Path compressedPath = buildTargetJpegPath(file.getStoragePath());
+                byte[] compressedBytes = compressImageToTargetSize(originalPath, preferredMaxBytes);
+                if (compressedBytes.length == 0 || compressedBytes.length >= file.getSizeBytes()) {
+                    continue;
+                }
+                if (disputeCase.getPlatform() == Platform.SHOPIFY
+                        && disputeCase.getProductScope() == ProductScope.SHOPIFY_PAYMENTS_CHARGEBACK
+                        && compressedBytes.length > SHOPIFY_FILE_LIMIT_BYTES) {
+                    continue;
+                }
+
+                long originalSize = file.getSizeBytes();
+                try {
+                    Files.write(compressedPath, compressedBytes);
+                } catch (IOException ex) {
+                    throw new IllegalStateException("failed to write total-size compressed image", ex);
+                }
+
+                file.setOriginalName(stripExtension(file.getOriginalName()) + "_autofix.jpg");
+                file.setContentType("image/jpeg");
+                file.setStoragePath(compressedPath.toString());
+                file.setSizeBytes(compressedBytes.length);
+                file.setPageCount(1);
+                file.setFileFormat(FileFormat.JPEG);
+                file.setPdfACompliant(true);
+                file.setPdfPortfolio(false);
+                file.setExternalLinkDetected(false);
+                evidenceFileRepository.save(file);
+                deletePathQuietly(originalPath);
+
+                totalSize -= (originalSize - compressedBytes.length);
+                compressed++;
+                auditLogService.log(
+                        disputeCase,
+                        "SYSTEM",
+                        "AUTO_FIX_COMPRESSED_IMAGE_TOTAL_SIZE",
+                        "fileId=" + file.getId() + ",newSize=" + compressedBytes.length + ",remainingTotal=" + totalSize
+                );
+            }
+        }
+
+        return compressed;
+    }
+
     private int compressOversizedStripePdfFiles(DisputeCase disputeCase) {
         if (disputeCase.getPlatform() != Platform.STRIPE) {
             return 0;
@@ -434,7 +549,7 @@ public class AutoFixService {
         long totalSize = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
                 .mapToLong(EvidenceFileEntity::getSizeBytes)
                 .sum();
-        long totalLimit = resolveStripeTotalSizeLimitBytes(disputeCase);
+        long totalLimit = resolveTotalSizeLimitBytes(disputeCase);
         if (totalSize <= totalLimit) {
             return 0;
         }
@@ -504,7 +619,7 @@ public class AutoFixService {
         return compressed;
     }
 
-    private long resolveStripeTotalSizeLimitBytes(DisputeCase disputeCase) {
+    private long resolveTotalSizeLimitBytes(DisputeCase disputeCase) {
         PolicyCatalogService.ResolvedPolicy policy = policyCatalogService.resolve(
                 disputeCase.getPlatform(),
                 disputeCase.getProductScope(),
@@ -512,7 +627,12 @@ public class AutoFixService {
                 disputeCase.getCardNetwork()
         );
         if (policy == null || policy.totalSizeLimitBytes() == null || policy.totalSizeLimitBytes() <= 0) {
-            return STRIPE_DEFAULT_TOTAL_SIZE_LIMIT_BYTES;
+            return switch (disputeCase.getPlatform()) {
+                case STRIPE -> STRIPE_DEFAULT_TOTAL_SIZE_LIMIT_BYTES;
+                case SHOPIFY -> disputeCase.getProductScope() == ProductScope.SHOPIFY_CREDIT_DISPUTE
+                        ? STRIPE_DEFAULT_TOTAL_SIZE_LIMIT_BYTES
+                        : SHOPIFY_DEFAULT_TOTAL_SIZE_LIMIT_BYTES;
+            };
         }
         return policy.totalSizeLimitBytes();
     }
@@ -677,6 +797,209 @@ public class AutoFixService {
         }
         long perPageBytes = sizeBytes / Math.max(1, pageCount);
         return perPageBytes >= STRIPE_MIN_BYTES_PER_PAGE_AFTER_COMPRESSION;
+    }
+
+    private int reducePdfPagesForLimits(DisputeCase disputeCase) {
+        int pageLimit = resolvePageLimit(disputeCase);
+        if (pageLimit <= 0) {
+            return 0;
+        }
+
+        List<EvidenceFileEntity> pdfFiles = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
+                .filter(file -> file.getFileFormat() == FileFormat.PDF)
+                .sorted(Comparator.comparingInt(EvidenceFileEntity::getPageCount).reversed())
+                .toList();
+        if (pdfFiles.isEmpty()) {
+            return 0;
+        }
+
+        boolean stripeTotalLimit = disputeCase.getPlatform() == Platform.STRIPE;
+        boolean shopifyPerFileLimit = disputeCase.getPlatform() == Platform.SHOPIFY;
+        int totalPages = pdfFiles.stream().mapToInt(EvidenceFileEntity::getPageCount).sum();
+        int reducedPages = 0;
+
+        for (EvidenceFileEntity file : pdfFiles) {
+            if (stripeTotalLimit && totalPages <= pageLimit) {
+                break;
+            }
+            if (!stripeTotalLimit && !needsShopifyPageReduction(file)) {
+                continue;
+            }
+
+            Path originalPath = Path.of(file.getStoragePath());
+            PdfPageReductionChange reduction = removeBlankAndDuplicatePdfPages(originalPath);
+            if (!reduction.changed()) {
+                continue;
+            }
+
+            Path reducedPath = buildTargetPdfPath(file.getStoragePath());
+            try {
+                Files.write(reducedPath, reduction.pdfBytes());
+            } catch (IOException ex) {
+                throw new IllegalStateException("failed to write reduced-page PDF", ex);
+            }
+
+            PdfMetadata metadata = pdfMetadataExtractor.extract(reducedPath);
+            long reducedSize;
+            try {
+                reducedSize = Files.size(reducedPath);
+            } catch (IOException ex) {
+                deletePathQuietly(reducedPath);
+                throw new IllegalStateException("failed to read reduced-page PDF size", ex);
+            }
+
+            long originalSize = file.getSizeBytes();
+            int originalPages = file.getPageCount();
+            file.setOriginalName(stripExtension(file.getOriginalName()) + "_autofix.pdf");
+            file.setContentType("application/pdf");
+            file.setStoragePath(reducedPath.toString());
+            file.setSizeBytes(reducedSize);
+            file.setPageCount(metadata.pageCount());
+            file.setFileFormat(FileFormat.PDF);
+            file.setPdfACompliant(metadata.pdfACompliant());
+            file.setPdfPortfolio(metadata.pdfPortfolio());
+            file.setExternalLinkDetected(metadata.externalLinkDetected());
+            evidenceFileRepository.save(file);
+            deletePathQuietly(originalPath);
+
+            int removedFromFile = Math.max(0, originalPages - metadata.pageCount());
+            totalPages -= removedFromFile;
+            reducedPages += removedFromFile;
+
+            auditLogService.log(
+                    disputeCase,
+                    "SYSTEM",
+                    "AUTO_FIX_REDUCED_PDF_PAGES",
+                    "fileId=" + file.getId()
+                            + ",pagesBefore=" + originalPages
+                            + ",pagesAfter=" + metadata.pageCount()
+                            + ",removedBlankPages=" + reduction.removedBlankPages()
+                            + ",removedDuplicatePages=" + reduction.removedDuplicatePages()
+                            + ",sizeBefore=" + originalSize
+                            + ",sizeAfter=" + reducedSize
+            );
+
+            if (shopifyPerFileLimit && !needsShopifyPageReduction(file) && !stripeTotalLimit) {
+                continue;
+            }
+        }
+
+        return reducedPages;
+    }
+
+    private int resolvePageLimit(DisputeCase disputeCase) {
+        if (disputeCase.getPlatform() == Platform.STRIPE) {
+            return disputeCase.getCardNetwork() == CardNetwork.MASTERCARD ? 19 : 49;
+        }
+        if (disputeCase.getPlatform() == Platform.SHOPIFY) {
+            return 49;
+        }
+        return 0;
+    }
+
+    private boolean needsShopifyPageReduction(EvidenceFileEntity file) {
+        return file.getFileFormat() == FileFormat.PDF && file.getPageCount() >= 50;
+    }
+
+    private PdfPageReductionChange removeBlankAndDuplicatePdfPages(Path sourcePath) {
+        try (PDDocument source = Loader.loadPDF(sourcePath.toFile()); PDDocument reduced = new PDDocument()) {
+            PDFRenderer renderer = new PDFRenderer(source);
+            Map<String, Integer> seenFingerprints = new HashMap<>();
+            int removedBlankPages = 0;
+            int removedDuplicatePages = 0;
+
+            for (int index = 0; index < source.getNumberOfPages(); index++) {
+                PageFingerprint fingerprint = fingerprintPage(source, renderer, index);
+                if (fingerprint.blank()) {
+                    removedBlankPages++;
+                    continue;
+                }
+                if (seenFingerprints.containsKey(fingerprint.value())) {
+                    removedDuplicatePages++;
+                    continue;
+                }
+                seenFingerprints.put(fingerprint.value(), index);
+                reduced.importPage(source.getPage(index));
+            }
+
+            if (reduced.getNumberOfPages() == 0 && source.getNumberOfPages() > 0) {
+                reduced.importPage(source.getPage(0));
+                removedBlankPages = Math.max(0, removedBlankPages - 1);
+            }
+            if (reduced.getNumberOfPages() == source.getNumberOfPages()) {
+                return PdfPageReductionChange.noChange(source.getNumberOfPages());
+            }
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            reduced.save(out);
+            return new PdfPageReductionChange(
+                    out.toByteArray(),
+                    source.getNumberOfPages(),
+                    reduced.getNumberOfPages(),
+                    removedBlankPages,
+                    removedDuplicatePages
+            );
+        } catch (IOException ex) {
+            throw new IllegalStateException("failed to reduce duplicate or blank PDF pages", ex);
+        }
+    }
+
+    private PageFingerprint fingerprintPage(PDDocument document, PDFRenderer renderer, int pageIndex) throws IOException {
+        String normalizedText = normalizePageText(extractSinglePageText(document, pageIndex));
+        if (!normalizedText.isBlank()) {
+            return new PageFingerprint(false, "text:" + normalizedText);
+        }
+
+        BufferedImage rendered = renderer.renderImageWithDPI(pageIndex, 72, ImageType.GRAY);
+        if (isVisuallyBlank(rendered)) {
+            return new PageFingerprint(true, "blank");
+        }
+        return new PageFingerprint(false, "image:" + hashRenderedPage(rendered));
+    }
+
+    private String extractSinglePageText(PDDocument document, int pageIndex) throws IOException {
+        PDFTextStripper stripper = new PDFTextStripper();
+        stripper.setStartPage(pageIndex + 1);
+        stripper.setEndPage(pageIndex + 1);
+        String text = stripper.getText(document);
+        return text == null ? "" : text;
+    }
+
+    private String normalizePageText(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text.replaceAll("\\s+", " ").trim().toLowerCase(Locale.ROOT);
+    }
+
+    private boolean isVisuallyBlank(BufferedImage image) {
+        int nonWhiteSamples = 0;
+        int totalSamples = 0;
+        for (int y = 0; y < image.getHeight(); y += 2) {
+            for (int x = 0; x < image.getWidth(); x += 2) {
+                int gray = image.getRGB(x, y) & 0xFF;
+                totalSamples++;
+                if (gray < 245) {
+                    nonWhiteSamples++;
+                }
+            }
+        }
+        return nonWhiteSamples <= Math.max(12, totalSamples / 500);
+    }
+
+    private String hashRenderedPage(BufferedImage image) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            for (int y = 0; y < image.getHeight(); y += 2) {
+                for (int x = 0; x < image.getWidth(); x += 2) {
+                    int gray = image.getRGB(x, y) & 0xFF;
+                    digest.update((byte) gray);
+                }
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("missing SHA-256 support", ex);
+        }
     }
 
     private int removeExternalLinksFromPdfFiles(DisputeCase disputeCase) {
@@ -904,6 +1227,35 @@ public class AutoFixService {
         return fileName.substring(0, index);
     }
 
+    private String fixSummary(FixChange change) {
+        long reducedBytes = change.bytesReduced();
+        int reducedPages = change.pagesReduced();
+        if (reducedBytes <= 0 && reducedPages <= 0) {
+            return "Auto-fix updated supported blockers without reducing total pack size or page count.";
+        }
+        if (reducedBytes > 0 && reducedPages > 0) {
+            return "Reduced pack by " + formatBytesLabel(reducedBytes)
+                    + " (" + formatBytesLabel(change.totalBytesBefore()) + " -> " + formatBytesLabel(change.totalBytesAfter()) + ")"
+                    + " and removed " + reducedPages + " page(s) (" + change.totalPagesBefore() + " -> "
+                    + change.totalPagesAfter() + ").";
+        }
+        if (reducedBytes > 0) {
+            return "Reduced pack by " + formatBytesLabel(reducedBytes)
+                    + " (" + formatBytesLabel(change.totalBytesBefore()) + " -> " + formatBytesLabel(change.totalBytesAfter()) + ").";
+        }
+        return "Removed " + reducedPages + " page(s) (" + change.totalPagesBefore() + " -> " + change.totalPagesAfter() + ").";
+    }
+
+    private String formatBytesLabel(long bytes) {
+        if (bytes < 1024) {
+            return bytes + " B";
+        }
+        if (bytes < MB) {
+            return String.format(Locale.ROOT, "%.0f KB", bytes / 1024.0);
+        }
+        return String.format(Locale.ROOT, "%.2f MB", bytes / (double) MB);
+    }
+
     private FixJobEntity failJob(FixJobEntity job, String failCode, String failMessage) {
         DisputeCase disputeCase = job.getDisputeCase();
         job.setStatus(FixJobStatus.FAILED);
@@ -945,21 +1297,54 @@ public class AutoFixService {
     }
 
     private record FixChange(
+            long totalBytesBefore,
+            long totalBytesAfter,
+            int totalPagesBefore,
+            int totalPagesAfter,
             int mergedTypes,
+            int reducedPdfPages,
             int compressedImages,
             int compressedStripePdfFiles,
             int convertedPdfaFiles,
             int flattenedPortfolioFiles,
             int linkSanitizedFiles
     ) {
+        long bytesReduced() {
+            return Math.max(0L, totalBytesBefore - totalBytesAfter);
+        }
+
+        int pagesReduced() {
+            return Math.max(0, totalPagesBefore - totalPagesAfter);
+        }
+
         boolean isNoop() {
             return mergedTypes <= 0
+                    && reducedPdfPages <= 0
                     && compressedImages <= 0
                     && compressedStripePdfFiles <= 0
                     && convertedPdfaFiles <= 0
                     && flattenedPortfolioFiles <= 0
                     && linkSanitizedFiles <= 0;
         }
+    }
+
+    private record PdfPageReductionChange(
+            byte[] pdfBytes,
+            int originalPageCount,
+            int reducedPageCount,
+            int removedBlankPages,
+            int removedDuplicatePages
+    ) {
+        static PdfPageReductionChange noChange(int pageCount) {
+            return new PdfPageReductionChange(new byte[0], pageCount, pageCount, 0, 0);
+        }
+
+        boolean changed() {
+            return reducedPageCount < originalPageCount;
+        }
+    }
+
+    private record PageFingerprint(boolean blank, String value) {
     }
 
     private record ShopifyPdfFixChange(int convertedPdfaFiles, int flattenedPortfolioFiles) {

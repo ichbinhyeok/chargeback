@@ -83,6 +83,7 @@ class DisputeExplanationServiceTest {
         return new EvidenceFileReportResponse(
                 UUID.randomUUID(),
                 type,
+                type.name().toLowerCase() + "." + format.name().toLowerCase(),
                 format,
                 sizeBytes,
                 pageCount,

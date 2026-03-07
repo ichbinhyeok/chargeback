@@ -114,6 +114,11 @@ class ValidationServiceTest {
 
         assertFalse(response.passed());
         assertContainsCode(response, "ERR_STRIPE_TOTAL_PAGES");
+        ValidationIssueResponse issue = response.issues().stream()
+                .filter(item -> "ERR_STRIPE_TOTAL_PAGES".equals(item.code()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(FixStrategy.REDUCE_TOTAL_PAGES, issue.fixStrategy());
     }
 
     @Test
@@ -130,6 +135,11 @@ class ValidationServiceTest {
 
         assertFalse(response.passed());
         assertContainsCode(response, "ERR_STRIPE_MC_19P");
+        ValidationIssueResponse issue = response.issues().stream()
+                .filter(item -> "ERR_STRIPE_MC_19P".equals(item.code()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(FixStrategy.REDUCE_TOTAL_PAGES, issue.fixStrategy());
     }
 
     @Test
@@ -249,6 +259,11 @@ class ValidationServiceTest {
 
         assertFalse(response.passed());
         assertContainsCode(response, "ERR_SHPFY_PDF_PAGES_EXCEEDED");
+        ValidationIssueResponse issue = response.issues().stream()
+                .filter(item -> "ERR_SHPFY_PDF_PAGES_EXCEEDED".equals(item.code()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(FixStrategy.REDUCE_TOTAL_PAGES, issue.fixStrategy());
     }
 
     @Test
@@ -275,6 +290,11 @@ class ValidationServiceTest {
 
         assertFalse(response.passed());
         assertContainsCode(response, "ERR_SHPFY_PDF_PAGES_EXCEEDED");
+        ValidationIssueResponse issue = response.issues().stream()
+                .filter(item -> "ERR_SHPFY_PDF_PAGES_EXCEEDED".equals(item.code()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(FixStrategy.REDUCE_TOTAL_PAGES, issue.fixStrategy());
     }
 
     @Test

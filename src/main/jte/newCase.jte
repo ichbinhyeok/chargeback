@@ -42,6 +42,50 @@
             </div>
         @endif
 
+        <div class="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-wide text-slate-700">Start From The Platform Error</p>
+                    <h2 class="mt-1 text-xl font-bold text-neutral-900">Load the closest fix flow before case setup</h2>
+                    <p class="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
+                        Most users arrive after Stripe or Shopify already rejected a file. Start with the exact error if you have it.
+                    </p>
+                </div>
+                @if("guide".equals(attributionSource) && attributionPlatform != null && attributionGuide != null)
+                    <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900 lg:max-w-sm">
+                        <div class="font-semibold">Loaded from error guide</div>
+                        <div class="mt-1"><code>${attributionPlatform}</code> / <code>${attributionGuide}</code></div>
+                    </div>
+                @endif
+            </div>
+
+            <form id="error-first-form" method="get" action="/guides/router" class="mt-4 grid gap-3 md:grid-cols-[180px,220px,1fr,auto]">
+                <select id="errorPlatform" name="platform" class="cb-input">
+                    <option value="">Auto-detect platform</option>
+                    <option value="stripe">Stripe</option>
+                    <option value="shopify">Shopify</option>
+                </select>
+                <select id="errorPreset" class="cb-input">
+                    <option value="">Choose common error</option>
+                </select>
+                <input
+                    id="errorQuery"
+                    type="text"
+                    name="q"
+                    class="cb-input"
+                    placeholder="Or paste the exact error words"
+                    value="${routerQuery != null ? routerQuery : ""}"
+                >
+                <button type="submit" class="cb-btn cb-btn-primary">
+                    Load Error-Specific Flow
+                </button>
+            </form>
+
+            <p class="mt-3 text-xs text-gray-500">
+                If you do not have an exact error, continue with case setup below and use free validation to surface blockers.
+            </p>
+        </div>
+
         <div class="mb-6 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
             <p class="font-semibold mb-2">Privacy & Trust</p>
             <ul class="list-disc pl-5 space-y-1">
@@ -143,6 +187,19 @@
         @endfor
     </div>
 
+    <div id="error-preset-store" class="hidden">
+        <div data-platform="stripe" data-slug="invalid-file-format-pdf-jpg-png-only" data-label="Invalid file format"></div>
+        <div data-platform="stripe" data-slug="upload-failed-no-external-links" data-label="No external links"></div>
+        <div data-platform="stripe" data-slug="duplicate-evidence-type-file-error" data-label="Duplicate evidence type"></div>
+        <div data-platform="stripe" data-slug="evidence-file-size-limit-4-5mb" data-label="Evidence size limit"></div>
+        <div data-platform="stripe" data-slug="total-pages-over-limit" data-label="Total pages over limit"></div>
+        <div data-platform="shopify" data-slug="pdf-a-format-required-error" data-label="PDF/A required"></div>
+        <div data-platform="shopify" data-slug="evidence-file-too-large-2mb" data-label="File too large (2MB)"></div>
+        <div data-platform="shopify" data-slug="pdf-portfolio-not-accepted" data-label="PDF portfolio not accepted"></div>
+        <div data-platform="shopify" data-slug="external-links-not-allowed-error" data-label="External links not allowed"></div>
+        <div data-platform="shopify" data-slug="duplicate-evidence-type-file-error" data-label="Duplicate evidence type"></div>
+    </div>
+
     <script>
         const newCaseForm = document.getElementById('new-case-form');
         const platformSelect = document.getElementById('platform');
@@ -152,12 +209,21 @@
         const reasonCodeInput = document.getElementById('reasonCode');
         const reasonHint = document.getElementById('reasonHint');
         const reasonOptionNodes = document.querySelectorAll('#reason-options-store [data-platform]');
+        const errorFirstForm = document.getElementById('error-first-form');
+        const errorPlatformSelect = document.getElementById('errorPlatform');
+        const errorPresetSelect = document.getElementById('errorPreset');
+        const errorQueryInput = document.getElementById('errorQuery');
+        const errorPresetNodes = document.querySelectorAll('#error-preset-store [data-platform]');
         const sourcePlatformInput = document.querySelector('input[name="sourcePlatform"]');
         const prefillPlatform = ((sourcePlatformInput && sourcePlatformInput.value) ? sourcePlatformInput.value : '').trim().toUpperCase();
         const prefillReasonCode = (reasonPresetSelect.dataset.prefillCode || '').trim();
+        const prefillErrorGuide = ('${attributionSource != null ? attributionSource : ""}' === 'guide')
+            ? ('${attributionGuide != null ? attributionGuide : ""}')
+            : '';
         let reasonPrefillApplied = false;
 
         const reasonOptionsByPlatform = {};
+        const errorPresetsByPlatform = {};
         reasonOptionNodes.forEach((node) => {
             const platform = node.dataset.platform;
             const entry = {
@@ -169,6 +235,17 @@
                 reasonOptionsByPlatform[platform] = [];
             }
             reasonOptionsByPlatform[platform].push(entry);
+        });
+        errorPresetNodes.forEach((node) => {
+            const platform = node.dataset.platform;
+            const entry = {
+                slug: node.dataset.slug || '',
+                label: node.dataset.label || node.dataset.slug || ''
+            };
+            if (!errorPresetsByPlatform[platform]) {
+                errorPresetsByPlatform[platform] = [];
+            }
+            errorPresetsByPlatform[platform].push(entry);
         });
 
         function refreshScopeOptions() {
@@ -221,6 +298,27 @@
             reasonPresetSelect.appendChild(option);
         }
 
+        function refreshErrorPresetOptions() {
+            const selectedPlatform = errorPlatformSelect.value || platformSelect.value.toLowerCase();
+            const options = errorPresetsByPlatform[selectedPlatform] || [];
+            const currentValue = errorPresetSelect.value;
+
+            errorPresetSelect.innerHTML = '';
+            addErrorPresetOption('', 'Choose common error');
+            options.forEach((option) => addErrorPresetOption(option.slug, option.label));
+
+            const targetValue = currentValue || prefillErrorGuide;
+            const hasTargetValue = Array.from(errorPresetSelect.options).some((option) => option.value === targetValue);
+            errorPresetSelect.value = hasTargetValue ? targetValue : '';
+        }
+
+        function addErrorPresetOption(value, label) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            errorPresetSelect.appendChild(option);
+        }
+
         function refreshReasonInputs() {
             const selectedValue = reasonPresetSelect.value;
             const selectedOption = reasonPresetSelect.options[reasonPresetSelect.selectedIndex];
@@ -247,16 +345,57 @@
         platformSelect.addEventListener('change', () => {
             refreshScopeOptions();
             refreshReasonPresetOptions();
+            if (!errorPlatformSelect.value) {
+                errorPlatformSelect.value = platformSelect.value.toLowerCase();
+            }
+            refreshErrorPresetOptions();
         });
 
         reasonPresetSelect.addEventListener('change', refreshReasonInputs);
         reasonCustomInput.addEventListener('input', syncReasonCodeValue);
         newCaseForm.addEventListener('submit', syncReasonCodeValue);
+        errorPlatformSelect.addEventListener('change', () => {
+            const selectedPlatform = errorPlatformSelect.value;
+            if (selectedPlatform && platformSelect.value !== selectedPlatform.toUpperCase()) {
+                platformSelect.value = selectedPlatform.toUpperCase();
+                refreshScopeOptions();
+                refreshReasonPresetOptions();
+            }
+            refreshErrorPresetOptions();
+        });
+        errorFirstForm.addEventListener('submit', (event) => {
+            const selectedPlatform = errorPlatformSelect.value || platformSelect.value.toLowerCase();
+            const selectedPreset = errorPresetSelect.value;
+            const enteredQuery = errorQueryInput.value.trim();
+
+            if (enteredQuery) {
+                if (!errorPlatformSelect.value && selectedPlatform) {
+                    errorPlatformSelect.value = selectedPlatform;
+                }
+                return;
+            }
+
+            if (selectedPreset && selectedPlatform) {
+                event.preventDefault();
+                window.location.href = '/new?src=guide&platform='
+                    + encodeURIComponent(selectedPlatform)
+                    + '&guide='
+                    + encodeURIComponent(selectedPreset);
+                return;
+            }
+
+            event.preventDefault();
+            errorQueryInput.focus();
+        });
 
         if (prefillPlatform && Array.from(platformSelect.options).some((option) => option.value === prefillPlatform)) {
             platformSelect.value = prefillPlatform;
         }
+        if (prefillPlatform) {
+            errorPlatformSelect.value = prefillPlatform.toLowerCase();
+        }
         refreshScopeOptions();
         refreshReasonPresetOptions();
+        refreshErrorPresetOptions();
     </script>
 `)

@@ -90,6 +90,7 @@ public class CaseReportService {
         return new EvidenceFileReportResponse(
                 file.getId(),
                 file.getEvidenceType(),
+                file.getOriginalName(),
                 file.getFileFormat(),
                 file.getSizeBytes(),
                 file.getPageCount(),

@@ -7,13 +7,15 @@
 @param EvidenceType[] evidenceTypes
 @param boolean isPaid
 @param PaymentEntity latestPayment
+@param String displayCaseState
+@param String displayCaseStateBadgeClass
 
 @template.layout(
     title = "Report | " + report.caseToken(),
     robotsMeta = "noindex,nofollow,noarchive",
     caseTokenForVault = report.caseToken(),
     casePlatformForVault = report.platform().name(),
-    caseStateForVault = report.state().name(),
+    caseStateForVault = displayCaseState,
     content = @`
     <div class="max-w-4xl mx-auto">
         <div class="mb-6">
@@ -31,7 +33,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="cb-badge cb-badge-gray">${report.platform()}</span>
-                    <span class="cb-badge ${(report.state().name().equals("READY") || report.state().name().equals("PAID") || report.state().name().equals("DOWNLOADED")) ? "cb-badge-green" : (report.state().name().equals("BLOCKED") ? "cb-badge-red" : "cb-badge-blue")}">${report.state()}</span>
+                    <span class="cb-badge ${displayCaseStateBadgeClass}">${displayCaseState}</span>
                     @if(isPaid)
                         <span class="cb-badge cb-badge-amber">PAID</span>
                     @endif

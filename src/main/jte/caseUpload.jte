@@ -3,6 +3,7 @@
 @import com.example.demo.dispute.domain.EvidenceType
 @import com.example.demo.dispute.persistence.PaymentEntity
 @import com.example.demo.dispute.service.ReasonCodeChecklistService
+@import java.util.List
 @param DisputeCase disputeCase
 @param CaseReportResponse report
 @param EvidenceType[] evidenceTypes
@@ -20,14 +21,18 @@
 @param Integer stripePagesRemaining
 @param Integer mastercardPagesRemaining
 @param String sizeLimitLabel
+@param List<String> missingRequiredEvidenceTypes
+@param List<String> missingRecommendedEvidenceTypes
 @param ReasonCodeChecklistService.ReasonChecklist reasonChecklist
+@param String displayCaseState
+@param String displayCaseStateBadgeClass
 
 @template.layout(
     title = "Upload | " + report.caseToken(),
     robotsMeta = "noindex,nofollow,noarchive",
     caseTokenForVault = report.caseToken(),
     casePlatformForVault = report.platform().name(),
-    caseStateForVault = report.state().name(),
+    caseStateForVault = displayCaseState,
     content = @`
     @if(message != null && !message.isBlank())
         <div class="mb-6 p-4 rounded-lg bg-green-50 text-green-800 border border-green-200 flex items-center gap-3">
@@ -41,8 +46,8 @@
             <span class="font-medium">${error}</span>
         </div>
     @endif
-    <div id="client-error-alert" class="mb-6 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200 hidden">
-        <div class="font-semibold mb-1">Upload failed</div>
+    <div id="client-error-alert" class="mb-6 p-4 rounded-lg border hidden">
+        <div id="client-alert-title" class="font-semibold mb-1">Selection needs attention</div>
         <div id="client-error-message" class="text-sm whitespace-pre-line"></div>
     </div>
 
@@ -50,8 +55,8 @@
         <div>
             <div class="flex items-center gap-3 mb-2">
                 <h1 class="text-3xl font-bold text-neutral-900 tracking-tight">Case ${report.caseToken()}</h1>
-                <span class="cb-badge ${(report.state().name().equals("READY") || report.state().name().equals("PAID") || report.state().name().equals("DOWNLOADED")) ? "cb-badge-green" : (report.state().name().equals("BLOCKED") ? "cb-badge-red" : "cb-badge-blue")}">
-                    ${report.state()}
+                <span class="cb-badge ${displayCaseStateBadgeClass}">
+                    ${displayCaseState}
                 </span>
             </div>
             <div class="flex gap-2 text-sm text-gray-500">
@@ -124,6 +129,7 @@
                 <ol class="mt-3 space-y-2 pl-5 text-sm leading-6 list-decimal">
                     <li>Click <strong>Browse Files</strong> or drag files here. Nothing uploads until you confirm in the mapping modal.</li>
                     <li>Review the guessed evidence type for each file and change it if needed.</li>
+                    <li>Unsupported but decodable image files can be auto-converted to <strong>JPEG</strong> during upload before validation.</li>
                     <li>Click <strong>Upload Files</strong>. Validation starts automatically after each confirmed upload.</li>
                     <li>Format checks can pass before export is ready. Export review stays locked until required evidence is complete.</li>
                 </ol>
@@ -200,7 +206,7 @@
             <h3 class="text-xl font-bold text-gray-900 mb-2">Drag & Drop files here</h3>
             <p class="text-gray-500 text-sm mb-6 max-w-xs">After you choose files, a mapping modal opens first. Upload starts only after you confirm.</p>
 
-            <input type="file" id="file-input" multiple class="hidden" accept=".pdf,.png,.jpg,.jpeg">
+            <input type="file" id="file-input" multiple class="hidden" accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.heif,.avif,image/*">
             <button onclick="document.getElementById('file-input').click()" class="cb-btn cb-btn-primary shadow-sm">
                 Browse Files
             </button>
@@ -259,7 +265,7 @@
                             <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
                             <h3 class="font-bold text-white text-lg tracking-wide">Validation Engine</h3>
                         </div>
-                        <p class="text-slate-300 text-sm max-w-sm">Validation runs automatically after you confirm uploads. Use re-run only after changing files or after auto-fix. Auto-fix currently supports per-type merge and Shopify oversized image compression.</p>
+                        <p class="text-slate-300 text-sm max-w-sm">Validation runs automatically after you confirm uploads. Upload can auto-convert decodable image formats like GIF, BMP, and WEBP to JPEG. Auto-fix handles the remaining supported blockers after validation.</p>
                     </div>
                     <div class="flex flex-col gap-2 shrink-0">
                         <form method="post" action="/c/${report.caseToken()}/validate">
@@ -290,6 +296,7 @@
             </div>
             <div class="p-5">
                 <div class="text-sm text-gray-600 mb-3"><span id="mapping-count">0</span> file(s) selected</div>
+                <div id="mapping-analysis-status" class="mb-3 text-xs text-gray-500"></div>
                 <div id="mapping-list" class="space-y-3 max-h-[48vh] overflow-y-auto"></div>
             </div>
             <div class="p-5 border-t border-gray-200 flex items-center justify-end gap-2">
@@ -316,11 +323,13 @@
         const mappingModal = document.getElementById('mapping-modal');
         const mappingList = document.getElementById('mapping-list');
         const mappingCount = document.getElementById('mapping-count');
+        const mappingAnalysisStatus = document.getElementById('mapping-analysis-status');
         const mappingStartUploadBtn = document.getElementById('mapping-start-upload-btn');
         const mappingCancelBtn = document.getElementById('mapping-cancel-btn');
         const mappingCloseBtn = document.getElementById('mapping-close-btn');
         const evidenceTypeSelectTemplate = document.getElementById('evidence-type-select-template');
         const clientErrorAlert = document.getElementById('client-error-alert');
+        const clientAlertTitle = document.getElementById('client-alert-title');
         const clientErrorMessage = document.getElementById('client-error-message');
         const fileCountElement = document.getElementById('file-count');
         const budgetFilesElement = document.getElementById('budget-files');
@@ -334,8 +343,25 @@
         let currentTotalSizeBytes = ${uploadedSizeBytes};
         const totalSizeLimitBytes = ${totalSizeLimitBytes};
         const defaultUploadBtnText = mappingStartUploadBtn.textContent;
+        const missingRequiredEvidenceTypes = [
+            @for(String type : missingRequiredEvidenceTypes)
+                '${type}',
+            @endfor
+        ];
+        const missingRecommendedEvidenceTypes = [
+            @for(String type : missingRecommendedEvidenceTypes)
+                '${type}',
+            @endfor
+        ];
+        const existingEvidenceTypes = [
+            @for(var file : report.files())
+                '${file.evidenceType().name()}',
+            @endfor
+        ];
 
         let pendingFiles = [];
+        let remoteSuggestionCache = new Map();
+        let suggestionAnalysisRun = 0;
 
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropzone.addEventListener(eventName, preventDefaults, false);
@@ -368,16 +394,16 @@
             this.value = '';
         });
 
-        mappingCloseBtn.addEventListener('click', closeMappingModal);
-        mappingCancelBtn.addEventListener('click', closeMappingModal);
+        mappingCloseBtn.addEventListener('click', () => closeMappingModal(true));
+        mappingCancelBtn.addEventListener('click', () => closeMappingModal(true));
         mappingModal.addEventListener('click', (e) => {
             if (e.target === mappingModal) {
-                closeMappingModal();
+                closeMappingModal(true);
             }
         });
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && !mappingModal.classList.contains('hidden')) {
-                closeMappingModal();
+                closeMappingModal(true);
             }
         });
 
@@ -399,9 +425,10 @@
             });
 
             try {
-                closeMappingModal();
+                closeMappingModal(false);
                 await uploadMappedFiles(mappings);
             } finally {
+                clearPendingFiles();
                 mappingStartUploadBtn.disabled = false;
                 mappingStartUploadBtn.textContent = defaultUploadBtnText;
             }
@@ -417,20 +444,18 @@
             const accepted = [];
             const rejected = [];
             for (const file of selectedFiles) {
-                const lower = file.name.toLowerCase();
-                const supported = lower.endsWith('.pdf') || lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg');
-                if (supported) {
+                if (isDirectUploadFile(file) || isConvertibleImageSelection(file)) {
                     accepted.push(file);
                 } else {
                     rejected.push(file.name);
                 }
             }
             if (rejected.length > 0) {
-                errors.push('Unsupported file type (allowed: PDF, PNG, JPG, JPEG):\n- ' + rejected.join('\n- '));
+                errors.push('Unsupported file type (direct upload: PDF, PNG, JPG, JPEG; image auto-convert attempts for GIF, BMP, WEBP and other browser-recognized images):\n- ' + rejected.join('\n- '));
             }
             if (accepted.length === 0) {
                 if (errors.length > 0) {
-                    showClientError(errors.join('\n\n'));
+                    showClientAlert('warning', 'Selection needs attention', errors.join('\n\n'));
                 }
                 return;
             }
@@ -438,7 +463,7 @@
             const remainingSlots = caseMaxFiles - uploadedFileCount;
             if (remainingSlots <= 0) {
                 errors.push('Case file limit reached (' + caseMaxFiles + '). Delete or merge files before adding more.');
-                showClientError(errors.join('\n\n'));
+                showClientAlert('warning', 'Selection needs attention', errors.join('\n\n'));
                 return;
             }
 
@@ -461,15 +486,16 @@
             }
 
             if (errors.length > 0) {
-                showClientError(errors.join('\n\n'));
+                showClientAlert('warning', 'Selection needs attention', errors.join('\n\n'));
             }
 
-            pendingFiles = cappedAccepted;
+            setPendingFiles(cappedAccepted);
             if (pendingFiles.length === 0) {
                 return;
             }
             renderMappingRows();
             openMappingModal();
+            requestPreviewSuggestions();
         }
 
         function openMappingModal() {
@@ -477,31 +503,65 @@
             mappingModal.classList.add('flex');
         }
 
-        function closeMappingModal() {
+        function closeMappingModal(clearSelection) {
             mappingModal.classList.remove('flex');
             mappingModal.classList.add('hidden');
+            if (clearSelection) {
+                clearPendingFiles();
+            }
         }
 
         function renderMappingRows() {
             mappingList.innerHTML = '';
             mappingCount.textContent = pendingFiles.length.toString();
+            const suggestionPlan = buildSuggestionPlan(pendingFiles);
             pendingFiles.forEach((file, index) => {
                 const row = document.createElement('div');
-                row.className = 'border border-gray-200 rounded-lg p-3 flex flex-col md:flex-row md:items-center gap-3 justify-between';
+                row.className = 'border border-gray-200 rounded-lg p-3 flex flex-col md:flex-row md:items-start gap-3 justify-between';
                 row.setAttribute('data-row-index', index.toString());
 
+                const left = document.createElement('div');
+                left.className = 'flex items-start gap-3 min-w-0 flex-1';
+
+                const preview = buildPreviewTile(file);
                 const info = document.createElement('div');
-                info.className = 'min-w-0';
+                info.className = 'min-w-0 flex-1';
                 const kb = (file.size / 1024).toFixed(1);
+                const autoConvertBadge = isConvertibleImageSelection(file)
+                    ? '<span class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900">Auto-convert to JPEG</span>'
+                    : '';
+                const suggestion = suggestionPlan.get(index) || fallbackSuggestion();
+                const suggestionBadge = suggestion.source === 'content'
+                    ? '<span class="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-900">Content match</span>'
+                    : suggestion.source === 'ocr'
+                        ? '<span class="inline-flex items-center rounded-full border border-fuchsia-200 bg-fuchsia-50 px-2 py-0.5 text-[11px] font-semibold text-fuchsia-900">OCR text match</span>'
+                    : suggestion.source === 'metadata'
+                        ? '<span class="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-900">Preview signal</span>'
+                        : suggestion.source === 'required'
+                            ? '<span class="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900">Needed for this case</span>'
+                            : suggestion.source === 'recommended'
+                                ? '<span class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-900">Recommended next</span>'
+                                : suggestion.source === 'keyword'
+                                    ? '<span class="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-900">Name match</span>'
+                                    : '<span class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-semibold text-gray-700">Fallback</span>';
+                const sourceHint = isConvertibleImageSelection(file)
+                    ? 'Uploaded as image, stored as JPEG after conversion'
+                    : kb + ' KB';
                 info.innerHTML =
-                    '<div class="font-medium text-gray-900 truncate">' + escapeHtml(file.name) + '</div>' +
-                    '<div class="text-xs text-gray-500 mt-1">' + kb + ' KB</div>';
+                    '<div class="font-medium text-gray-900 truncate flex items-center gap-2 flex-wrap">' + escapeHtml(file.name) + autoConvertBadge + suggestionBadge + '</div>' +
+                    '<div class="text-xs text-gray-500 mt-1">' + escapeHtml(sourceHint) + '</div>' +
+                    '<div class="mt-2 text-xs text-sky-900">Suggested: <strong>' + escapeHtml(humanizeEvidenceTypeName(suggestion.evidenceType)) + '</strong> - ' + escapeHtml(suggestion.reason) + '</div>';
+                left.appendChild(preview);
+                left.appendChild(info);
 
                 const right = document.createElement('div');
-                right.className = 'flex items-center gap-2';
+                right.className = 'flex items-center gap-2 md:pl-4';
 
                 const select = evidenceTypeSelectTemplate.content.firstElementChild.cloneNode(true);
-                select.value = guessEvidenceType(file.name);
+                select.value = file._selectedEvidenceType || suggestion.evidenceType;
+                select.addEventListener('change', () => {
+                    file._selectedEvidenceType = select.value;
+                });
                 right.appendChild(select);
 
                 const removeBtn = document.createElement('button');
@@ -509,12 +569,13 @@
                 removeBtn.className = 'cb-btn cb-btn-secondary text-xs px-3 py-2';
                 removeBtn.textContent = 'Remove';
                 removeBtn.addEventListener('click', () => {
-                    pendingFiles = pendingFiles.filter((_, i) => i !== index);
+                    setPendingFiles(pendingFiles.filter((_, i) => i !== index));
                     renderMappingRows();
+                    requestPreviewSuggestions();
                 });
                 right.appendChild(removeBtn);
 
-                row.appendChild(info);
+                row.appendChild(left);
                 row.appendChild(right);
                 mappingList.appendChild(row);
             });
@@ -522,16 +583,284 @@
             mappingStartUploadBtn.disabled = pendingFiles.length === 0;
         }
 
-        function guessEvidenceType(fileName) {
-            const lower = fileName.toLowerCase();
-            if (lower.includes('receipt') || lower.includes('invoice') || lower.includes('order')) return 'ORDER_RECEIPT';
-            if (lower.includes('policy') || lower.includes('terms')) return 'POLICIES';
-            if (lower.includes('tracking') || lower.includes('delivery') || lower.includes('shipment') || lower.includes('fulfillment')) return 'FULFILLMENT_DELIVERY';
-            if (lower.includes('message') || lower.includes('chat') || lower.includes('email') || lower.includes('communication')) return 'CUSTOMER_COMMUNICATION';
-            if (lower.includes('refund') || lower.includes('cancel')) return 'REFUND_CANCELLATION';
-            if (lower.includes('customer') || lower.includes('address') || lower.includes('profile')) return 'CUSTOMER_DETAILS';
-            if (lower.includes('usage') || lower.includes('log') || lower.includes('ip') || lower.includes('digital')) return 'DIGITAL_USAGE_LOGS';
-            return 'OTHER_SUPPORTING';
+        function buildSuggestionPlan(files) {
+            const plan = new Map();
+            const coveredTypes = new Set(existingEvidenceTypes);
+            const genericIndexes = [];
+
+            files.forEach((file, index) => {
+                const suggestion = remoteSuggestionCache.get(index) || detectEvidenceSuggestion(file, files);
+                plan.set(index, suggestion);
+                if (suggestion.source === 'fallback') {
+                    genericIndexes.push(index);
+                    return;
+                }
+                coveredTypes.add(suggestion.evidenceType);
+            });
+
+            const remainingRequired = missingRequiredEvidenceTypes.filter((type) => !coveredTypes.has(type));
+            const remainingRecommended = missingRecommendedEvidenceTypes.filter(
+                (type) => !coveredTypes.has(type) && !remainingRequired.includes(type)
+            );
+
+            genericIndexes.forEach((index) => {
+                const file = files[index];
+                const current = plan.get(index);
+                if (!isGapFillCandidate(file, files)) {
+                    if (!current) {
+                        plan.set(index, fallbackSuggestion());
+                    }
+                    return;
+                }
+                if (remainingRequired.length > 0) {
+                    const type = remainingRequired.shift();
+                    plan.set(index, {
+                        evidenceType: type,
+                        reason: 'This case still needs this evidence type.',
+                        source: 'required'
+                    });
+                    return;
+                }
+                if (remainingRecommended.length > 0) {
+                    const type = remainingRecommended.shift();
+                    plan.set(index, {
+                        evidenceType: type,
+                        reason: 'This case would be stronger with this evidence type.',
+                        source: 'recommended'
+                    });
+                    return;
+                }
+                if (!current) {
+                    plan.set(index, fallbackSuggestion());
+                }
+            });
+
+            return plan;
+        }
+
+        async function requestPreviewSuggestions() {
+            suggestionAnalysisRun += 1;
+            const runId = suggestionAnalysisRun;
+            remoteSuggestionCache = new Map();
+
+            if (pendingFiles.length === 0) {
+                mappingAnalysisStatus.textContent = '';
+                renderMappingRows();
+                return;
+            }
+
+            mappingAnalysisStatus.textContent = 'Analyzing preview text and metadata...';
+            renderMappingRows();
+
+            const formData = new FormData();
+            pendingFiles.forEach((file) => formData.append('files', file, file.name));
+
+            try {
+                const response = await fetch('/api/cases/' + caseId + '/file-suggestions', {
+                    method: 'POST',
+                    headers: {
+                        'X-Case-Token': caseToken
+                    },
+                    body: formData
+                });
+                if (runId !== suggestionAnalysisRun) {
+                    return;
+                }
+                if (!response.ok) {
+                    mappingAnalysisStatus.textContent = 'Preview analysis is unavailable right now. Using filename-based suggestions.';
+                    return;
+                }
+
+                const suggestions = await response.json();
+                remoteSuggestionCache = new Map(
+                    suggestions.map((suggestion) => [Number(suggestion.index), suggestion])
+                );
+                const strongCount = suggestions.filter((suggestion) =>
+                    suggestion.source === 'content' || suggestion.source === 'ocr' || suggestion.source === 'metadata'
+                ).length;
+                mappingAnalysisStatus.textContent = strongCount > 0
+                    ? 'Preview analysis found ' + strongCount + ' stronger content, OCR, or metadata matches.'
+                    : 'Preview analysis finished. No stronger content clues were found.';
+                renderMappingRows();
+            } catch (_) {
+                if (runId !== suggestionAnalysisRun) {
+                    return;
+                }
+                mappingAnalysisStatus.textContent = 'Preview analysis is unavailable right now. Using filename-based suggestions.';
+            }
+        }
+
+        function detectEvidenceSuggestion(file, files) {
+            const lower = (file.name || '').toLowerCase();
+            const type = (file.type || '').toLowerCase();
+            if (matchesAny(lower, ['policy', 'terms', 'agreement', 'contract', 'conditions'])) {
+                return { evidenceType: 'POLICIES', reason: 'Filename looks like terms or policy evidence.', source: 'keyword' };
+            }
+            if (matchesAny(lower, ['receipt', 'invoice', 'order', 'purchase', 'checkout', 'transaction', 'statement'])) {
+                return { evidenceType: 'ORDER_RECEIPT', reason: 'Filename looks like receipt or order evidence.', source: 'keyword' };
+            }
+            if (matchesAny(lower, ['tracking', 'delivery', 'shipment', 'shipping', 'fulfillment', 'carrier', 'fedex', 'ups', 'dhl', 'usps'])) {
+                return { evidenceType: 'FULFILLMENT_DELIVERY', reason: 'Filename looks like delivery or tracking proof.', source: 'keyword' };
+            }
+            if (matchesAny(lower, ['message', 'chat', 'conversation', 'email', 'communication', 'whatsapp', 'telegram', 'support'])) {
+                return { evidenceType: 'CUSTOMER_COMMUNICATION', reason: 'Filename looks like customer communication.', source: 'keyword' };
+            }
+            if (matchesAny(lower, ['refund', 'cancel', 'cancellation', 'reversal', 'credit note', 'credit_note'])) {
+                return { evidenceType: 'REFUND_CANCELLATION', reason: 'Filename looks like refund or cancellation proof.', source: 'keyword' };
+            }
+            if (matchesAny(lower, ['customer', 'address', 'profile', 'billing_profile', 'account', 'identity'])) {
+                return { evidenceType: 'CUSTOMER_DETAILS', reason: 'Filename looks like customer identity or billing details.', source: 'keyword' };
+            }
+            if (matchesAny(lower, ['usage', 'log', 'access', 'session', 'device', 'download', 'ip', 'activity', 'digital'])) {
+                return { evidenceType: 'DIGITAL_USAGE_LOGS', reason: 'Filename looks like digital usage or access logs.', source: 'keyword' };
+            }
+            if (looksLikeScreenshotBatch(file, files) && missingRequiredEvidenceTypes.includes('CUSTOMER_COMMUNICATION')) {
+                return { evidenceType: 'CUSTOMER_COMMUNICATION', reason: 'Screenshot-style images often map to customer communication in this case.', source: 'recommended' };
+            }
+            return fallbackSuggestion();
+        }
+
+        function fallbackSuggestion() {
+            return {
+                evidenceType: 'OTHER_SUPPORTING',
+                reason: 'No strong clue detected yet. Use the preview to confirm the right type.',
+                source: 'fallback'
+            };
+        }
+
+        function matchesAny(text, keywords) {
+            return keywords.some((keyword) => text.includes(keyword));
+        }
+
+        function looksLikeScreenshotBatch(file, files) {
+            const lower = (file.name || '').toLowerCase();
+            const type = (file.type || '').toLowerCase();
+            const genericName = /^((img|image|photo|scan|screenshot|document)[-_ ]?\d+|document[_-]?\d+)\./i.test(file.name || '');
+            const imageCount = files.filter((entry) => (entry.type || '').toLowerCase().startsWith('image/')).length;
+            return imageCount >= 2
+                && type.startsWith('image/')
+                && (genericName || lower.includes('screen') || lower.includes('img_'));
+        }
+
+        function isGapFillCandidate(file, files) {
+            const lower = (file.name || '').toLowerCase();
+            const type = (file.type || '').toLowerCase();
+            return looksLikeScreenshotBatch(file, files)
+                || type === 'application/pdf'
+                || lower.endsWith('.pdf');
+        }
+
+        function humanizeEvidenceTypeName(name) {
+            switch (name) {
+                case 'ORDER_RECEIPT':
+                    return 'Order receipt';
+                case 'CUSTOMER_DETAILS':
+                    return 'Customer details';
+                case 'CUSTOMER_COMMUNICATION':
+                    return 'Customer communication';
+                case 'POLICIES':
+                    return 'Policies';
+                case 'FULFILLMENT_DELIVERY':
+                    return 'Fulfillment / delivery proof';
+                case 'DIGITAL_USAGE_LOGS':
+                    return 'Digital usage logs';
+                case 'REFUND_CANCELLATION':
+                    return 'Refund / cancellation';
+                default:
+                    return 'Other supporting';
+            }
+        }
+
+        function isDirectUploadFile(file) {
+            const lower = (file.name || '').toLowerCase();
+            const type = (file.type || '').toLowerCase();
+            return lower.endsWith('.pdf')
+                || lower.endsWith('.png')
+                || lower.endsWith('.jpg')
+                || lower.endsWith('.jpeg')
+                || type === 'application/pdf'
+                || type === 'image/png'
+                || type === 'image/jpeg';
+        }
+
+        function isConvertibleImageSelection(file) {
+            if (isDirectUploadFile(file)) {
+                return false;
+            }
+            const lower = (file.name || '').toLowerCase();
+            const type = (file.type || '').toLowerCase();
+            return type.startsWith('image/')
+                || lower.endsWith('.gif')
+                || lower.endsWith('.bmp')
+                || lower.endsWith('.webp')
+                || lower.endsWith('.heic')
+                || lower.endsWith('.heif')
+                || lower.endsWith('.avif');
+        }
+
+        function buildPreviewTile(file) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50';
+            const lower = (file.name || '').toLowerCase();
+            const type = (file.type || '').toLowerCase();
+
+            if (type.startsWith('image/')) {
+                const image = document.createElement('img');
+                image.src = ensurePreviewUrl(file);
+                image.alt = file.name || 'Image preview';
+                image.className = 'h-full w-full object-cover';
+                wrapper.appendChild(image);
+                return wrapper;
+            }
+
+            if (lower.endsWith('.pdf')) {
+                const frame = document.createElement('iframe');
+                frame.src = ensurePreviewUrl(file) + '#toolbar=0&navpanes=0&scrollbar=0&page=1&view=FitH';
+                frame.title = 'PDF preview';
+                frame.className = 'h-full w-full bg-white';
+                wrapper.appendChild(frame);
+                return wrapper;
+            }
+
+            const fallback = document.createElement('div');
+            fallback.className = 'flex h-full w-full items-center justify-center text-center text-[11px] font-semibold uppercase tracking-wide text-gray-500';
+            fallback.textContent = lower.endsWith('.pdf') ? 'PDF' : 'Preview';
+            wrapper.appendChild(fallback);
+            return wrapper;
+        }
+
+        function ensurePreviewUrl(file) {
+            if (!file._previewUrl) {
+                file._previewUrl = URL.createObjectURL(file);
+            }
+            return file._previewUrl;
+        }
+
+        function setPendingFiles(nextFiles) {
+            const nextSet = new Set(nextFiles);
+            pendingFiles.forEach((file) => {
+                if (!nextSet.has(file) && file._previewUrl) {
+                    URL.revokeObjectURL(file._previewUrl);
+                    delete file._previewUrl;
+                }
+            });
+            pendingFiles = nextFiles;
+        }
+
+        function clearPendingFiles() {
+            suggestionAnalysisRun += 1;
+            remoteSuggestionCache = new Map();
+            pendingFiles.forEach((file) => {
+                if (file._previewUrl) {
+                    URL.revokeObjectURL(file._previewUrl);
+                    delete file._previewUrl;
+                }
+                delete file._selectedEvidenceType;
+            });
+            pendingFiles = [];
+            mappingList.innerHTML = '';
+            mappingCount.textContent = '0';
+            mappingAnalysisStatus.textContent = '';
         }
 
         async function uploadMappedFiles(mappings) {
@@ -560,7 +889,7 @@
             updateBudgetIndicators();
 
             if (failures.length > 0) {
-                showClientError('Some files failed to upload:\n- ' + failures.join('\n- '));
+                showClientAlert('danger', 'Upload failed', 'Some files failed to upload:\n- ' + failures.join('\n- '));
                 statusText.innerText = 'Upload failed for ' + failures.length + ' file(s).';
                 return;
             }
@@ -577,12 +906,12 @@
                 });
 
                 if (!validateResponse.ok) {
-                    showClientError('Files uploaded, but validation failed. Please run manual check.');
+                    showClientAlert('danger', 'Validation request failed', 'Files uploaded, but validation failed. Please run manual check.');
                     statusText.innerText = 'Validation request failed.';
                     return;
                 }
             } catch (error) {
-                showClientError('Files uploaded, but validation request failed. Please run manual check.');
+                showClientAlert('danger', 'Validation request failed', 'Files uploaded, but validation request failed. Please run manual check.');
                 statusText.innerText = 'Validation request failed.';
                 return;
             }
@@ -657,13 +986,22 @@
             return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
         }
 
-        function showClientError(message) {
+        function showClientAlert(tone, title, message) {
+            clientAlertTitle.textContent = title;
             clientErrorMessage.textContent = message;
+            clientErrorAlert.className = 'mb-6 p-4 rounded-lg border';
+            if (tone === 'warning') {
+                clientErrorAlert.classList.add('bg-amber-50', 'text-amber-900', 'border-amber-200');
+            } else {
+                clientErrorAlert.classList.add('bg-red-50', 'text-red-800', 'border-red-200');
+            }
             clientErrorAlert.classList.remove('hidden');
         }
 
         function hideClientError() {
+            clientAlertTitle.textContent = 'Selection needs attention';
             clientErrorMessage.textContent = '';
+            clientErrorAlert.className = 'mb-6 p-4 rounded-lg border hidden';
             clientErrorAlert.classList.add('hidden');
         }
 
@@ -677,3 +1015,4 @@
         }
     </script>
 `)
+

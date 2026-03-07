@@ -118,6 +118,7 @@ class ReadinessServiceTest {
         return new EvidenceFileReportResponse(
                 UUID.randomUUID(),
                 evidenceType,
+                evidenceType.name().toLowerCase() + ".pdf",
                 FileFormat.PDF,
                 1200,
                 1,

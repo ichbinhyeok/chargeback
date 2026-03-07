@@ -14,6 +14,7 @@ Spring Boot SaaS MVP for Stripe/Shopify dispute evidence packaging.
 - Primary promise: `turn messy merchant uploads into an upload-ready dispute evidence pack`.
 - Practical scope:
   - Collect and organize evidence files
+  - Auto-convert supported image uploads into platform-safe JPEG when direct format is not accepted
   - Show reason-code checklist (required/recommended evidence + missing warnings)
   - Provide platform-aware reason preset input at case creation
   - Validate against platform constraints
@@ -27,6 +28,7 @@ Core flow:
 2. Set context (platform, scope, optional reason code/network)
 3. Review reason-code evidence checklist
 4. Upload evidence files by type
+   - decodable image formats such as GIF/BMP/WEBP can be auto-converted to JPEG during upload
 5. Validate against platform rules
 6. Generate dispute explanation draft (editable)
 7. Run auto-fix (per-type merge + Shopify oversized image compression + Shopify PDF/A conversion + PDF portfolio flatten + Stripe oversized PDF compression + PDF external-link removal)

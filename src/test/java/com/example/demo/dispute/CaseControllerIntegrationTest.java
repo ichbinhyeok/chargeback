@@ -9,9 +9,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.example.demo.dispute.domain.CaseState;
 import com.example.demo.dispute.persistence.DisputeCaseRepository;
+import com.example.demo.dispute.persistence.EvidenceFileRepository;
 import com.example.demo.dispute.service.PublicCaseReference;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -20,6 +22,12 @@ import java.util.Random;
 import java.util.UUID;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -36,6 +44,9 @@ class CaseControllerIntegrationTest {
 
     @Autowired
     private DisputeCaseRepository disputeCaseRepository;
+
+    @Autowired
+    private EvidenceFileRepository evidenceFileRepository;
 
     @Test
     void uploadedStripeEvidenceCanBeValidatedAndMovesToReady() throws Exception {
@@ -114,6 +125,35 @@ class CaseControllerIntegrationTest {
                         .header("X-Case-Token", caseToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void uploadAutoConvertsGifToJpegForValidation() throws Exception {
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        MockMultipartFile gifFile = new MockMultipartFile(
+                "file",
+                "camera-export.gif",
+                "image/gif",
+                simpleGif()
+        );
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(gifFile)
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fileFormat").value("JPEG"))
+                .andExpect(jsonPath("$.pageCount").value(1));
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(true));
     }
 
     @Test
@@ -324,7 +364,7 @@ class CaseControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.passed").value(false))
                 .andExpect(jsonPath("$.issues[0].code").value("ERR_STRIPE_TOTAL_SIZE"))
-                .andExpect(jsonPath("$.issues[0].fixStrategy").value("COMPRESS_STRIPE_PDF"));
+                .andExpect(jsonPath("$.issues[0].fixStrategy").value("REDUCE_TOTAL_SIZE"));
 
         mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
                         .header("X-Case-Token", caseToken))
@@ -335,6 +375,57 @@ class CaseControllerIntegrationTest {
                         .header("X-Case-Token", caseToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].sizeBytes").value(org.hamcrest.Matchers.lessThan(4_718_592)));
+
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latestValidation.source").value("AUTO_FIX"))
+                .andExpect(jsonPath("$.latestValidation.passed").value(true));
+    }
+
+    @Test
+    void stripeAutoFixCompressesLargeImageWhenTotalSizeExceeded() throws Exception {
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        MockMultipartFile oversizedImage = new MockMultipartFile(
+                "file",
+                "camera-roll.png",
+                "image/png",
+                oversizedPng()
+        );
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(oversizedImage)
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fileFormat").value("PNG"));
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(false))
+                .andExpect(jsonPath("$.issues[0].code").value("ERR_STRIPE_TOTAL_SIZE"))
+                .andExpect(jsonPath("$.issues[0].fixStrategy").value("REDUCE_TOTAL_SIZE"));
+
+        mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+
+        mockMvc.perform(get("/api/cases/{caseId}/files", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].fileFormat").value("JPEG"));
+
+        long totalSize = evidenceFileRepository.findByDisputeCaseId(caseId).stream()
+                .mapToLong(file -> file.getSizeBytes())
+                .sum();
+        org.junit.jupiter.api.Assertions.assertTrue(totalSize <= 4_718_592L);
 
         mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
                         .header("X-Case-Token", caseToken))
@@ -707,7 +798,7 @@ class CaseControllerIntegrationTest {
     }
 
     @Test
-    void shopifyCreditDoesNotAutoCompressOversizedImage() throws Exception {
+    void shopifyCreditAutoFixCompressesSingleImageWhenItAloneExceedsTotalSize() throws Exception {
         CaseRef caseRef = createShopifyCreditCase();
         UUID caseId = caseRef.caseId();
         String caseToken = caseRef.caseToken();
@@ -726,17 +817,165 @@ class CaseControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.fileFormat").value("PNG"));
 
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(false))
+                .andExpect(jsonPath("$.issues[0].code").value("ERR_SHPFY_CREDIT_TOTAL_TOO_LARGE"))
+                .andExpect(jsonPath("$.issues[0].fixStrategy").value("REDUCE_TOTAL_SIZE"));
+
         mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
                         .header("X-Case-Token", caseToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("FAILED"))
-                .andExpect(jsonPath("$.failCode").value("ERR_FIX_NOTHING_TO_FIX"));
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
 
         mockMvc.perform(get("/api/cases/{caseId}/files", caseId)
                         .header("X-Case-Token", caseToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].fileFormat").value("PNG"))
-                .andExpect(jsonPath("$[0].sizeBytes").value(org.hamcrest.Matchers.greaterThan(2_097_152)));
+                .andExpect(jsonPath("$[0].fileFormat").value("JPEG"))
+                .andExpect(jsonPath("$[0].sizeBytes").value(org.hamcrest.Matchers.lessThanOrEqualTo(4_718_592)));
+    }
+
+    @Test
+    void shopifyCreditAutoFixCompressesImagesWhenTotalSizeExceeded() throws Exception {
+        CaseRef caseRef = createShopifyCreditCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "camera-roll-1.png", "image/png", oversizedButCreditSafePng()))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk());
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "camera-roll-2.png", "image/png", oversizedButCreditSafePng()))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "CUSTOMER_DETAILS"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(false))
+                .andExpect(jsonPath("$.issues[0].code").value("ERR_SHPFY_CREDIT_TOTAL_TOO_LARGE"))
+                .andExpect(jsonPath("$.issues[0].fixStrategy").value("REDUCE_TOTAL_SIZE"));
+
+        mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+
+        mockMvc.perform(get("/api/cases/{caseId}/files", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].fileFormat", org.hamcrest.Matchers.hasItem("JPEG")));
+
+        long totalSize = evidenceFileRepository.findByDisputeCaseId(caseId).stream()
+                .mapToLong(file -> file.getSizeBytes())
+                .sum();
+        org.junit.jupiter.api.Assertions.assertTrue(totalSize <= 4_718_592L);
+
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latestValidation.source").value("AUTO_FIX"))
+                .andExpect(jsonPath("$.latestValidation.passed").value(true));
+    }
+
+    @Test
+    void stripeAutoFixRemovesDuplicatePdfPagesWhenTotalPagesExceeded() throws Exception {
+        CaseRef caseRef = createStripeProductNotReceivedCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "delivery-dump.pdf", "application/pdf", pdfWithDuplicateTailPages(46, 4)))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "FULFILLMENT_DELIVERY"))
+                .andExpect(status().isOk());
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "receipt.pdf", "application/pdf", simplePdf()))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk());
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "customer.pdf", "application/pdf", simplePdf()))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "CUSTOMER_DETAILS"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(false))
+                .andExpect(jsonPath("$.issues[0].code").value("ERR_STRIPE_TOTAL_PAGES"))
+                .andExpect(jsonPath("$.issues[0].fixStrategy").value("REDUCE_TOTAL_PAGES"));
+
+        mockMvc.perform(get("/c/{caseToken}/validate", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Run auto-fix next.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("remove blank pages and exact duplicate PDF pages automatically")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("removes blank or duplicate PDF pages")));
+
+        mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+
+        int totalPages = evidenceFileRepository.findByDisputeCaseId(caseId).stream()
+                .mapToInt(file -> file.getPageCount())
+                .sum();
+        org.junit.jupiter.api.Assertions.assertTrue(totalPages < 50);
+
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latestValidation.source").value("AUTO_FIX"))
+                .andExpect(jsonPath("$.latestValidation.passed").value(true));
+    }
+
+    @Test
+    void shopifyCreditAutoFixRemovesDuplicatePdfPagesWhenSinglePdfHitsPageLimit() throws Exception {
+        CaseRef caseRef = createShopifyCreditCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "portal-export.pdf", "application/pdf", pdfWithDuplicateTailPages(46, 4)))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(false))
+                .andExpect(jsonPath("$.issues[0].code").value("ERR_SHPFY_PDF_PAGES_EXCEEDED"))
+                .andExpect(jsonPath("$.issues[0].fixStrategy").value("REDUCE_TOTAL_PAGES"));
+
+        mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+
+        int totalPages = evidenceFileRepository.findByDisputeCaseId(caseId).stream()
+                .mapToInt(file -> file.getPageCount())
+                .sum();
+        org.junit.jupiter.api.Assertions.assertTrue(totalPages < 50);
+
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latestValidation.source").value("AUTO_FIX"))
+                .andExpect(jsonPath("$.latestValidation.passed").value(true));
     }
 
     @Test
@@ -754,6 +993,9 @@ class CaseControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Turn raw dispute files into an")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("upload-ready evidence pack")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start From The Platform Error")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Paste the exact Stripe or Shopify upload error")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Find My Fix Flow")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Validation is free")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("to unlock downloads")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Validation")));
@@ -768,10 +1010,14 @@ class CaseControllerIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("What happens next")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("No files are uploaded on this page.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Validation runs automatically after upload.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start From The Platform Error")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Load the closest fix flow before case setup")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Load Error-Specific Flow")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Create New Evidence Pack")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Reason Code Preset")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Continue to Free Validation")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"reasonPreset\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"errorPreset\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-platform=\"STRIPE\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-platform=\"SHOPIFY\"")));
     }
@@ -794,10 +1040,207 @@ class CaseControllerIntegrationTest {
         mockMvc.perform(get("/c/{caseToken}/upload", caseRef.caseToken()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("How upload works")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Selection needs attention")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Nothing uploads until you confirm in the mapping modal.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("auto-converted to")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("PDF preview")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Content match")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("OCR text match")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Preview signal")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Needed for this case")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Suggested: <strong>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Analyzing preview text and metadata")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Validation starts automatically after each confirmed upload.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Re-run Validation")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Still needed for this reason")));
+    }
+
+    @Test
+    void previewSuggestionEndpointUsesPdfTextForClassificationHints() throws Exception {
+        CaseRef caseRef = createStripeProductNotReceivedCase();
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/file-suggestions", caseRef.caseId())
+                        .file(new MockMultipartFile(
+                                "files",
+                                "document_01.pdf",
+                                "application/pdf",
+                                pdfWithText("Tracking number 9400 delivered by carrier and shipment proof attached")
+                        ))
+                        .header("X-Case-Token", caseRef.caseToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].evidenceType").value("FULFILLMENT_DELIVERY"))
+                .andExpect(jsonPath("$[0].source").value("content"))
+                .andExpect(jsonPath("$[0].reason").value(org.hamcrest.Matchers.containsString("tracking")));
+    }
+
+    @Test
+    void previewSuggestionEndpointUsesWindowsOcrForImageTextWhenAvailable() throws Exception {
+        assumeTrue(System.getProperty("os.name", "").toLowerCase().contains("win"));
+        CaseRef caseRef = createStripeProductNotReceivedCase();
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/file-suggestions", caseRef.caseId())
+                        .file(new MockMultipartFile(
+                                "files",
+                                "document_ocr.png",
+                                "image/png",
+                                textScreenshotPng("Order receipt", "Payment total 84.20", "Order number NW-9001")
+                        ))
+                        .header("X-Case-Token", caseRef.caseToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].evidenceType").value("ORDER_RECEIPT"))
+                .andExpect(jsonPath("$[0].source").value("ocr"));
+    }
+
+    @Test
+    void previewSuggestionEndpointPrefersCustomerCommunicationWhenSupportChatIncludesTrackingWords() throws Exception {
+        assumeTrue(System.getProperty("os.name", "").toLowerCase().contains("win"));
+        CaseRef caseRef = createStripeProductNotReceivedCase();
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/file-suggestions", caseRef.caseId())
+                        .file(new MockMultipartFile(
+                                "files",
+                                "chat_followup.png",
+                                "image/png",
+                                textScreenshotPng(
+                                        "Customer support",
+                                        "Hi, where is my order?",
+                                        "Tracking says delivered but nothing was received.",
+                                        "Merchant replied with a carrier trace."
+                                )
+                        ))
+                        .header("X-Case-Token", caseRef.caseToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].evidenceType").value("CUSTOMER_COMMUNICATION"))
+                .andExpect(jsonPath("$[0].source").value("ocr"))
+                .andExpect(jsonPath("$[0].reason").value(org.hamcrest.Matchers.containsString("support")));
+    }
+
+    @Test
+    void previewSuggestionEndpointUsesImageMetadataForGenericScreenshotBatches() throws Exception {
+        CaseRef caseRef = createStripeProductNotReceivedCase();
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/file-suggestions", caseRef.caseId())
+                        .file(new MockMultipartFile("files", "document_01.png", "image/png", phoneScreenshotPng()))
+                        .file(new MockMultipartFile("files", "document_02.png", "image/png", phoneScreenshotPng()))
+                        .header("X-Case-Token", caseRef.caseToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].evidenceType").value("CUSTOMER_COMMUNICATION"))
+                .andExpect(jsonPath("$[0].source").value("metadata"))
+                .andExpect(jsonPath("$[1].evidenceType").value("CUSTOMER_COMMUNICATION"))
+                .andExpect(jsonPath("$[1].source").value("metadata"));
+    }
+
+    @Test
+    void validatePageShowsPrimaryNextActionAfterAutoFixWhenEvidenceIsStillMissing() throws Exception {
+        CaseRef caseRef = createStripeProductNotReceivedCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "receipt-a.pdf", "application/pdf", simplePdf()))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk());
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "receipt-b.pdf", "application/pdf", simplePdf()))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(false));
+
+        mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+
+        mockMvc.perform(get("/c/{caseToken}/validate", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Primary next action")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Auto-fix finished. Upload the next required evidence.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Auto-fix changed:")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Upload delivery proof or carrier tracking page")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Upload a carrier tracking page, delivery scan, or signed proof that shows shipped or delivered status.")));
+    }
+
+    @Test
+    void validatePageShowsReducedPackProgressWhenAutoFixClearsTotalSizeButEvidenceIsStillMissing() throws Exception {
+        CaseRef caseRef = createStripeProductNotReceivedCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "receipt-large.png", "image/png", oversizedPng()))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk());
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "customer-large.png", "image/png", oversizedPng()))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "CUSTOMER_DETAILS"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(false))
+                .andExpect(jsonPath("$.issues[0].fixStrategy").value("REDUCE_TOTAL_SIZE"));
+
+        mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
+                        .header("X-Case-Token", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+
+        mockMvc.perform(get("/c/{caseToken}/validate", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Auto-fix changed: Reduced pack by")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Upload delivery proof or carrier tracking page")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Upload a carrier tracking page, delivery scan, or signed proof that shows shipped or delivered status.")));
+    }
+
+    @Test
+    void validatePagePromptsAutoFixBeforeManualReplacementWhenTotalSizeExceedsLimit() throws Exception {
+        CaseRef caseRef = createCase("""
+                {
+                  "platform": "SHOPIFY",
+                  "productScope": "SHOPIFY_CREDIT_DISPUTE"
+                }
+                """);
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "camera-roll-1.png", "image/png", oversizedButCreditSafePng()))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk());
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "camera-roll-2.png", "image/png", oversizedButCreditSafePng()))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "CUSTOMER_DETAILS"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(false))
+                .andExpect(jsonPath("$.issues[0].code").value("ERR_SHPFY_CREDIT_TOTAL_TOO_LARGE"));
+
+        mockMvc.perform(get("/c/{caseToken}/validate", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Primary next action")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Run auto-fix next.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("pack is over the total-size limit")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("removes blank or duplicate PDF pages")));
     }
 
     @Test
@@ -828,12 +1271,14 @@ class CaseControllerIntegrationTest {
 
         mockMvc.perform(get("/c/{caseToken}", caseToken))
                 .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("NEEDS_EVIDENCE")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Format checks passed, but required evidence is still missing.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Customer details")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Ready for export!"))));
 
         mockMvc.perform(get("/c/{caseToken}/validate", caseToken))
                 .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("NEEDS_EVIDENCE")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Format checks passed. Evidence checklist still incomplete.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Validation only confirms format, size, and rule checks.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Upload Missing Evidence")))
@@ -1214,6 +1659,19 @@ class CaseControllerIntegrationTest {
                 """.getBytes(StandardCharsets.ISO_8859_1);
     }
 
+    private byte[] simpleGif() throws Exception {
+        BufferedImage image = new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                image.setRGB(x, y, (x + y) % 2 == 0 ? 0x3366CC : 0xFFFFFF);
+            }
+        }
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(image, "gif", out);
+        return out.toByteArray();
+    }
+
     private byte[] portfolioPdf() {
         return """
                 %PDF-1.4
@@ -1294,6 +1752,101 @@ class CaseControllerIntegrationTest {
             throw new IllegalStateException("generated credit test image must be >2MB and <=4.5MB");
         }
         return data;
+    }
+
+    private byte[] phoneScreenshotPng() throws Exception {
+        BufferedImage image = new BufferedImage(1170, 2532, BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                image.setRGB(x, y, (x + y) % 3 == 0 ? 0xF8FAFC : 0x1D4ED8);
+            }
+        }
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", out);
+        return out.toByteArray();
+    }
+
+    private byte[] textScreenshotPng(String... lines) throws Exception {
+        BufferedImage image = new BufferedImage(1200, 900, BufferedImage.TYPE_INT_RGB);
+        var graphics = image.createGraphics();
+        try {
+            graphics.setColor(new java.awt.Color(248, 250, 252));
+            graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
+            graphics.setColor(new java.awt.Color(15, 23, 42));
+            graphics.fillRoundRect(40, 40, image.getWidth() - 80, image.getHeight() - 80, 40, 40);
+            graphics.setColor(java.awt.Color.WHITE);
+            graphics.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 34));
+            int y = 130;
+            for (String line : lines) {
+                graphics.drawString(line, 90, y);
+                y += 80;
+            }
+        } finally {
+            graphics.dispose();
+        }
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", out);
+        return out.toByteArray();
+    }
+
+    private byte[] pdfWithText(String text) throws Exception {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.LETTER);
+            document.addPage(page);
+            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                contentStream.beginText();
+                contentStream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+                contentStream.newLineAtOffset(72, 720);
+                contentStream.showText(text);
+                contentStream.endText();
+            }
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    private byte[] pdfWithDuplicateTailPages(int uniquePages, int duplicatePages) throws Exception {
+        try (PDDocument document = new PDDocument()) {
+            for (int pageNumber = 1; pageNumber <= uniquePages; pageNumber++) {
+                addPdfTextPage(
+                        document,
+                        "Tracking export page " + pageNumber,
+                        "Tracking number 9400 DUPPAGE 5201",
+                        "Carrier event log copied from merchant portal"
+                );
+            }
+            for (int copy = 0; copy < duplicatePages; copy++) {
+                addPdfTextPage(
+                        document,
+                        "Duplicate appendix page",
+                        "Same export appendix copied multiple times",
+                        "Same export appendix copied multiple times"
+                );
+            }
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    private void addPdfTextPage(PDDocument document, String... lines) throws Exception {
+        PDPage page = new PDPage(PDRectangle.LETTER);
+        document.addPage(page);
+        try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+            contentStream.beginText();
+            contentStream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+            contentStream.newLineAtOffset(72, 720);
+            for (String line : lines) {
+                contentStream.showText(line);
+                contentStream.newLineAtOffset(0, -18);
+            }
+            contentStream.endText();
+        }
     }
 
     private record CaseRef(UUID caseId, String caseToken) {

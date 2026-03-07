@@ -196,7 +196,7 @@ public class ValidationService {
                     "Total evidence size exceeds Stripe total size limit.",
                     IssueTargetScope.GLOBAL,
                     null,
-                    FixStrategy.COMPRESS_STRIPE_PDF
+                    FixStrategy.REDUCE_TOTAL_SIZE
             ));
         }
 
@@ -205,7 +205,10 @@ public class ValidationService {
                     "ERR_STRIPE_TOTAL_PAGES",
                     "STR_PAGE_001",
                     IssueSeverity.BLOCKED,
-                    "Total evidence pages must be below 50 for Stripe."
+                    "Total evidence pages must be below 50 for Stripe.",
+                    IssueTargetScope.GLOBAL,
+                    null,
+                    FixStrategy.REDUCE_TOTAL_PAGES
             ));
         }
 
@@ -214,7 +217,10 @@ public class ValidationService {
                     "ERR_STRIPE_MC_19P",
                     "STR_PAGE_002",
                     IssueSeverity.BLOCKED,
-                    "Mastercard disputes allow up to 19 pages."
+                    "Mastercard disputes allow up to 19 pages.",
+                    IssueTargetScope.GLOBAL,
+                    null,
+                    FixStrategy.REDUCE_TOTAL_PAGES
             ));
         }
     }
@@ -244,7 +250,10 @@ public class ValidationService {
                         "ERR_SHPFY_TOTAL_TOO_LARGE",
                         "SHP_SIZE_002",
                         IssueSeverity.BLOCKED,
-                        "Shopify Payments total evidence size exceeds configured limit."
+                        "Shopify Payments total evidence size exceeds configured limit.",
+                        IssueTargetScope.GLOBAL,
+                        null,
+                        FixStrategy.REDUCE_TOTAL_SIZE
                 ));
             }
 
@@ -265,7 +274,10 @@ public class ValidationService {
                         "ERR_SHPFY_CREDIT_TOTAL_TOO_LARGE",
                         "SHP_SIZE_003",
                         IssueSeverity.BLOCKED,
-                        "Shopify Credit total evidence size exceeds configured limit."
+                        "Shopify Credit total evidence size exceeds configured limit.",
+                        IssueTargetScope.GLOBAL,
+                        null,
+                        FixStrategy.REDUCE_TOTAL_SIZE
                 ));
             }
             return;
@@ -291,7 +303,10 @@ public class ValidationService {
                         "ERR_SHPFY_PDF_PAGES_EXCEEDED",
                         "SHP_PAGE_001",
                         IssueSeverity.BLOCKED,
-                        "Each Shopify PDF must be below 50 pages."
+                        "Each Shopify PDF must be below 50 pages.",
+                        IssueTargetScope.GLOBAL,
+                        null,
+                        FixStrategy.REDUCE_TOTAL_PAGES
                 ));
                 break;
             }

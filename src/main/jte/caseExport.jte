@@ -19,13 +19,15 @@
 @param String paymentProviderLabel
 @param String checkoutPriceDisplay
 @param ExportMetrics exportMetrics
+@param String displayCaseState
+@param String displayCaseStateBadgeClass
 
 @template.layout(
     title = "Export | " + report.caseToken(),
     robotsMeta = "noindex,nofollow,noarchive",
     caseTokenForVault = report.caseToken(),
     casePlatformForVault = report.platform().name(),
-    caseStateForVault = report.state().name(),
+    caseStateForVault = displayCaseState,
     content = @`
     <!-- Alerts -->
     @if(message != null && !message.isBlank())
@@ -52,8 +54,8 @@
         <div>
             <div class="flex items-center gap-3 mb-2">
                 <h1 class="text-3xl font-bold text-neutral-900 tracking-tight">Case ${report.caseToken()}</h1>
-                <span class="cb-badge ${(report.state().name().equals("READY") || report.state().name().equals("PAID") || report.state().name().equals("DOWNLOADED")) ? "cb-badge-green" : (report.state().name().equals("BLOCKED") ? "cb-badge-red" : "cb-badge-blue")}">
-                    ${report.state()}
+                <span class="cb-badge ${displayCaseStateBadgeClass}">
+                    ${displayCaseState}
                 </span>
                 @if(isPaid)
                     <span class="cb-badge cb-badge-amber shadow-sm">PAID</span>
