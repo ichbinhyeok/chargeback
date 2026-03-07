@@ -2,6 +2,7 @@
 @import com.example.demo.dispute.api.CaseReportResponse
 @import com.example.demo.dispute.domain.EvidenceType
 @import com.example.demo.dispute.persistence.PaymentEntity
+@import com.example.demo.dispute.service.ExportMetricsService.ExportMetrics
 @import java.util.List
 @param DisputeCase disputeCase
 @param CaseReportResponse report
@@ -16,6 +17,8 @@
 @param boolean validationFresh
 @param List<String> missingRequiredEvidenceTypes
 @param String paymentProviderLabel
+@param String checkoutPriceDisplay
+@param ExportMetrics exportMetrics
 
 @template.layout(
     title = "Export | " + report.caseToken(),
@@ -58,7 +61,7 @@
             </div>
             <div class="flex gap-2 text-sm text-gray-500">
                 <span class="font-medium text-gray-700">${report.platform()}</span> &bull; 
-                <span>Export Pack</span>
+                <span>Evidence Pack Checkout</span>
             </div>
         </div>
     </div>
@@ -74,13 +77,71 @@
         </nav>
     </div>
 
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+        <section class="cb-card border border-gray-200">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Submission readiness</p>
+            <div class="flex items-end justify-between gap-3">
+                <p class="text-4xl font-bold text-gray-900">${exportMetrics.readinessScore()}%</p>
+                <span class="cb-badge ${(exportMetrics.readinessScore() >= 90) ? "cb-badge-green" : (exportMetrics.readinessScore() >= 70 ? "cb-badge-blue" : (exportMetrics.readinessScore() >= 50 ? "cb-badge-amber" : "cb-badge-red"))}">
+                    ${exportMetrics.readinessLabel()}
+                </span>
+            </div>
+            <p class="mt-3 text-sm text-gray-600">Scored from current validation output and required evidence coverage.</p>
+        </section>
+
+        <section class="cb-card border border-gray-200">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Actionable now</p>
+            <p class="text-4xl font-bold text-gray-900">${exportMetrics.actionableIssueCount()}</p>
+            <p class="mt-3 text-sm text-gray-700">${exportMetrics.blockedCount()} blocked / ${exportMetrics.fixableCount()} fixable</p>
+            <p class="mt-1 text-xs text-gray-500">${exportMetrics.warningCount()} warning issue(s) remain visible.</p>
+        </section>
+
+        <section class="cb-card border border-gray-200">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Required evidence coverage</p>
+            @if(exportMetrics.hasRequiredEvidenceTarget())
+                <p class="text-4xl font-bold text-gray-900">${exportMetrics.requiredEvidenceCoveragePercent()}%</p>
+                <p class="mt-3 text-sm text-gray-700">${exportMetrics.requiredEvidenceReadyCount()} / ${exportMetrics.requiredEvidenceTotalCount()} required evidence files ready</p>
+                @if(exportMetrics.missingRequiredEvidenceCount() > 0)
+                    <p class="mt-1 text-xs text-amber-700">${exportMetrics.missingRequiredEvidenceCount()} required item(s) still missing before checkout.</p>
+                @else
+                    <p class="mt-1 text-xs text-green-700">All mapped required evidence is present.</p>
+                @endif
+            @else
+                <p class="text-4xl font-bold text-gray-900">N/A</p>
+                <p class="mt-3 text-sm text-gray-700">No mapped required evidence list for this reason.</p>
+            @endif
+        </section>
+
+        <section class="cb-card border border-gray-200">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Since previous scan</p>
+            @if(exportMetrics.hasPreviousValidation())
+                @if(exportMetrics.actionableIssueCount() < exportMetrics.previousActionableCount())
+                    <p class="text-4xl font-bold text-green-700">-${exportMetrics.actionableReduction()}</p>
+                    <p class="mt-3 text-sm text-gray-700">${exportMetrics.actionableReduction()} fewer actionable than previous scan</p>
+                @else
+                    @if(exportMetrics.actionableIssueCount() > exportMetrics.previousActionableCount())
+                        <p class="text-4xl font-bold text-amber-700">+${exportMetrics.actionableIssueCount() - exportMetrics.previousActionableCount()}</p>
+                        <p class="mt-3 text-sm text-gray-700">${exportMetrics.actionableIssueCount() - exportMetrics.previousActionableCount()} more actionable than previous scan</p>
+                    @else
+                        <p class="text-4xl font-bold text-gray-900">0</p>
+                        <p class="mt-3 text-sm text-gray-700">No actionable change since previous scan</p>
+                    @endif
+                @endif
+                <p class="mt-1 text-xs text-gray-500">Previous scan #${exportMetrics.previousRunNo()} had ${exportMetrics.previousActionableCount()} actionable issue(s).</p>
+            @else
+                <p class="text-4xl font-bold text-gray-900">1st</p>
+                <p class="mt-3 text-sm text-gray-700">First recorded validation run</p>
+            @endif
+        </section>
+    </div>
+
     <!-- Main Content -->
     <div class="max-w-4xl mx-auto">
         @if(isPaid)
             <div class="cb-card bg-green-50 border-green-200 border text-center p-8 mb-8 rounded-xl shadow-sm">
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4 shadow"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>
-                <h2 class="text-2xl font-bold text-green-900 mb-2">Export Pack Unlocked</h2>
-                <p class="text-green-800 mb-6 text-sm max-w-lg mx-auto leading-relaxed">Your submission assets are ready. Download the ZIP and summary guide, then submit them in your payment dashboard.</p>
+                <h2 class="text-2xl font-bold text-green-900 mb-2">Evidence Pack Unlocked</h2>
+                <p class="text-green-800 mb-6 text-sm max-w-lg mx-auto leading-relaxed">Your upload-ready dispute evidence pack is ready. Download the ZIP, summary guide, and explanation draft, then submit them in your payment dashboard.</p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
                     <a href="/c/${report.caseToken()}/download/submission.zip" class="cb-btn cb-btn-primary bg-green-600 hover:bg-green-700 shadow border-green-600 hover:border-green-700 focus:ring-green-500" data-seo-event="guide_export_click">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
@@ -108,21 +169,21 @@
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold cb-badge-blue bg-blue-100 text-blue-800">RECOMMENDED</span>
                     </div>
                     
-                    <h2 class="text-xl font-bold text-gray-900 mb-1">Unlock submission pack</h2>
-                    <p class="text-sm text-gray-500 mb-6 pb-6 border-b border-gray-100">Unlock downloadable submission assets and a one-page filing guide.</p>
+                    <h2 class="text-xl font-bold text-gray-900 mb-1">Unlock upload-ready evidence pack</h2>
+                    <p class="text-sm text-gray-500 mb-6 pb-6 border-b border-gray-100"><strong>${checkoutPriceDisplay}</strong> one-time after free validation. Download the merchant-ready ZIP, filing guide, and explanation draft.</p>
                     
                     <ul class="space-y-4 mb-8">
                         <li class="flex items-start">
                             <div class="flex-shrink-0 h-5 w-5 text-green-500 mr-3"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg></div>
-                            <span class="text-sm text-gray-700">Structured <code class="bg-gray-100 px-1 rounded text-xs">submission.zip</code> package with normalized filenames</span>
+                            <span class="text-sm text-gray-700">Structured <code class="bg-gray-100 px-1 rounded text-xs">submission.zip</code> package with normalized filenames and manifest</span>
                         </li>
                         <li class="flex items-start">
                             <div class="flex-shrink-0 h-5 w-5 text-green-500 mr-3"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg></div>
-                            <span class="text-sm text-gray-700">Auto-fix support for per-type merge and Shopify oversized image compression</span>
+                            <span class="text-sm text-gray-700">Downloadable explanation TXT and one-page summary PDF for final filing</span>
                         </li>
                         <li class="flex items-start">
                             <div class="flex-shrink-0 h-5 w-5 text-green-500 mr-3"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg></div>
-                            <span class="text-sm text-gray-700">Downloadable one-page summary PDF for final submission checklist</span>
+                            <span class="text-sm text-gray-700">Readiness score, issue counts, and required evidence coverage before you pay</span>
                         </li>
                     </ul>
                     
@@ -138,7 +199,7 @@
                         @elseif(paymentConfigured)
                             <form method="post" action="/c/${report.caseToken()}/pay">
                                 <button type="submit" class="flex justify-center items-center w-full px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                                    Pay via ${paymentProviderLabel} to Unlock
+                                    Unlock for ${checkoutPriceDisplay} via ${paymentProviderLabel}
                                 </button>
                             </form>
                         @else
@@ -155,8 +216,8 @@
                 
                 <!-- Free version panel -->
                 <div class="cb-card border border-gray-200">
-                    <h2 class="text-lg font-bold text-gray-900 mb-1">Free Tier</h2>
-                    <p class="text-sm text-gray-500 mb-6 pb-6 border-b border-gray-100">Validation is free, and you can download a watermarked summary guide.</p>
+                    <h2 class="text-lg font-bold text-gray-900 mb-1">Free Validation</h2>
+                    <p class="text-sm text-gray-500 mb-6 pb-6 border-b border-gray-100">Run validation, see readiness metrics, and download a watermarked summary guide at no cost.</p>
                     
                     <ul class="space-y-4 mb-8 opacity-75">
                         <li class="flex items-start">
@@ -165,11 +226,15 @@
                         </li>
                         <li class="flex items-start">
                             <div class="flex-shrink-0 h-5 w-5 text-primary-500 mr-3"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg></div>
-                            <span class="text-sm text-gray-700">Watermarked summary PDF (large watermark)</span>
+                            <span class="text-sm text-gray-700">Readiness score, actionable counts, and required evidence coverage</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 h-5 w-5 text-primary-500 mr-3"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg></div>
+                            <span class="text-sm text-gray-700">Watermarked summary PDF preview</span>
                         </li>
                         <li class="flex items-start">
                             <div class="flex-shrink-0 h-5 w-5 text-gray-300 mr-3"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></div>
-                            <span class="text-sm text-gray-500">No ZIP downloads and watermark removal</span>
+                            <span class="text-sm text-gray-500">No ZIP downloads, explanation TXT export, or watermark removal</span>
                         </li>
                     </ul>
                     

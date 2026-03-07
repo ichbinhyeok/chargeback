@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.demo.dispute.domain.CaseState;
 import com.example.demo.dispute.persistence.DisputeCaseRepository;
+import com.example.demo.dispute.service.PublicCaseReference;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
@@ -748,14 +749,138 @@ class CaseControllerIntegrationTest {
     }
 
     @Test
+    void homePageHighlightsUploadReadyEvidencePackPositioning() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Turn raw dispute files into an")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("upload-ready evidence pack")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Validation is free")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("to unlock downloads")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Validation")));
+    }
+
+    @Test
     void newCasePageRendersReasonPresetControls() throws Exception {
         mockMvc.perform(get("/new"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Privacy & Trust")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Validation is free. Unlock the downloadable evidence pack for")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("What happens next")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("No files are uploaded on this page.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Validation runs automatically after upload.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Create New Evidence Pack")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Reason Code Preset")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Continue to Free Validation")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"reasonPreset\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-platform=\"STRIPE\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-platform=\"SHOPIFY\"")));
+    }
+
+    @Test
+    void dashboardGuidesFirstUploadWhenNoFilesExist() throws Exception {
+        CaseRef caseRef = createStripeCase();
+
+        mockMvc.perform(get("/c/{caseToken}", caseRef.caseToken()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("What to click next")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Upload your first evidence files")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Nothing is submitted yet on this dashboard.")));
+    }
+
+    @Test
+    void uploadPageExplainsMappingModalAndValidationSequence() throws Exception {
+        CaseRef caseRef = createStripeProductNotReceivedCase();
+
+        mockMvc.perform(get("/c/{caseToken}/upload", caseRef.caseToken()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("How upload works")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Nothing uploads until you confirm in the mapping modal.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Validation starts automatically after each confirmed upload.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Re-run Validation")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Still needed for this reason")));
+    }
+
+    @Test
+    void dashboardAndValidatePagesSeparateFormatPassFromExportReadiness() throws Exception {
+        CaseRef caseRef = createStripeProductNotReceivedCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "receipt.pdf",
+                "application/pdf",
+                simplePdf()
+        );
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(file)
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(true));
+
+        mockMvc.perform(get("/c/{caseToken}", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Format checks passed, but required evidence is still missing.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Customer details")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Ready for export!"))));
+
+        mockMvc.perform(get("/c/{caseToken}/validate", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Format checks passed. Evidence checklist still incomplete.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Validation only confirms format, size, and rule checks.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Upload Missing Evidence")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Perfect Format!"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Proceed to Export"))));
+    }
+
+    @Test
+    void validatePageShowsReviewExportOnlyWhenRequiredEvidenceIsComplete() throws Exception {
+        CaseRef caseRef = createStripeProductNotReceivedCase();
+        UUID caseId = caseRef.caseId();
+        String caseToken = caseRef.caseToken();
+
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "receipt.pdf", "application/pdf", simplePdf()))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "ORDER_RECEIPT"))
+                .andExpect(status().isOk());
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "customer.pdf", "application/pdf", simplePdf()))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "CUSTOMER_DETAILS"))
+                .andExpect(status().isOk());
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "communication.pdf", "application/pdf", simplePdf()))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "CUSTOMER_COMMUNICATION"))
+                .andExpect(status().isOk());
+        mockMvc.perform(multipart("/api/cases/{caseId}/files", caseId)
+                        .file(new MockMultipartFile("file", "delivery.pdf", "application/pdf", simplePdf()))
+                        .header("X-Case-Token", caseToken)
+                        .param("evidenceType", "FULFILLMENT_DELIVERY"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/cases/{caseId}/validate-stored", caseId)
+                        .header("X-Case-Token", caseToken)
+                        .contentType("application/json")
+                        .content("{\"earlySubmit\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(true));
+
+        mockMvc.perform(get("/c/{caseToken}/validate", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Format checks passed")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("required evidence checklist is complete")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Review Export")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Evidence checklist still incomplete"))));
     }
 
     @Test
@@ -885,6 +1010,26 @@ class CaseControllerIntegrationTest {
     }
 
     @Test
+    void shopifyPaymentsPagesShowPdfaTrustNoteButStripeDoesNot() throws Exception {
+        CaseRef shopifyCaseRef = createShopifyPaymentsCase();
+        CaseRef stripeCaseRef = createStripeCase();
+
+        mockMvc.perform(get("/c/{caseToken}/upload", shopifyCaseRef.caseToken()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Shopify Payments PDF/A note")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("PDF/A status is checked automatically")));
+
+        mockMvc.perform(get("/c/{caseToken}/validate", shopifyCaseRef.caseToken()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Shopify Payments PDF/A note")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("If Shopify still says \"PDF/A required\"")));
+
+        mockMvc.perform(get("/c/{caseToken}/upload", stripeCaseRef.caseToken()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Shopify Payments PDF/A note"))));
+    }
+
+    @Test
     void sitemapIncludesErrorAndReasonGuideUrls() throws Exception {
         mockMvc.perform(get("/sitemap.xml"))
                 .andExpect(status().isOk())
@@ -930,6 +1075,7 @@ class CaseControllerIntegrationTest {
         CaseRef caseRef = createStripeCase();
         UUID caseId = caseRef.caseId();
         String caseToken = caseRef.caseToken();
+        String publicCaseRef = PublicCaseReference.from(disputeCaseRepository.findById(caseId).orElseThrow());
 
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -947,12 +1093,17 @@ class CaseControllerIntegrationTest {
         mockMvc.perform(get("/c/{caseToken}/explanation", caseToken))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Dispute Explanation Draft")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Explanation Draft")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Explanation Draft")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Dispute_Explanation_Draft_" + publicCaseRef + "_edited.txt")));
 
         mockMvc.perform(get("/c/{caseToken}/download/explanation.txt", caseToken))
                 .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString(publicCaseRef)))
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(caseToken))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Checklist Gaps and Actions")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Disclaimer: This draft is a submission-writing aid only.")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Disclaimer: This draft is a submission-writing aid only.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(publicCaseRef)))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(caseToken))));
     }
 
     @Test
@@ -972,6 +1123,17 @@ class CaseControllerIntegrationTest {
                   "platform": "STRIPE",
                   "productScope": "STRIPE_DISPUTE",
                   "reasonCode": "fraudulent",
+                  "cardNetwork": "VISA"
+                }
+                """);
+    }
+
+    private CaseRef createStripeProductNotReceivedCase() throws Exception {
+        return createCase("""
+                {
+                  "platform": "STRIPE",
+                  "productScope": "STRIPE_DISPUTE",
+                  "reasonCode": "product_not_received",
                   "cardNetwork": "VISA"
                 }
                 """);

@@ -6,8 +6,11 @@ import com.example.demo.dispute.domain.PaymentStatus;
 import com.example.demo.dispute.persistence.DisputeCase;
 import com.example.demo.dispute.persistence.PaymentEntity;
 import com.example.demo.dispute.persistence.PaymentRepository;
+import com.example.demo.dispute.persistence.WebhookEventReceiptEntity;
+import com.example.demo.dispute.persistence.WebhookEventReceiptRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -31,9 +34,11 @@ public class PaymentService {
 
     private static final String STRIPE_PROVIDER = "stripe";
     private static final String LEMON_PROVIDER = "lemonsqueezy";
+    private static final String CHECKOUT_PRODUCT_NAME = "Upload-ready dispute evidence pack";
 
     private final CaseService caseService;
     private final PaymentRepository paymentRepository;
+    private final WebhookEventReceiptRepository webhookEventReceiptRepository;
     private final AuditLogService auditLogService;
     private final StripeWebhookVerifier stripeWebhookVerifier;
     private final LemonWebhookVerifier lemonWebhookVerifier;
@@ -60,6 +65,7 @@ public class PaymentService {
     public PaymentService(
             CaseService caseService,
             PaymentRepository paymentRepository,
+            WebhookEventReceiptRepository webhookEventReceiptRepository,
             AuditLogService auditLogService,
             StripeWebhookVerifier stripeWebhookVerifier,
             LemonWebhookVerifier lemonWebhookVerifier,
@@ -81,6 +87,7 @@ public class PaymentService {
     ) {
         this.caseService = caseService;
         this.paymentRepository = paymentRepository;
+        this.webhookEventReceiptRepository = webhookEventReceiptRepository;
         this.auditLogService = auditLogService;
         this.stripeWebhookVerifier = stripeWebhookVerifier;
         this.lemonWebhookVerifier = lemonWebhookVerifier;
@@ -198,6 +205,16 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
+    public String checkoutPriceDisplay() {
+        BigDecimal amount = BigDecimal.valueOf(amountCents, 2);
+        String numeric = amount.stripTrailingZeros().toPlainString();
+        if ("usd".equalsIgnoreCase(currency)) {
+            return "$" + numeric;
+        }
+        return currency.toUpperCase(Locale.ROOT) + " " + numeric;
+    }
+
+    @Transactional(readOnly = true)
     public boolean isPaid(UUID caseId) {
         return paymentRepository.existsByDisputeCaseIdAndStatus(caseId, PaymentStatus.PAID);
     }
@@ -249,6 +266,7 @@ public class PaymentService {
             return;
         }
 
+        String eventId = event.path("id").asText(null);
         JsonNode sessionNode = event.path("data").path("object");
         String sessionId = sessionNode.path("id").asText(null);
         String paymentIntentId = sessionNode.path("payment_intent").asText(null);
@@ -258,7 +276,15 @@ public class PaymentService {
             return;
         }
 
-        paymentRepository.findByCheckoutSessionId(sessionId).ifPresent(payment -> markPaid(payment, paymentIntentId, email));
+        Optional<PaymentEntity> payment = paymentRepository.findByCheckoutSessionIdForUpdate(sessionId);
+        if (payment.isEmpty()) {
+            return;
+        }
+        if (isDuplicateWebhookEvent(STRIPE_PROVIDER, eventType, eventId)) {
+            return;
+        }
+        markPaid(payment.get(), paymentIntentId, email);
+        recordWebhookEvent(STRIPE_PROVIDER, eventType, eventId, payment.get().getDisputeCase());
     }
 
     public void processLemonWebhook(String payload, String signatureHeader) {
@@ -299,8 +325,18 @@ public class PaymentService {
                 event.path("data").path("attributes").path("customer_email").asText(null)
         );
 
-        paymentRepository.findFirstByDisputeCaseIdAndProviderOrderByCreatedAtDesc(disputeCase.getId(), LEMON_PROVIDER)
-                .ifPresent(payment -> markPaid(payment, orderId, email));
+        Optional<PaymentEntity> payment = paymentRepository
+                .findLockedByDisputeCaseIdAndProviderOrderByCreatedAtDesc(disputeCase.getId(), LEMON_PROVIDER)
+                .stream()
+                .findFirst();
+        if (payment.isEmpty()) {
+            return;
+        }
+        if (isDuplicateWebhookEvent(LEMON_PROVIDER, eventName, orderId)) {
+            return;
+        }
+        markPaid(payment.get(), orderId, email);
+        recordWebhookEvent(LEMON_PROVIDER, eventName, orderId, disputeCase);
     }
 
     private void markPaid(PaymentEntity payment, String paymentIntentId, String email) {
@@ -376,7 +412,7 @@ public class PaymentService {
         form.add("line_items[0][quantity]", "1");
         form.add("line_items[0][price_data][currency]", currency);
         form.add("line_items[0][price_data][unit_amount]", Long.toString(amountCents));
-        form.add("line_items[0][price_data][product_data][name]", "Chargeback Submission Pack");
+        form.add("line_items[0][price_data][product_data][name]", CHECKOUT_PRODUCT_NAME);
         form.add("metadata[case_id]", disputeCase.getId().toString());
 
         Map<String, Object> response;
@@ -518,6 +554,25 @@ public class PaymentService {
 
     private boolean supportsCheckout(CaseState state) {
         return state == CaseState.READY || state == CaseState.PAID || state == CaseState.DOWNLOADED;
+    }
+
+    private boolean isDuplicateWebhookEvent(String provider, String eventType, String eventId) {
+        if (eventId == null || eventId.isBlank() || eventType == null || eventType.isBlank()) {
+            return false;
+        }
+        return webhookEventReceiptRepository.existsByProviderAndEventTypeAndEventId(provider, eventType, eventId);
+    }
+
+    private void recordWebhookEvent(String provider, String eventType, String eventId, DisputeCase disputeCase) {
+        if (eventId == null || eventId.isBlank() || eventType == null || eventType.isBlank()) {
+            return;
+        }
+        WebhookEventReceiptEntity receipt = new WebhookEventReceiptEntity();
+        receipt.setDisputeCase(disputeCase);
+        receipt.setProvider(provider);
+        receipt.setEventType(eventType);
+        receipt.setEventId(eventId);
+        webhookEventReceiptRepository.save(receipt);
     }
 
     private record CheckoutSession(String id, String url) {

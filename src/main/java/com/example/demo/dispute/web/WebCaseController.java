@@ -18,8 +18,10 @@ import com.example.demo.dispute.service.CaseService;
 import com.example.demo.dispute.service.CheckoutStartResult;
 import com.example.demo.dispute.service.DisputeExplanationService;
 import com.example.demo.dispute.service.EvidenceFileService;
+import com.example.demo.dispute.service.ExportMetricsService;
 import com.example.demo.dispute.service.PaymentService;
 import com.example.demo.dispute.service.PolicyCatalogService;
+import com.example.demo.dispute.service.PublicCaseReference;
 import com.example.demo.dispute.service.ReasonCodeChecklistService;
 import com.example.demo.dispute.service.ReadinessService;
 import com.example.demo.dispute.service.RetentionPolicyService;
@@ -71,6 +73,7 @@ public class WebCaseController {
     private final ValidationHistoryService validationHistoryService;
     private final AutoFixService autoFixService;
     private final SubmissionExportService submissionExportService;
+    private final ExportMetricsService exportMetricsService;
     private final PaymentService paymentService;
     private final ValidationFreshnessService validationFreshnessService;
     private final ReadinessService readinessService;
@@ -89,6 +92,7 @@ public class WebCaseController {
             ValidationHistoryService validationHistoryService,
             AutoFixService autoFixService,
             SubmissionExportService submissionExportService,
+            ExportMetricsService exportMetricsService,
             PaymentService paymentService,
             ValidationFreshnessService validationFreshnessService,
             ReadinessService readinessService,
@@ -106,6 +110,7 @@ public class WebCaseController {
         this.validationHistoryService = validationHistoryService;
         this.autoFixService = autoFixService;
         this.submissionExportService = submissionExportService;
+        this.exportMetricsService = exportMetricsService;
         this.paymentService = paymentService;
         this.validationFreshnessService = validationFreshnessService;
         this.readinessService = readinessService;
@@ -125,6 +130,7 @@ public class WebCaseController {
     ) {
         model.addAttribute("message", message);
         model.addAttribute("error", error);
+        model.addAttribute("checkoutPriceDisplay", paymentService.checkoutPriceDisplay());
         return "index";
     }
 
@@ -179,6 +185,7 @@ public class WebCaseController {
         model.addAttribute("routerQuery", normalizedRouterQuery);
         model.addAttribute("retentionDays", retentionPolicyService.retentionDays());
         model.addAttribute("retentionDueDateBufferDays", retentionPolicyService.dueDateBufferDays());
+        model.addAttribute("checkoutPriceDisplay", paymentService.checkoutPriceDisplay());
         return "newCase";
     }
 
@@ -340,9 +347,19 @@ public class WebCaseController {
     ) {
         populateCaseModel(caseToken, model);
         DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
+        CaseReportResponse report = caseReportService.getReport(disputeCase.getId());
+        ReadinessService.ReadinessSummary readiness = readinessService.summarize(report);
+        ReasonCodeChecklistService.ReasonChecklist reasonChecklist = reasonCodeChecklistService.resolve(
+                report.platform(),
+                report.productScope(),
+                report.reasonCode(),
+                report.cardNetwork(),
+                report.files().stream().map(EvidenceFileReportResponse::evidenceType).distinct().toList()
+        );
         ValidationFreshness freshness = validationFreshnessService.freshness(disputeCase.getId());
         model.addAttribute("validationFreshness", freshness.name());
         model.addAttribute("validationFresh", freshness == ValidationFreshness.FRESH);
+        model.addAttribute("exportMetrics", exportMetricsService.summarize(report, readiness, reasonChecklist));
 
         boolean isPaid = paymentService.isPaid(caseToken);
         if ("cancelled".equalsIgnoreCase(payment)) {
@@ -359,6 +376,7 @@ public class WebCaseController {
         model.addAttribute("error", error);
         model.addAttribute("paymentConfigured", paymentService.isCheckoutConfigured());
         model.addAttribute("paymentProviderLabel", paymentService.checkoutProviderDisplayName());
+        model.addAttribute("checkoutPriceDisplay", paymentService.checkoutPriceDisplay());
         return "caseExport";
     }
 
@@ -378,6 +396,7 @@ public class WebCaseController {
     @GetMapping("/c/{caseToken}/download/submission.zip")
     public void downloadSubmissionZip(@PathVariable String caseToken, HttpServletResponse response) throws Exception {
         DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
+        String publicCaseRef = PublicCaseReference.from(disputeCase);
         if (!isExportableState(disputeCase.getState())) {
             response.sendRedirect("/c/" + caseToken + "/export?error=" + encode("Run validation and resolve blocked issues before export."));
             return;
@@ -401,7 +420,7 @@ public class WebCaseController {
         }
 
         response.setContentType("application/zip");
-        response.setHeader("Content-Disposition", "attachment; filename=\"Chargeback_Submission_Pack_" + caseToken + ".zip\"");
+        response.setHeader("Content-Disposition", "attachment; filename=\"Chargeback_Submission_Pack_" + publicCaseRef + ".zip\"");
         submissionExportService.writeSubmissionZip(caseToken, response.getOutputStream());
         markDownloaded(caseToken);
     }
@@ -409,6 +428,7 @@ public class WebCaseController {
     @GetMapping("/c/{caseToken}/download/summary.pdf")
     public void downloadSummaryPdf(@PathVariable String caseToken, HttpServletResponse response) throws Exception {
         DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
+        String publicCaseRef = PublicCaseReference.from(disputeCase);
         if (!isExportableState(disputeCase.getState())) {
             response.sendRedirect("/c/" + caseToken + "/export?error=" + encode("Run validation before downloading the summary guide."));
             return;
@@ -417,11 +437,11 @@ public class WebCaseController {
         boolean paid = paymentService.isPaid(disputeCase.getId());
         response.setContentType("application/pdf");
         if (paid) {
-            response.setHeader("Content-Disposition", "attachment; filename=\"Chargeback_Submission_Guide_" + caseToken + ".pdf\"");
+            response.setHeader("Content-Disposition", "attachment; filename=\"Chargeback_Submission_Guide_" + publicCaseRef + ".pdf\"");
             submissionExportService.writeSummaryPdf(caseToken, response.getOutputStream(), false);
             markDownloaded(caseToken);
         } else {
-            response.setHeader("Content-Disposition", "attachment; filename=\"Chargeback_Submission_Guide_FREE_" + caseToken + ".pdf\"");
+            response.setHeader("Content-Disposition", "attachment; filename=\"Chargeback_Submission_Guide_FREE_" + publicCaseRef + ".pdf\"");
             submissionExportService.writeSummaryPdf(caseToken, response.getOutputStream(), true);
         }
     }
@@ -435,7 +455,7 @@ public class WebCaseController {
         response.setContentType("text/plain; charset=UTF-8");
         response.setHeader(
                 "Content-Disposition",
-                "attachment; filename=\"Dispute_Explanation_Draft_" + caseToken + ".txt\""
+                "attachment; filename=\"Dispute_Explanation_Draft_" + draft.publicCaseRef() + ".txt\""
         );
         response.getWriter().print(draft.text());
     }
@@ -443,13 +463,15 @@ public class WebCaseController {
     @GetMapping("/c/{caseToken}/access-key.txt")
     public void downloadAccessKey(@PathVariable String caseToken, HttpServletResponse response) throws Exception {
         DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
+        String publicCaseRef = PublicCaseReference.from(disputeCase);
         Instant expiresAt = retentionPolicyService.resolveExpiry(disputeCase);
         String caseUrl = publicBaseUrl + "/c/" + disputeCase.getCaseToken();
 
         response.setContentType("text/plain; charset=UTF-8");
-        response.setHeader("Content-Disposition", "attachment; filename=\"chargeback_case_" + disputeCase.getCaseToken() + ".txt\"");
+        response.setHeader("Content-Disposition", "attachment; filename=\"chargeback_case_" + publicCaseRef + ".txt\"");
         response.getWriter().print(
                 "Chargeback Case Access Key\n"
+                        + "Reference: " + publicCaseRef + "\n"
                         + "Token: " + disputeCase.getCaseToken() + "\n"
                         + "URL: " + caseUrl + "\n"
                         + "CreatedAt: " + DATE_TIME_FORMAT.format(disputeCase.getCreatedAt()) + "\n"

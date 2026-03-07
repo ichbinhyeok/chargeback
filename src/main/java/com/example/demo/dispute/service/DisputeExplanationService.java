@@ -61,6 +61,7 @@ public class DisputeExplanationService {
 
         return new ExplanationDraft(
                 title,
+                PublicCaseReference.from(report),
                 checklist.reasonLabel(),
                 checklist.canonicalReasonKey(),
                 context,
@@ -76,6 +77,7 @@ public class DisputeExplanationService {
             CaseReportResponse report,
             ReasonCodeChecklistService.ReasonChecklist checklist
     ) {
+        String publicCaseRef = PublicCaseReference.from(report);
         String createdDate = DATE_FORMAT.format(report.createdAt());
         String reasonDisplay = checklist.hasReasonCode()
                 ? checklist.reasonLabel() + " (" + checklist.canonicalReasonKey() + ")"
@@ -84,7 +86,7 @@ public class DisputeExplanationService {
         return String.format(
                 Locale.ROOT,
                 "Case %s | Platform=%s | Scope=%s | Reason=%s | CardNetwork=%s | Created=%s",
-                report.caseToken(),
+                publicCaseRef,
                 report.platform().name(),
                 report.productScope().name(),
                 reasonDisplay,
@@ -206,6 +208,7 @@ public class DisputeExplanationService {
 
     public record ExplanationDraft(
             String title,
+            String publicCaseRef,
             String reasonLabel,
             String canonicalReasonKey,
             String contextLine,

@@ -7,5 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ValidationRunRepository extends JpaRepository<ValidationRunEntity, UUID> {
     Optional<ValidationRunEntity> findFirstByDisputeCaseIdOrderByRunNoDesc(UUID caseId);
 
+    java.util.List<ValidationRunEntity> findTop2ByDisputeCaseIdOrderByRunNoDesc(UUID caseId);
+
     void deleteByDisputeCaseId(UUID caseId);
 }

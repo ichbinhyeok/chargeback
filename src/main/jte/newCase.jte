@@ -17,8 +17,9 @@
 @param String routerQuery
 @param int retentionDays
 @param int retentionDueDateBufferDays
+@param String checkoutPriceDisplay
 
-@template.layout(title = "Create New Case", content = @`
+@template.layout(title = "Create New Evidence Pack", content = @`
     <div class="max-w-2xl mx-auto">
         <div class="mb-6">
             <a href="/" class="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
@@ -50,10 +51,25 @@
             </ul>
         </div>
 
+        <div class="mb-6 rounded-lg border border-green-100 bg-green-50 p-4 text-sm text-green-900">
+            <p class="font-semibold mb-1">Pricing</p>
+            <p>Validation is free. Unlock the downloadable evidence pack for <strong>${checkoutPriceDisplay}</strong> only when your files are ready.</p>
+        </div>
+
+        <div class="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-900">
+            <p class="font-semibold mb-2">What happens next</p>
+            <ol class="space-y-2 pl-5 list-decimal">
+                <li>No files are uploaded on this page. This step only creates the case and loads the right rules.</li>
+                <li>On the dashboard, click <strong>Upload Evidence</strong>.</li>
+                <li>Choose files, confirm each evidence type in the mapping modal, then click <strong>Upload Files</strong>.</li>
+                <li>Validation runs automatically after upload. Export review only unlocks after required evidence is complete.</li>
+            </ol>
+        </div>
+
         <div class="cb-card">
             <div class="border-b border-gray-100 pb-5 mb-6">
-                <h1 class="text-2xl font-bold text-neutral-800">Create New Dispute Case</h1>
-                <p class="text-gray-500 text-sm mt-1">Select the platform and dispute scope to set up validation rules.</p>
+                <h1 class="text-2xl font-bold text-neutral-800">Create New Evidence Pack</h1>
+                <p class="text-gray-500 text-sm mt-1">Select the platform and dispute scope to load the right validation rules and evidence checklist.</p>
             </div>
 
             <form id="new-case-form" method="post" action="/new" class="space-y-6">
@@ -111,7 +127,7 @@
 
                 <div class="pt-4 border-t border-gray-100 flex justify-end">
                     <button type="submit" class="cb-btn cb-btn-primary w-full sm:w-auto px-8">
-                        Continue to Case Options
+                        Continue to Free Validation
                     </button>
                 </div>
             </form>

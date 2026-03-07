@@ -289,7 +289,7 @@ public class SubmissionExportService {
 
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("packVersion", "2.1");
-        root.put("publicCaseRef", toPublicCaseRef(disputeCase));
+        root.put("publicCaseRef", PublicCaseReference.from(disputeCase));
         root.put("platform", disputeCase.getPlatform().name());
         root.put("productScope", disputeCase.getProductScope().name());
         root.put("state", disputeCase.getState().name());
@@ -341,14 +341,6 @@ public class SubmissionExportService {
         zip.putNextEntry(explanation);
         zip.write(explanationBytes);
         zip.closeEntry();
-    }
-
-    private String toPublicCaseRef(DisputeCase disputeCase) {
-        String date = DateTimeFormatter.BASIC_ISO_DATE
-                .withZone(ZoneId.systemDefault())
-                .format(disputeCase.getCreatedAt());
-        String idSuffix = disputeCase.getId().toString().replace("-", "").substring(0, 6);
-        return "cb_" + date + "_" + idSuffix;
     }
 
     private String extensionFor(FileFormat format) {

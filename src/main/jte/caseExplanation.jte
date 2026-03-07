@@ -113,7 +113,7 @@
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = 'Dispute_Explanation_Draft_${report.caseToken()}_edited.txt';
+            link.download = 'Dispute_Explanation_Draft_${explanationDraft.publicCaseRef()}_edited.txt';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

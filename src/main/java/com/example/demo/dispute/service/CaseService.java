@@ -11,6 +11,7 @@ import com.example.demo.dispute.persistence.FixJobRepository;
 import com.example.demo.dispute.persistence.PaymentRepository;
 import com.example.demo.dispute.persistence.ValidationIssueRepository;
 import com.example.demo.dispute.persistence.ValidationRunRepository;
+import com.example.demo.dispute.persistence.WebhookEventReceiptRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -36,6 +37,7 @@ public class CaseService {
     private final ValidationIssueRepository validationIssueRepository;
     private final ValidationRunRepository validationRunRepository;
     private final PaymentRepository paymentRepository;
+    private final WebhookEventReceiptRepository webhookEventReceiptRepository;
     private final AuditLogRepository auditLogRepository;
     private final AuditLogService auditLogService;
     private final Path storageRoot;
@@ -48,6 +50,7 @@ public class CaseService {
             ValidationIssueRepository validationIssueRepository,
             ValidationRunRepository validationRunRepository,
             PaymentRepository paymentRepository,
+            WebhookEventReceiptRepository webhookEventReceiptRepository,
             AuditLogRepository auditLogRepository,
             AuditLogService auditLogService,
             @Value("${app.storage.root:./data/evidence}") String storageRoot,
@@ -59,6 +62,7 @@ public class CaseService {
         this.validationIssueRepository = validationIssueRepository;
         this.validationRunRepository = validationRunRepository;
         this.paymentRepository = paymentRepository;
+        this.webhookEventReceiptRepository = webhookEventReceiptRepository;
         this.auditLogRepository = auditLogRepository;
         this.auditLogService = auditLogService;
         this.storageRoot = Path.of(storageRoot);
@@ -150,6 +154,7 @@ public class CaseService {
         validationIssueRepository.deleteByValidationRunDisputeCaseId(caseId);
         validationRunRepository.deleteByDisputeCaseId(caseId);
         fixJobRepository.deleteByDisputeCaseId(caseId);
+        webhookEventReceiptRepository.deleteByDisputeCaseId(caseId);
         paymentRepository.deleteAll(paymentRepository.findByDisputeCaseId(caseId));
         auditLogRepository.deleteByDisputeCaseId(caseId);
         evidenceFileRepository.deleteByDisputeCaseId(caseId);

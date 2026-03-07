@@ -11,7 +11,7 @@ Spring Boot SaaS MVP for Stripe/Shopify dispute evidence packaging.
 
 ## Current Positioning
 
-- Primary promise: `reduce upload rejections and rework time`.
+- Primary promise: `turn messy merchant uploads into an upload-ready dispute evidence pack`.
 - Practical scope:
   - Collect and organize evidence files
   - Show reason-code checklist (required/recommended evidence + missing warnings)
@@ -20,7 +20,7 @@ Spring Boot SaaS MVP for Stripe/Shopify dispute evidence packaging.
   - Auto-fix supported formatting issues
   - Export structured submission artifacts
 - Positioning line:
-  - `Stripe/Shopify evidence upload rejection prevention toolkit`
+  - `Upload-ready dispute evidence pack builder for Stripe/Shopify merchants`
 
 Core flow:
 1. Create case
@@ -80,6 +80,11 @@ npm run build:css
 
 Open:
 - `http://localhost:8080/`
+
+Synthetic messy demo cases:
+- `npm run generate:demo-evidence`
+- see `docs/synthetic-evidence-sets.md`
+- see `docs/dirty-case-test-runbook.md`
 
 Dev defaults:
 - H2 in-memory DB

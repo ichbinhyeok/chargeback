@@ -5,9 +5,12 @@
   "description": "Frontend asset pipeline for Chargeback Evidence Builder",
   "scripts": {
     "build:css": "tailwindcss -c tailwind.config.js -i ./src/main/resources/static/css/input.css -o ./src/main/resources/static/css/app.css --minify",
-    "watch:css": "tailwindcss -c tailwind.config.js -i ./src/main/resources/static/css/input.css -o ./src/main/resources/static/css/app.css --watch"
+    "watch:css": "tailwindcss -c tailwind.config.js -i ./src/main/resources/static/css/input.css -o ./src/main/resources/static/css/app.css --watch",
+    "generate:demo-evidence": "node scripts/generate_demo_evidence_sets.mjs"
   },
   "devDependencies": {
+    "jimp": "^1.6.0",
+    "pdf-lib": "^1.17.1",
     "tailwindcss": "^3.4.17"
   }
 }

@@ -5,12 +5,18 @@ import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.demo.dispute.api.CreateCaseRequest;
+import com.example.demo.dispute.api.ValidateCaseResponse;
+import com.example.demo.dispute.api.ValidationIssueResponse;
 import com.example.demo.dispute.domain.CaseState;
 import com.example.demo.dispute.domain.EvidenceType;
+import com.example.demo.dispute.domain.FixStrategy;
+import com.example.demo.dispute.domain.IssueSeverity;
+import com.example.demo.dispute.domain.IssueTargetScope;
 import com.example.demo.dispute.domain.PaymentStatus;
 import com.example.demo.dispute.domain.Platform;
 import com.example.demo.dispute.domain.ProductScope;
@@ -21,9 +27,11 @@ import com.example.demo.dispute.persistence.PaymentEntity;
 import com.example.demo.dispute.persistence.PaymentRepository;
 import com.example.demo.dispute.service.CaseService;
 import com.example.demo.dispute.service.EvidenceFileService;
+import com.example.demo.dispute.service.PublicCaseReference;
 import com.example.demo.dispute.service.ValidationHistoryService;
 import com.example.demo.dispute.service.ValidationService;
 import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -244,6 +252,90 @@ class WebExportPageIntegrationTest {
         }
     }
 
+    @Test
+    void downloadArtifactsUsePublicCaseRefInFilenames() throws Exception {
+        DisputeCase disputeCase = createPaidFreshCaseForDownloads("download_header_case");
+        String publicCaseRef = PublicCaseReference.from(disputeCase);
+        try {
+            mockMvc.perform(get("/c/{caseToken}/download/submission.zip", disputeCase.getCaseToken()))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Content-Disposition", containsString(publicCaseRef)))
+                    .andExpect(header().string("Content-Disposition", not(containsString(disputeCase.getCaseToken()))));
+
+            mockMvc.perform(get("/c/{caseToken}/download/summary.pdf", disputeCase.getCaseToken()))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Content-Disposition", containsString(publicCaseRef)))
+                    .andExpect(header().string("Content-Disposition", not(containsString(disputeCase.getCaseToken()))));
+
+            mockMvc.perform(get("/c/{caseToken}/download/explanation.txt", disputeCase.getCaseToken()))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Content-Disposition", containsString(publicCaseRef)))
+                    .andExpect(header().string("Content-Disposition", not(containsString(disputeCase.getCaseToken()))))
+                    .andExpect(content().string(containsString(publicCaseRef)))
+                    .andExpect(content().string(not(containsString(disputeCase.getCaseToken()))));
+
+            mockMvc.perform(get("/c/{caseToken}/access-key.txt", disputeCase.getCaseToken()))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Content-Disposition", containsString(publicCaseRef)))
+                    .andExpect(header().string("Content-Disposition", not(containsString(disputeCase.getCaseToken()))))
+                    .andExpect(content().string(containsString("Reference: " + publicCaseRef)))
+                    .andExpect(content().string(containsString("Token: " + disputeCase.getCaseToken())));
+        } finally {
+            caseService.deleteCase(disputeCase.getId());
+        }
+    }
+
+    @Test
+    void exportPageShowsQuantifiedReadinessAndPreviousScanDelta() throws Exception {
+        DisputeCase disputeCase = caseService.createCase(new CreateCaseRequest(
+                Platform.STRIPE,
+                ProductScope.STRIPE_DISPUTE,
+                "PRODUCT_NOT_RECEIVED",
+                null,
+                null
+        ));
+        try {
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.ORDER_RECEIPT,
+                    new MockMultipartFile("file", "receipt.pdf", "application/pdf", simplePdf("metrics-receipt"))
+            );
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.CUSTOMER_DETAILS,
+                    new MockMultipartFile("file", "customer.pdf", "application/pdf", simplePdf("metrics-customer"))
+            );
+            moveCaseToReady(disputeCase);
+
+            var inputs = evidenceFileService.listAsValidationInputs(disputeCase.getId());
+            validationHistoryService.record(
+                    disputeCase,
+                    new ValidateCaseResponse(false, List.of(actionableIssue("ERR_PREVIOUS_FIXABLE"))),
+                    ValidationSource.STORED_FILES,
+                    false,
+                    inputs
+            );
+
+            var currentResponse = validationService.validate(disputeCase, inputs, false);
+            validationHistoryService.record(disputeCase, currentResponse, ValidationSource.STORED_FILES, false, inputs);
+
+            mockMvc.perform(get("/c/{caseToken}/export", disputeCase.getCaseToken()))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("Submission readiness")))
+                    .andExpect(content().string(containsString("Actionable now")))
+                    .andExpect(content().string(containsString("Required evidence coverage")))
+                    .andExpect(content().string(containsString("2 / 2 required evidence files ready")))
+                    .andExpect(content().string(containsString("Since previous scan")))
+                    .andExpect(content().string(containsString("1 fewer actionable than previous scan")))
+                    .andExpect(content().string(containsString("Previous scan #1 had 1 actionable issue(s).")))
+                    .andExpect(content().string(containsString("Unlock upload-ready evidence pack")))
+                    .andExpect(content().string(containsString("one-time after free validation")))
+                    .andExpect(content().string(containsString("Free Validation")));
+        } finally {
+            caseService.deleteCase(disputeCase.getId());
+        }
+    }
+
     private DisputeCase createReadyCase(String reasonCode) {
         DisputeCase disputeCase = caseService.createCase(new CreateCaseRequest(
                 Platform.STRIPE,
@@ -255,10 +347,60 @@ class WebExportPageIntegrationTest {
         return moveCaseToReady(disputeCase);
     }
 
+    private DisputeCase createPaidFreshCaseForDownloads(String reasonCode) {
+        DisputeCase disputeCase = caseService.createCase(new CreateCaseRequest(
+                Platform.STRIPE,
+                ProductScope.STRIPE_DISPUTE,
+                reasonCode,
+                null,
+                null
+        ));
+
+        evidenceFileService.upload(
+                disputeCase.getId(),
+                EvidenceType.ORDER_RECEIPT,
+                new MockMultipartFile("file", "receipt.pdf", "application/pdf", simplePdf("download-filename"))
+        );
+        moveCaseToReady(disputeCase);
+
+        var inputs = evidenceFileService.listAsValidationInputs(disputeCase.getId());
+        var response = validationService.validate(disputeCase, inputs, false);
+        validationHistoryService.record(disputeCase, response, ValidationSource.STORED_FILES, false, inputs);
+
+        PaymentEntity payment = new PaymentEntity();
+        payment.setDisputeCase(disputeCase);
+        payment.setProvider("stripe");
+        payment.setCheckoutSessionId("cs_test_download_" + disputeCase.getId());
+        payment.setPaymentIntentId("pi_test_download_" + disputeCase.getId());
+        payment.setStatus(PaymentStatus.PAID);
+        payment.setAmountCents(1900L);
+        payment.setCurrency("usd");
+        payment.setPaidAt(Instant.now());
+        payment.setPolicyVersion("2026.03.v1");
+        payment.setRequiredEvidenceSnapshot("");
+        paymentRepository.save(payment);
+
+        return disputeCase;
+    }
+
     private DisputeCase moveCaseToReady(DisputeCase disputeCase) {
         caseService.transitionState(disputeCase, CaseState.UPLOADING);
         caseService.transitionState(disputeCase, CaseState.VALIDATING);
         return caseService.transitionState(disputeCase, CaseState.READY);
+    }
+
+    private ValidationIssueResponse actionableIssue(String code) {
+        return new ValidationIssueResponse(
+                code,
+                "previous.fixable",
+                IssueSeverity.FIXABLE,
+                "Synthetic actionable issue for export metrics.",
+                IssueTargetScope.GLOBAL,
+                null,
+                null,
+                null,
+                FixStrategy.NONE
+        );
     }
 
     private byte[] simplePdf(String marker) {

@@ -2,6 +2,7 @@
 @import com.example.demo.dispute.api.CaseReportResponse
 @import com.example.demo.dispute.domain.EvidenceType
 @import com.example.demo.dispute.persistence.PaymentEntity
+@import com.example.demo.dispute.service.ReasonCodeChecklistService
 @param DisputeCase disputeCase
 @param CaseReportResponse report
 @param EvidenceType[] evidenceTypes
@@ -9,6 +10,7 @@
 @param PaymentEntity latestPayment
 @param String message
 @param String error
+@param ReasonCodeChecklistService.ReasonChecklist reasonChecklist
 
 @template.layout(
     title = "Validate | " + report.caseToken(),
@@ -71,6 +73,16 @@
         </nav>
     </div>
 
+    @if(report.productScope().name().equals("SHOPIFY_PAYMENTS_CHARGEBACK"))
+        <div class="mb-8 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-950">
+            <div class="font-semibold mb-1">Shopify Payments PDF/A note</div>
+            <p class="text-sm leading-6">
+                PDF/A status is checked automatically and may differ from Shopify's uploader in edge cases.
+                If Shopify still says "PDF/A required" after this tool passes, re-export the original document as PDF/A from your scanner or editor and upload that file again.
+            </p>
+        </div>
+    @endif
+
     <!-- Main Content -->
     @if(report.latestValidation() == null)
         <div class="cb-card flex-1 flex flex-col items-center justify-center text-center p-12 border-2 border-dashed border-gray-200 bg-gray-50">
@@ -89,10 +101,15 @@
                     <p class="text-sm text-gray-500 mt-1">Run #${report.latestValidation().runNo()} &bull; Validated for ${report.latestValidation().source()}</p>
                 </div>
                 <div>
-                    @if(report.latestValidation().passed())
+                    @if(report.latestValidation().passed() && reasonChecklist.missingRequiredEvidence().isEmpty())
                         <span class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-green-100 text-green-800 shadow-sm border border-green-200">
                             <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                             All Checks Passed
+                        </span>
+                    @elseif(report.latestValidation().passed())
+                        <span class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-amber-100 text-amber-900 shadow-sm border border-amber-200">
+                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Format Checks Passed
                         </span>
                     @else
                         <span class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-red-100 text-red-800 shadow-sm border border-red-200">
@@ -103,13 +120,35 @@
                 </div>
             </div>
 
-            @if(report.latestValidation().issues().isEmpty())
-                <div class="bg-green-50 border border-green-200 rounded-xl p-8 text-center text-green-900 flex flex-col items-center">
-                    <svg class="w-12 h-12 text-green-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <h3 class="text-xl font-bold mb-2">Perfect Format!</h3>
-                    <p class="max-w-md mx-auto text-green-700 mb-6">Your documents meet all criteria. You can now securely export the finalized submission zip.</p>
-                    <a href="/c/${report.caseToken()}/export" class="cb-btn bg-green-600 text-white hover:bg-green-700 shadow-sm font-semibold">Proceed to Export</a>
+            @if(!reasonChecklist.missingRequiredEvidence().isEmpty())
+                <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+                    <div class="font-semibold mb-1">Required evidence is still missing</div>
+                    <p class="text-sm leading-6">
+                        Format checks do not unlock export by themselves. Still needed for this reason:
+                        <strong>${String.join(", ", reasonChecklist.missingRequiredEvidence())}</strong>.
+                    </p>
                 </div>
+            @endif
+
+            @if(report.latestValidation().issues().isEmpty())
+                @if(reasonChecklist.missingRequiredEvidence().isEmpty())
+                    <div class="bg-green-50 border border-green-200 rounded-xl p-8 text-center text-green-900 flex flex-col items-center">
+                        <svg class="w-12 h-12 text-green-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <h3 class="text-xl font-bold mb-2">Format checks passed</h3>
+                        <p class="max-w-md mx-auto text-green-700 mb-6">Your documents meet current format rules and the required evidence checklist is complete. Review the export pack next.</p>
+                        <a href="/c/${report.caseToken()}/export" class="cb-btn bg-green-600 text-white hover:bg-green-700 shadow-sm font-semibold">Review Export</a>
+                    </div>
+                @else
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center text-amber-950 flex flex-col items-center">
+                        <svg class="w-12 h-12 text-amber-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <h3 class="text-xl font-bold mb-2">Format checks passed. Evidence checklist still incomplete.</h3>
+                        <p class="max-w-lg mx-auto text-amber-900 mb-6">Validation only confirms format, size, and rule checks. Upload the missing required evidence before export review or checkout.</p>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <a href="/c/${report.caseToken()}/upload" class="cb-btn cb-btn-primary shadow-sm font-semibold">Upload Missing Evidence</a>
+                            <a href="/c/${report.caseToken()}/export" class="cb-btn cb-btn-secondary shadow-sm font-semibold">Review Export Requirements</a>
+                        </div>
+                    </div>
+                @endif
             @else
                 <div class="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
                     <table class="min-w-full divide-y divide-gray-200 relative">

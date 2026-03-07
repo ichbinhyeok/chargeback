@@ -107,6 +107,36 @@
         </div>
     </div>
 
+    @if(report.productScope().name().equals("SHOPIFY_PAYMENTS_CHARGEBACK"))
+        <div class="mb-8 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-950">
+            <div class="font-semibold mb-1">Shopify Payments PDF/A note</div>
+            <p class="text-sm leading-6">
+                PDF/A status is checked automatically and may differ from Shopify's uploader in edge cases.
+                If Shopify still says "PDF/A required" after this tool passes, re-export the original document as PDF/A from your scanner or editor and upload that file again.
+            </p>
+        </div>
+    @endif
+
+    <div class="mb-8 rounded-xl border border-sky-200 bg-sky-50 p-5 text-sky-950">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+                <h2 class="text-sm font-semibold uppercase tracking-wide">How upload works</h2>
+                <ol class="mt-3 space-y-2 pl-5 text-sm leading-6 list-decimal">
+                    <li>Click <strong>Browse Files</strong> or drag files here. Nothing uploads until you confirm in the mapping modal.</li>
+                    <li>Review the guessed evidence type for each file and change it if needed.</li>
+                    <li>Click <strong>Upload Files</strong>. Validation starts automatically after each confirmed upload.</li>
+                    <li>Format checks can pass before export is ready. Export review stays locked until required evidence is complete.</li>
+                </ol>
+            </div>
+            @if(reasonChecklist.hasReasonCode() && !reasonChecklist.missingRequiredEvidence().isEmpty())
+                <div class="rounded-lg border border-sky-300 bg-white/80 p-4 text-sm shadow-sm lg:max-w-sm">
+                    <div class="font-semibold text-sky-950">Still needed for this reason</div>
+                    <div class="mt-2 text-sky-900">${String.join(", ", reasonChecklist.missingRequiredEvidence())}</div>
+                </div>
+            @endif
+        </div>
+    </div>
+
     <div class="cb-card mb-8">
         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
             <div>
@@ -168,7 +198,7 @@
              style="min-height: 400px; transition: all 0.2s;">
             <svg class="w-16 h-16 text-primary-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
             <h3 class="text-xl font-bold text-gray-900 mb-2">Drag & Drop files here</h3>
-            <p class="text-gray-500 text-sm mb-6 max-w-xs">After selecting files, choose evidence type per file in the next step.</p>
+            <p class="text-gray-500 text-sm mb-6 max-w-xs">After you choose files, a mapping modal opens first. Upload starts only after you confirm.</p>
 
             <input type="file" id="file-input" multiple class="hidden" accept=".pdf,.png,.jpg,.jpeg">
             <button onclick="document.getElementById('file-input').click()" class="cb-btn cb-btn-primary shadow-sm">
@@ -229,12 +259,12 @@
                             <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
                             <h3 class="font-bold text-white text-lg tracking-wide">Validation Engine</h3>
                         </div>
-                        <p class="text-slate-300 text-sm max-w-sm">Validation runs after upload. Auto-fix currently supports per-type merge and Shopify oversized image compression.</p>
+                        <p class="text-slate-300 text-sm max-w-sm">Validation runs automatically after you confirm uploads. Use re-run only after changing files or after auto-fix. Auto-fix currently supports per-type merge and Shopify oversized image compression.</p>
                     </div>
                     <div class="flex flex-col gap-2 shrink-0">
                         <form method="post" action="/c/${report.caseToken()}/validate">
                             <button type="submit" class="w-full cb-btn bg-slate-800 border-slate-700 text-white hover:bg-slate-700 hover:border-slate-600 transition-colors shadow-sm">
-                                Run Manual Check
+                                Re-run Validation
                             </button>
                         </form>
                         <form method="post" action="/c/${report.caseToken()}/fix">

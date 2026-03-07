@@ -84,6 +84,23 @@
         </nav>
     </div>
 
+    @if(report.files().isEmpty())
+        <section class="mb-8 rounded-xl border border-blue-200 bg-blue-50 p-5 text-blue-950">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                    <h2 class="text-sm font-semibold uppercase tracking-wide">What to click next</h2>
+                    <p class="mt-2 text-sm leading-6">Upload your first evidence files from the next tab. Nothing is submitted yet on this dashboard.</p>
+                    <ol class="mt-3 space-y-1 pl-5 text-sm list-decimal">
+                        <li>Open <strong>Upload Evidence</strong>.</li>
+                        <li>Choose files and confirm the evidence type in the mapping modal.</li>
+                        <li>After upload, review validation results before export.</li>
+                    </ol>
+                </div>
+                <a href="/c/${report.caseToken()}/upload" class="cb-btn cb-btn-primary shrink-0">Upload Your First Files</a>
+            </div>
+        </section>
+    @endif
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <section class="cb-card">
             <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Submission Readiness</h2>
@@ -298,12 +315,25 @@
                     </div>
                 </div>
                 
-                <div class="overflow-y-auto max-h-[300px] flex-1 pr-2 space-y-3 custom-scrollbar">
+                    <div class="overflow-y-auto max-h-[300px] flex-1 pr-2 space-y-3 custom-scrollbar">
                     @if(report.latestValidation().issues().isEmpty())
-                        <div class="p-4 bg-green-50 rounded-lg border border-green-100 text-green-800 text-sm flex gap-3">
-                            <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            Ready for export! All format requirements passed for <strong class="text-green-900">${report.latestValidation().source()}</strong>.
-                        </div>
+                        @if(reasonChecklist.missingRequiredEvidence().isEmpty())
+                            <div class="p-4 bg-green-50 rounded-lg border border-green-100 text-green-800 text-sm flex gap-3">
+                                <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <div>
+                                    <p class="font-semibold text-green-900">Format checks passed and required evidence is present.</p>
+                                    <p class="mt-1">Open <strong>Export Pack</strong> to review the final pack and checkout state.</p>
+                                </div>
+                            </div>
+                        @else
+                            <div class="p-4 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 text-sm flex gap-3">
+                                <svg class="w-5 h-5 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <div>
+                                    <p class="font-semibold text-amber-950">Format checks passed, but required evidence is still missing.</p>
+                                    <p class="mt-1">Still needed: <strong>${String.join(", ", reasonChecklist.missingRequiredEvidence())}</strong>.</p>
+                                </div>
+                            </div>
+                        @endif
                     @else
                         @for(var issue : report.latestValidation().issues())
                             <div class="p-3 bg-red-50 border-l-4 border-red-500 rounded-lg text-sm text-red-900 relative">
