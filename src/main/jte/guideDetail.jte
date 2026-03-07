@@ -2,6 +2,9 @@
 @import com.example.demo.dispute.web.GuidePageView
 @param GuidePageView guide
 @param List<GuidePageView> relatedGuides
+@param List<GuidePageView> sameTypeRelatedGuides
+@param List<GuidePageView> crossTypeRelatedGuides
+@param List<GuidePageView> keywordRelatedGuides
 @param String canonicalUrl
 @param String metaDescription
 @param String heroTitle
@@ -123,17 +126,58 @@
             </section>
         @endif
 
-        @if(relatedGuides != null && !relatedGuides.isEmpty())
+        @if(sameTypeRelatedGuides != null && !sameTypeRelatedGuides.isEmpty())
             <section class="cb-card mb-6">
-                <h2 class="text-lg font-semibold text-gray-900 mb-3">Related ${guide.platformLabel()} Guides</h2>
+                <h2 class="text-lg font-semibold text-gray-900 mb-3">More ${guide.guideTypeLabel()} Pages</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    @for(GuidePageView related : relatedGuides)
+                    @for(GuidePageView related : sameTypeRelatedGuides)
                         <a href="${related.path()}" class="block rounded-lg border border-gray-200 p-3 hover:border-primary-300 hover:bg-primary-50/20 transition-colors">
                             <p class="text-xs uppercase tracking-wide text-primary-600 font-semibold mb-1">${related.guideTypeLabel()}</p>
                             <p class="text-sm font-semibold text-gray-900 mb-1">${related.reasonCodeLabel()}</p>
                             <p class="text-xs text-gray-600">${related.metaDescription()}</p>
                         </a>
                     @endfor
+                </div>
+            </section>
+        @endif
+
+        @if(crossTypeRelatedGuides != null && !crossTypeRelatedGuides.isEmpty())
+            <section class="cb-card mb-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-3">Next Step ${guide.isErrorGuide() ? "Reason-Code" : "Upload/Error Fix"} Guides</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    @for(GuidePageView related : crossTypeRelatedGuides)
+                        <a href="${related.path()}" class="block rounded-lg border border-gray-200 p-3 hover:border-primary-300 hover:bg-primary-50/20 transition-colors">
+                            <p class="text-xs uppercase tracking-wide text-primary-600 font-semibold mb-1">${related.guideTypeLabel()}</p>
+                            <p class="text-sm font-semibold text-gray-900 mb-1">${related.reasonCodeLabel()}</p>
+                            <p class="text-xs text-gray-600">${related.metaDescription()}</p>
+                        </a>
+                    @endfor
+                </div>
+            </section>
+        @endif
+
+        @if(keywordRelatedGuides != null && !keywordRelatedGuides.isEmpty())
+            <section class="cb-card mb-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-3">Topic-Related ${guide.platformLabel()} Guides</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    @for(GuidePageView related : keywordRelatedGuides)
+                        <a href="${related.path()}" class="block rounded-lg border border-gray-200 p-3 hover:border-primary-300 hover:bg-primary-50/20 transition-colors">
+                            <p class="text-xs uppercase tracking-wide text-primary-600 font-semibold mb-1">${related.guideTypeLabel()}</p>
+                            <p class="text-sm font-semibold text-gray-900 mb-1">${related.reasonCodeLabel()}</p>
+                            <p class="text-xs text-gray-600">${related.metaDescription()}</p>
+                        </a>
+                    @endfor
+                </div>
+            </section>
+        @endif
+
+        @if(relatedGuides != null && !relatedGuides.isEmpty())
+            <section class="mb-6 text-sm">
+                <p class="text-gray-600 mb-2">Continue browsing:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/guides" class="cb-btn cb-btn-secondary">All Guides</a>
+                    <a href="${guide.platformPath()}" class="cb-btn cb-btn-secondary">${guide.platformLabel()} Hub</a>
+                    <a href="/new?src=guide&platform=${guide.platformSlug()}&guide=${guide.reasonCodeSlug()}" class="cb-btn cb-btn-primary" data-seo-event="guide_start_case_click" data-seo-platform="${guide.platformSlug()}" data-seo-guide="${guide.reasonCodeSlug()}">Start 3-Minute Fix</a>
                 </div>
             </section>
         @endif

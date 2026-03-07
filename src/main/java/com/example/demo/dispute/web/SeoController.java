@@ -12,10 +12,12 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
@@ -33,6 +35,26 @@ public class SeoController {
 
     private static final Map<String, FailureSnapshot> TOP_ERROR_FAILURE_SNAPSHOTS = createTopErrorFailureSnapshots();
     private static final Map<String, GuideHeroCopy> TOP_ERROR_HERO_COPY = createTopErrorHeroCopy();
+    private static final Set<String> RELATED_TOKEN_STOPWORDS = Set.of(
+            "stripe",
+            "shopify",
+            "guide",
+            "guides",
+            "chargeback",
+            "dispute",
+            "evidence",
+            "upload",
+            "error",
+            "fix",
+            "workflow",
+            "response",
+            "required",
+            "checklist",
+            "manual",
+            "process",
+            "case",
+            "cases"
+    );
 
     private final String publicBaseUrl;
     private final SeoAnalyticsService seoAnalyticsService;
@@ -209,9 +231,23 @@ public class SeoController {
         GuideHeroCopy heroCopy = TOP_ERROR_HERO_COPY.get(guide.slugKey());
         String heroTitle = heroCopy != null ? heroCopy.title() : guide.title();
         String heroDescription = heroCopy != null ? heroCopy.metaDescription() : guide.metaDescription();
+        List<GuidePageView> sameTypeRelatedGuides = findRelatedGuides(guide, 8, guide.guideType(), false);
+        List<GuidePageView> crossTypeRelatedGuides = findRelatedGuides(
+                guide,
+                8,
+                guide.isErrorGuide() ? "reason" : "error",
+                false
+        );
+        List<GuidePageView> keywordRelatedGuides = findRelatedGuides(guide, 8, null, true);
 
         model.addAttribute("guide", guide);
-        model.addAttribute("relatedGuides", findRelatedGuides(guide, 5));
+        model.addAttribute("sameTypeRelatedGuides", sameTypeRelatedGuides);
+        model.addAttribute("crossTypeRelatedGuides", crossTypeRelatedGuides);
+        model.addAttribute("keywordRelatedGuides", keywordRelatedGuides);
+        model.addAttribute(
+                "relatedGuides",
+                mergeRelatedGuides(10, sameTypeRelatedGuides, crossTypeRelatedGuides, keywordRelatedGuides)
+        );
         model.addAttribute("canonicalUrl", publicBaseUrl + guide.path());
         model.addAttribute("metaDescription", heroDescription);
         model.addAttribute("heroTitle", heroTitle);
@@ -323,33 +359,107 @@ public class SeoController {
         );
     }
 
-    private List<GuidePageView> findRelatedGuides(GuidePageView currentGuide, int limit) {
+    private List<GuidePageView> findRelatedGuides(
+            GuidePageView currentGuide,
+            int limit,
+            String guideTypeFilter,
+            boolean requireKeywordOverlap
+    ) {
         List<GuidePageView> platformGuides = guidesByPlatform.getOrDefault(currentGuide.platformSlug(), List.of());
 
-        List<GuidePageView> sameType = platformGuides.stream()
+        return platformGuides.stream()
                 .filter(guide -> !guide.slugKey().equals(currentGuide.slugKey()))
-                .filter(guide -> guide.guideType().equalsIgnoreCase(currentGuide.guideType()))
+                .filter(guide -> guideTypeFilter == null || guide.guideType().equalsIgnoreCase(guideTypeFilter))
+                .map(guide -> new GuideSimilarity(guide, guideSimilarityScore(currentGuide, guide)))
+                .filter(item -> !requireKeywordOverlap || item.score() > 0)
+                .sorted(Comparator
+                        .comparingInt(GuideSimilarity::score)
+                        .reversed()
+                        .thenComparing(item -> item.guide().guideType())
+                        .thenComparing(item -> item.guide().reasonCodeLabel()))
                 .limit(limit)
+                .map(GuideSimilarity::guide)
                 .toList();
+    }
 
-        if (sameType.size() >= limit) {
-            return sameType;
-        }
-
-        List<GuidePageView> mixed = new ArrayList<>(sameType);
-        for (GuidePageView guide : platformGuides) {
-            if (mixed.size() >= limit) {
+    @SafeVarargs
+    private final List<GuidePageView> mergeRelatedGuides(int limit, List<GuidePageView>... groups) {
+        LinkedHashMap<String, GuidePageView> merged = new LinkedHashMap<>();
+        for (List<GuidePageView> group : groups) {
+            for (GuidePageView guide : group) {
+                if (merged.size() >= limit) {
+                    break;
+                }
+                merged.putIfAbsent(guide.slugKey(), guide);
+            }
+            if (merged.size() >= limit) {
                 break;
             }
-            if (guide.slugKey().equals(currentGuide.slugKey())) {
-                continue;
-            }
-            if (guide.guideType().equalsIgnoreCase(currentGuide.guideType())) {
-                continue;
-            }
-            mixed.add(guide);
         }
-        return List.copyOf(mixed);
+        return List.copyOf(merged.values());
+    }
+
+    private int guideSimilarityScore(GuidePageView currentGuide, GuidePageView candidate) {
+        Set<String> seed = guideTokens(currentGuide);
+        Set<String> other = guideTokens(candidate);
+
+        int overlap = 0;
+        for (String token : seed) {
+            if (other.contains(token)) {
+                overlap++;
+            }
+        }
+
+        int score = overlap * 6;
+        if (currentGuide.guideType().equalsIgnoreCase(candidate.guideType())) {
+            score += 3;
+        }
+        if (sharesSlugStem(currentGuide.reasonCodeSlug(), candidate.reasonCodeSlug())) {
+            score += 4;
+        }
+        return score;
+    }
+
+    private Set<String> guideTokens(GuidePageView guide) {
+        Set<String> tokens = new HashSet<>();
+        addTokens(tokens, guide.title());
+        addTokens(tokens, guide.reasonCodeLabel());
+        addTokens(tokens, guide.reasonCodeSlug());
+        addTokens(tokens, guide.metaDescription());
+        for (String phrase : guide.targetSearchQueries()) {
+            addTokens(tokens, phrase);
+        }
+        return tokens;
+    }
+
+    private void addTokens(Set<String> out, String value) {
+        String normalized = normalizeSearchText(value);
+        if (normalized == null) {
+            return;
+        }
+        for (String token : normalized.split(" ")) {
+            if (token.length() < 3) {
+                continue;
+            }
+            if (RELATED_TOKEN_STOPWORDS.contains(token)) {
+                continue;
+            }
+            out.add(token);
+        }
+    }
+
+    private boolean sharesSlugStem(String leftSlug, String rightSlug) {
+        String left = normalizeSearchText(leftSlug);
+        String right = normalizeSearchText(rightSlug);
+        if (left == null || right == null) {
+            return false;
+        }
+        String[] leftTokens = left.split(" ");
+        String[] rightTokens = right.split(" ");
+        if (leftTokens.length == 0 || rightTokens.length == 0) {
+            return false;
+        }
+        return leftTokens[0].equals(rightTokens[0]) || left.contains(right) || right.contains(left);
     }
 
     private List<String> cleanList(List<String> values) {
@@ -737,6 +847,12 @@ public class SeoController {
     }
 
     private record GuideMatch(
+            GuidePageView guide,
+            int score
+    ) {
+    }
+
+    private record GuideSimilarity(
             GuidePageView guide,
             int score
     ) {
