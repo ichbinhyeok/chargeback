@@ -48,6 +48,11 @@ compile.txt
 error.log
 test.log
 tmp/
+.tmp/
+.tools/
+startup.log
+error_utf8.log
+compile_error*.txt
 
 ### Frontend ###
 node_modules/
