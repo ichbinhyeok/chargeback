@@ -84,3 +84,43 @@ tasks.register('verifySummaryPdfRender', JavaExec) {
 		args "--outputDir=" + project.property('pngOutputDir')
 	}
 }
+
+def summaryFixturePdf = layout.buildDirectory.file("tmp/summary-pdf-fixture/summary-fixture.pdf")
+
+tasks.register('generateSummaryPdfFixture', JavaExec) {
+	group = 'verification'
+	description = 'Generates a deterministic free-summary PDF fixture for visual regression checks.'
+	dependsOn testClasses
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.example.demo.dispute.tools.SummaryPdfFixtureWriter'
+	args "--pdf=" + summaryFixturePdf.get().asFile.absolutePath
+}
+
+tasks.register('verifySummaryPdfBaseline', JavaExec) {
+	group = 'verification'
+	description = 'Renders the deterministic summary fixture and compares it to committed PNG baselines.'
+	dependsOn testClasses
+	if (!project.hasProperty('pdfPath')) {
+		dependsOn tasks.named('generateSummaryPdfFixture')
+	}
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.example.demo.dispute.tools.SummaryPdfRenderVerifier'
+	if (project.hasProperty('pdfPath')) {
+		args "--pdf=" + project.property('pdfPath')
+	} else {
+		args "--pdf=" + summaryFixturePdf.get().asFile.absolutePath
+	}
+	if (project.hasProperty('pngOutputDir')) {
+		args "--outputDir=" + project.property('pngOutputDir')
+	} else {
+		args "--outputDir=output/pdf/render-checks"
+	}
+	if (project.hasProperty('baselineDir')) {
+		args "--baselineDir=" + project.property('baselineDir')
+	} else {
+		args "--baselineDir=src/test/resources/pdf-baselines"
+	}
+	if (project.hasProperty('updateBaselines') && project.property('updateBaselines').toString() == 'true') {
+		args "--updateBaselines"
+	}
+}

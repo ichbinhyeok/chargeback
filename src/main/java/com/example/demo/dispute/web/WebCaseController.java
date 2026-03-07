@@ -826,10 +826,13 @@ public class WebCaseController {
                 String targetFileLabel = largestPagedFile != null
                         ? fileLabel(largestPagedFile)
                         : "largest PDF";
+                String trimHint = largestPagedFile != null
+                        ? pageTrimPrimaryHint(report, largestPagedFile)
+                        : "Replace the longest PDF with a shorter export focused only on dispute-linked pages.";
                 return new NextStepGuidance(
                         autoFixRun ? "Auto-fix helped, but page count is still over the limit." : "Replace one long PDF next.",
                         "Best next move: replace " + targetFileLabel
-                                + " with a shorter export so the total page count drops below the platform limit.",
+                                + " with a shorter export so the total page count drops below the platform limit. " + trimHint,
                         autoFixProgressNote,
                         largestPagedFile != null ? "Replace " + shortenFileName(largestPagedFile.originalName()) : "Replace Long PDF",
                         "/c/" + report.caseToken() + "/upload",
@@ -1100,9 +1103,23 @@ public class WebCaseController {
                 .filter(file -> file.pageCount() > 0)
                 .sorted((left, right) -> Integer.compare(right.pageCount(), left.pageCount()))
                 .limit(3)
-                .map(file -> shortenFileName(file.originalName()) + " - " + file.pageCount() + " page(s) - "
-                        + pageImpactHint(file.pageCount(), overflowPages))
+                .map(file -> pagePriorityLabel(file, overflowPages))
                 .toList();
+    }
+
+    private String pagePriorityLabel(EvidenceFileReportResponse file, int overflowPages) {
+        StringBuilder label = new StringBuilder()
+                .append(shortenFileName(file.originalName()))
+                .append(" - ")
+                .append(file.pageCount())
+                .append(" page(s) - ")
+                .append(pageImpactHint(file.pageCount(), overflowPages));
+        String trimHint = pageTrimListHint(file.pageCount(), overflowPages);
+        if (!trimHint.isBlank()) {
+            label.append(" - ").append(trimHint)
+                    .append(" - ").append(pageTrimReason(file));
+        }
+        return label.toString();
     }
 
     private List<String> matchingEvidenceTypePriorityList(CaseReportResponse report, EvidenceType targetEvidenceType) {
@@ -1137,6 +1154,60 @@ public class WebCaseController {
             return "enough to clear the " + overflowPages + " page overage";
         }
         return "still leaves " + residual + " page(s) over limit";
+    }
+
+    private String pageTrimPrimaryHint(CaseReportResponse report, EvidenceFileReportResponse file) {
+        if (file == null) {
+            return "";
+        }
+        int totalPages = report.files().stream().mapToInt(EvidenceFileReportResponse::pageCount).sum();
+        int pageLimit = pageLimitFor(report);
+        int overflowPages = pageLimit > 0 ? Math.max(0, totalPages - pageLimit) : 0;
+        String trimHint = pageTrimListHint(file.pageCount(), overflowPages);
+        if (!trimHint.isBlank()) {
+            return trimHint + " because " + pageTrimReason(file) + ".";
+        }
+        return "Start by removing appendix, cover, or verbose event-log pages that are not needed for this dispute.";
+    }
+
+    private String pageTrimListHint(int filePages, int overflowPages) {
+        if (overflowPages <= 0 || filePages <= overflowPages) {
+            return "";
+        }
+        int keepPages = filePages - overflowPages;
+        if (keepPages <= 0 || keepPages >= filePages) {
+            return "";
+        }
+        String keepRange = pageRangeLabel(1, keepPages);
+        String trimRange = pageRangeLabel(keepPages + 1, filePages);
+        return "start with " + keepRange + " and trim " + trimRange;
+    }
+
+    private String pageRangeLabel(int startPage, int endPage) {
+        if (startPage >= endPage) {
+            return "page " + startPage;
+        }
+        return "pages " + startPage + "-" + endPage;
+    }
+
+    private String pageTrimReason(EvidenceFileReportResponse file) {
+        if (file == null) {
+            return "tail pages are usually the safest low-signal pages to cut first";
+        }
+        String originalName = file.originalName() == null ? "" : file.originalName().toLowerCase(Locale.ROOT);
+        if (originalName.contains("dump") || originalName.contains("log") || originalName.contains("export")) {
+            return "long exports usually repeat appendix or low-signal tail pages at the end";
+        }
+        return switch (file.evidenceType()) {
+            case FULFILLMENT_DELIVERY -> "carrier proofs usually repeat low-signal scan history or appendix pages at the end";
+            case ORDER_RECEIPT -> "receipt PDFs usually end with duplicate confirmation, footer, or terms pages";
+            case CUSTOMER_DETAILS -> "account exports usually end with profile, privacy, or settings pages that do not help this dispute";
+            case CUSTOMER_COMMUNICATION -> "chat exports usually end with repeated transcript tails, headers, or footer pages";
+            case POLICIES -> "policy exports usually end with generic legal or footer pages that add little reviewer value";
+            case DIGITAL_USAGE_LOGS -> "usage exports usually end with verbose event tails that are safer to trim first";
+            case REFUND_CANCELLATION -> "refund exports usually end with duplicate status history or footer pages";
+            case OTHER_SUPPORTING -> "tail pages are usually the safest low-signal pages to cut first";
+        };
     }
 
     private int pageLimitFor(CaseReportResponse report) {

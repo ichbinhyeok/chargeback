@@ -222,7 +222,7 @@
                     <ul class="list-disc pl-5 space-y-3 text-[15px] leading-7 text-gray-700">
                         <li>A case opened with this platform and issue context already attached.</li>
                         <li>Validation that catches format, size, duplicate-file, and evidence-gap blockers before submission.</li>
-                        <li>Auto-fix for supported blockers, instead of manually rebuilding every file.</li>
+                        <li>Auto-fix for supported blockers like PDF/A, portfolio PDFs, oversized receipt photos, hidden PDF links, and duplicate PDF pages.</li>
                         <li>An export-ready ZIP, summary PDF, and explanation draft once the pack is clean.</li>
                     </ul>
                     <a href="/new?src=guide&platform=${guide.platformSlug()}&guide=${guide.reasonCodeSlug()}" class="mt-4 cb-btn cb-btn-primary w-full" data-seo-event="guide_start_case_click" data-seo-platform="${guide.platformSlug()}" data-seo-guide="${guide.reasonCodeSlug()}">Start Free Validation</a>

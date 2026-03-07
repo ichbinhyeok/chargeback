@@ -819,6 +819,14 @@ public class SeoController {
                         )
                 ),
                 Map.entry(
+                        "stripe/total-pages-over-limit",
+                        new IssueSupportCopy(
+                                "Validation measures combined page count and points to the longest PDFs first, so you can stop guessing which export is keeping the case over the limit.",
+                                "Auto-fix can remove blank pages and exact duplicate PDF pages from supported Stripe evidence before you retry the same packet.",
+                                "You still need to choose the final page window that stays tied to the dispute and cut appendix or event-log pages that do not help the reviewer."
+                        )
+                ),
+                Map.entry(
                         "stripe/upload-failed-no-external-links",
                         new IssueSupportCopy(
                                 "Validation is designed to catch external-link blockers in uploaded evidence so hidden PDF annotations do not slip into the final pack.",
@@ -831,7 +839,31 @@ public class SeoController {
                         new IssueSupportCopy(
                                 "Validation checks whether the failing Shopify document is still non-compliant after conversion and helps confirm the blocker is really PDF/A-related.",
                                 "Auto-fix can convert supported PDFs into PDF/A and rerun validation so the same file is checked again inside the workflow.",
-                                "You still need to confirm the source file is the right one, flatten problematic structures when needed, and verify readability after conversion."
+                                "You still need to confirm the source file is the right one, especially when the same export also contains portfolio structure or hidden links, and verify readability after conversion."
+                        )
+                ),
+                Map.entry(
+                        "shopify/evidence-file-too-large-2mb",
+                        new IssueSupportCopy(
+                                "Validation catches when one Shopify evidence file is over the 2MB uploader limit and shows which file should shrink first.",
+                                "Auto-fix can compress supported receipt photos and image captures into reviewer-readable JPEGs under the per-file limit.",
+                                "You still need to decide when a rescan or a tighter crop is safer than heavy compression for text-heavy images."
+                        )
+                ),
+                Map.entry(
+                        "shopify/pdf-portfolio-not-accepted",
+                        new IssueSupportCopy(
+                                "Validation detects portfolio-style PDFs that look normal in desktop apps but fail Shopify's evidence uploader.",
+                                "Auto-fix can flatten supported portfolio PDFs into one standard sequential document and rerun validation.",
+                                "You still need to verify the flattened page order and confirm that every embedded sub-document survived the export."
+                        )
+                ),
+                Map.entry(
+                        "shopify/external-links-not-allowed-error",
+                        new IssueSupportCopy(
+                                "Validation catches hidden URL annotations that merchants often miss in portal exports, help-center printouts, and statement appendices.",
+                                "Auto-fix can strip external-link annotations from supported PDFs and rerun the same Shopify checks immediately.",
+                                "You still need to replace link-only proof with attached screenshots, exports, or excerpts when the evidence depends on off-platform pages."
                         )
                 )
         );

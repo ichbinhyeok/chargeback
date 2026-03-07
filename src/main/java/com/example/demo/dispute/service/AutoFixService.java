@@ -78,7 +78,8 @@ public class AutoFixService {
     private static final long[] TOTAL_SIZE_IMAGE_TARGET_FLOORS = new long[] {
             SHOPIFY_FILE_LIMIT_BYTES,
             MB,
-            512L * 1024L
+            512L * 1024L,
+            256L * 1024L
     };
     private static final long MIN_TARGET_PDF_BYTES = 256L * 1024L;
     private static final long STRIPE_MIN_BYTES_PER_PAGE_AFTER_COMPRESSION = 4_000L;
@@ -179,9 +180,9 @@ public class AutoFixService {
                         job,
                         FAIL_CODE_NOTHING_TO_FIX,
                         "No supported auto-fix issue found. Supported: merge multi-file-per-type, PDF blank/duplicate page"
-                                + " cleanup, image total-size compression, Shopify oversized image compression, PDF"
-                                + " external-link removal, Shopify PDF/A conversion + portfolio flattening, and Stripe"
-                                + " oversized PDF compression."
+                                + " cleanup, duplicate image removal, image total-size compression, Shopify oversized image"
+                                + " compression, PDF external-link removal, Shopify PDF/A conversion + portfolio flattening,"
+                                + " and platform PDF total-size compression."
                 );
             }
 
@@ -194,8 +195,9 @@ public class AutoFixService {
             job.setSummary(
                     fixSummary(change)
                             + " Merged " + change.mergedTypes() + " type(s), compressed " + change.compressedImages()
-                            + " image(s), compressed " + change.compressedStripePdfFiles()
-                            + " Stripe PDF file(s), converted " + change.convertedPdfaFiles()
+                            + " image(s), removed " + change.removedDuplicateImages()
+                            + " duplicate image(s), compressed " + change.compressedPdfFiles()
+                            + " PDF file(s), converted " + change.convertedPdfaFiles()
                             + " PDF/A file(s), flattened " + change.flattenedPortfolioFiles()
                             + " portfolio PDF file(s), sanitized " + change.linkSanitizedFiles()
                             + " PDF file(s). Validation passed=" + response.passed() + "."
@@ -211,8 +213,9 @@ public class AutoFixService {
                     "AUTO_FIX_COMPLETED",
                     "jobId=" + saved.getId() + ",mergedTypes=" + change.mergedTypes()
                             + ",removedPdfPages=" + change.pagesReduced()
+                            + ",removedDuplicateImages=" + change.removedDuplicateImages()
                             + ",compressedImages=" + change.compressedImages()
-                            + ",compressedStripePdfFiles=" + change.compressedStripePdfFiles()
+                            + ",compressedPdfFiles=" + change.compressedPdfFiles()
                             + ",convertedPdfaFiles=" + change.convertedPdfaFiles()
                             + ",flattenedPortfolioFiles=" + change.flattenedPortfolioFiles()
                             + ",linkSanitizedFiles=" + change.linkSanitizedFiles()
@@ -234,10 +237,11 @@ public class AutoFixService {
                 .sum();
         int mergedTypes = mergeFilesByEvidenceType(disputeCase);
         int reducedPdfPages = reducePdfPagesForLimits(disputeCase);
+        int removedDuplicateImages = deduplicateImagesForTotalSize(disputeCase);
         int compressedImages = compressOversizedShopifyImages(disputeCase);
         compressedImages += compressImagesForTotalSize(disputeCase);
         ShopifyPdfFixChange shopifyPdfFix = normalizeShopifyPdfFiles(disputeCase);
-        int compressedStripePdfFiles = compressOversizedStripePdfFiles(disputeCase);
+        int compressedPdfFiles = compressPdfFilesForTotalSize(disputeCase);
         int linkSanitizedFiles = removeExternalLinksFromPdfFiles(disputeCase);
         long totalBytesAfter = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
                 .mapToLong(EvidenceFileEntity::getSizeBytes)
@@ -252,8 +256,9 @@ public class AutoFixService {
                 totalPagesAfter,
                 mergedTypes,
                 reducedPdfPages,
+                removedDuplicateImages,
                 compressedImages,
-                compressedStripePdfFiles,
+                compressedPdfFiles,
                 shopifyPdfFix.convertedPdfaFiles(),
                 shopifyPdfFix.flattenedPortfolioFiles(),
                 linkSanitizedFiles
@@ -541,11 +546,63 @@ public class AutoFixService {
         return compressed;
     }
 
-    private int compressOversizedStripePdfFiles(DisputeCase disputeCase) {
-        if (disputeCase.getPlatform() != Platform.STRIPE) {
+    private int deduplicateImagesForTotalSize(DisputeCase disputeCase) {
+        long totalLimit = resolveTotalSizeLimitBytes(disputeCase);
+        if (totalLimit <= 0) {
             return 0;
         }
 
+        long totalSize = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
+                .mapToLong(EvidenceFileEntity::getSizeBytes)
+                .sum();
+        if (totalSize <= totalLimit) {
+            return 0;
+        }
+
+        int removed = 0;
+        Map<EvidenceType, Map<String, UUID>> seenByType = new EnumMap<>(EvidenceType.class);
+        List<EvidenceFileEntity> imageFiles = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
+                .filter(file -> isImage(file.getFileFormat()))
+                .sorted(Comparator.comparing(EvidenceFileEntity::getCreatedAt).thenComparing(EvidenceFileEntity::getId))
+                .toList();
+
+        for (EvidenceFileEntity file : imageFiles) {
+            if (totalSize <= totalLimit) {
+                break;
+            }
+
+            String fingerprint = fingerprintImage(Path.of(file.getStoragePath()));
+            if (fingerprint == null || fingerprint.isBlank()) {
+                continue;
+            }
+
+            Map<String, UUID> seenForType = seenByType.computeIfAbsent(file.getEvidenceType(), ignored -> new HashMap<>());
+            UUID keptFileId = seenForType.putIfAbsent(fingerprint, file.getId());
+            if (keptFileId == null) {
+                continue;
+            }
+
+            long originalSize = file.getSizeBytes();
+            deletePathQuietly(Path.of(file.getStoragePath()));
+            evidenceFileRepository.delete(file);
+            totalSize -= originalSize;
+            removed++;
+
+            auditLogService.log(
+                    disputeCase,
+                    "SYSTEM",
+                    "AUTO_FIX_REMOVED_DUPLICATE_IMAGE",
+                    "fileId=" + file.getId()
+                            + ",keptFileId=" + keptFileId
+                            + ",evidenceType=" + file.getEvidenceType()
+                            + ",remainingTotal=" + totalSize
+            );
+        }
+
+        return removed;
+    }
+
+    private int compressPdfFilesForTotalSize(DisputeCase disputeCase) {
         long totalSize = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
                 .mapToLong(EvidenceFileEntity::getSizeBytes)
                 .sum();
@@ -573,14 +630,14 @@ public class AutoFixService {
                 auditLogService.log(
                         disputeCase,
                         "SYSTEM",
-                        "AUTO_FIX_SKIPPED_STRIPE_PDF_TEXT_HEAVY",
+                        "AUTO_FIX_SKIPPED_PDF_TEXT_HEAVY",
                         "fileId=" + file.getId()
                 );
                 continue;
             }
 
             Path compressedPath = buildTargetPdfPath(file.getStoragePath());
-            byte[] compressedBytes = compressPdfToSmallerBytes(originalPath, preferredMaxBytes);
+            byte[] compressedBytes = compressPdfForTotalSize(disputeCase, originalPath, preferredMaxBytes);
             if (compressedBytes.length == 0 || compressedBytes.length >= file.getSizeBytes()) {
                 continue;
             }
@@ -611,12 +668,20 @@ public class AutoFixService {
             auditLogService.log(
                     disputeCase,
                     "SYSTEM",
-                    "AUTO_FIX_COMPRESSED_STRIPE_PDF",
+                    "AUTO_FIX_COMPRESSED_PDF_TOTAL_SIZE",
                     "fileId=" + file.getId() + ",newSize=" + compressedBytes.length + ",remainingTotal=" + totalSize
             );
         }
 
         return compressed;
+    }
+
+    private byte[] compressPdfForTotalSize(DisputeCase disputeCase, Path sourcePath, long preferredMaxBytes) {
+        if (disputeCase.getPlatform() == Platform.SHOPIFY
+                && disputeCase.getProductScope() == ProductScope.SHOPIFY_PAYMENTS_CHARGEBACK) {
+            return normalizeShopifyPdfToPdfaBytes(sourcePath, preferredMaxBytes);
+        }
+        return compressPdfToSmallerBytes(sourcePath, preferredMaxBytes);
     }
 
     private long resolveTotalSizeLimitBytes(DisputeCase disputeCase) {
@@ -1146,8 +1211,8 @@ public class AutoFixService {
             throw new IllegalStateException("unsupported image file: " + sourcePath);
         }
 
-        float[] scales = new float[] {1.0f, 0.9f, 0.8f, 0.7f, 0.6f, 0.5f};
-        float[] qualities = new float[] {0.9f, 0.75f, 0.6f, 0.45f, 0.3f};
+        float[] scales = new float[] {1.0f, 0.9f, 0.8f, 0.7f, 0.6f, 0.5f, 0.4f, 0.3f};
+        float[] qualities = new float[] {0.9f, 0.75f, 0.6f, 0.45f, 0.3f, 0.22f};
         byte[] best = null;
 
         for (float scale : scales) {
@@ -1164,6 +1229,35 @@ public class AutoFixService {
         }
 
         return best == null ? new byte[0] : best;
+    }
+
+    private String fingerprintImage(Path sourcePath) {
+        try {
+            BufferedImage image = ImageIO.read(sourcePath.toFile());
+            if (image == null) {
+                return null;
+            }
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            updateDigestInt(digest, image.getWidth());
+            updateDigestInt(digest, image.getHeight());
+            for (int y = 0; y < image.getHeight(); y++) {
+                for (int x = 0; x < image.getWidth(); x++) {
+                    updateDigestInt(digest, image.getRGB(x, y));
+                }
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (IOException ex) {
+            return null;
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("missing SHA-256 support", ex);
+        }
+    }
+
+    private void updateDigestInt(MessageDigest digest, int value) {
+        digest.update((byte) (value >>> 24));
+        digest.update((byte) (value >>> 16));
+        digest.update((byte) (value >>> 8));
+        digest.update((byte) value);
     }
 
     private byte[] writeJpeg(BufferedImage image, float quality) {
@@ -1303,8 +1397,9 @@ public class AutoFixService {
             int totalPagesAfter,
             int mergedTypes,
             int reducedPdfPages,
+            int removedDuplicateImages,
             int compressedImages,
-            int compressedStripePdfFiles,
+            int compressedPdfFiles,
             int convertedPdfaFiles,
             int flattenedPortfolioFiles,
             int linkSanitizedFiles
@@ -1320,8 +1415,9 @@ public class AutoFixService {
         boolean isNoop() {
             return mergedTypes <= 0
                     && reducedPdfPages <= 0
+                    && removedDuplicateImages <= 0
                     && compressedImages <= 0
-                    && compressedStripePdfFiles <= 0
+                    && compressedPdfFiles <= 0
                     && convertedPdfaFiles <= 0
                     && flattenedPortfolioFiles <= 0
                     && linkSanitizedFiles <= 0;

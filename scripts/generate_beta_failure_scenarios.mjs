@@ -7,7 +7,7 @@ import { Jimp, JimpMime, loadFont, rgbaToInt } from "jimp";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
-const outputRoot = path.join(repoRoot, "output", "pdf", "beta-failure-scenarios-2026-03-07");
+const outputRoot = path.join(repoRoot, "output", "pdf", "beta-failure-scenarios-2026-03-08");
 const fontRoot = path.join(repoRoot, "node_modules", "@jimp", "plugin-print", "fonts", "open-sans");
 
 const fonts = await loadFonts();
@@ -334,6 +334,182 @@ const scenarios = [
       ]),
       linkedPdfSpec("merchant_portal_export.pdf")
     ]
+  },
+  {
+    id: "shopify_payments_pdfa_required_ready",
+    title: "Shopify Payments PDF/A required pack",
+    notes: [
+      "Create a Shopify / SHOPIFY_PAYMENTS_CHARGEBACK / PRODUCT_NOT_RECEIVED case.",
+      "Upload every file in this folder. Keep scanner_export_non_pdfa.pdf mapped to ORDER_RECEIPT.",
+      "Expected: validate blocks on PDF/A compliance, auto-fix converts the PDF, and export unlocks with the free watermarked summary PDF."
+    ],
+    files: [
+      pdfSpec("scanner_export_non_pdfa.pdf", "Scanned order receipt", [
+        "Order receipt",
+        "Shopify order SPDF-2108",
+        "Receipt exported from scanner software",
+        "Total charged $64.11"
+      ]),
+      pdfSpec("delivery_proof.pdf", "Carrier delivery proof", [
+        "Tracking number 9400 SPDF 2108",
+        "Delivered on 2026-03-03",
+        "Carrier scan retained for review",
+        "Front desk accepted the package"
+      ]),
+      pdfSpec("customer_profile.pdf", "Customer profile", [
+        "Customer details",
+        "Customer name: Rowan Blake",
+        "Billing address: 88 River Street",
+        "Email address: rowan@example-demo.com"
+      ])
+    ]
+  },
+  {
+    id: "shopify_payments_portfolio_ready",
+    title: "Shopify Payments portfolio PDF pack",
+    notes: [
+      "Create a Shopify / SHOPIFY_PAYMENTS_CHARGEBACK / PRODUCT_NOT_RECEIVED case.",
+      "Upload every file in this folder. Keep office_bundle_portfolio.pdf mapped to ORDER_RECEIPT.",
+      "Expected: validate blocks on PDF portfolio structure, auto-fix flattens it, and export unlocks."
+    ],
+    files: [
+      portfolioPdfSpec("office_bundle_portfolio.pdf"),
+      pdfSpec("delivery_proof.pdf", "Carrier delivery proof", [
+        "Tracking number 9400 PORT 4009",
+        "Delivered on 2026-03-02",
+        "Carrier proof retained",
+        "Shipment destination matched order"
+      ]),
+      pdfSpec("customer_profile.pdf", "Customer profile", [
+        "Customer details",
+        "Customer name: Jordan Ellis",
+        "Billing address: 15 Cedar Row",
+        "Email address: jordan@example-demo.com"
+      ])
+    ]
+  },
+  {
+    id: "shopify_payments_oversized_receipt_photo",
+    title: "Shopify Payments oversized receipt photo pack",
+    notes: [
+      "Create a Shopify / SHOPIFY_PAYMENTS_CHARGEBACK / PRODUCT_NOT_RECEIVED case.",
+      "Upload every file in this folder. Keep iphone_receipt_photo.png mapped to ORDER_RECEIPT.",
+      "Expected: validate shows the 2MB Shopify per-file image blocker, auto-fix compresses the image, and export unlocks."
+    ],
+    files: [
+      cameraPhotoSpec("iphone_receipt_photo.png", 2100, 3200, 17, [
+        "Order receipt",
+        "Shopify order SPHOTO-7771",
+        "Captured from mobile camera roll",
+        "Charged $212.49"
+      ]),
+      pdfSpec("delivery_proof.pdf", "Carrier delivery proof", [
+        "Tracking number 9400 PHOTO 7771",
+        "Delivered on 2026-03-05",
+        "Carrier scan confirmed dropoff",
+        "Delivery proof retained for dispute review"
+      ]),
+      pdfSpec("customer_profile.pdf", "Customer profile", [
+        "Customer details",
+        "Customer name: Taylor Nash",
+        "Billing address: 411 Pine Street",
+        "Email address: taylor@example-demo.com"
+      ])
+    ]
+  },
+  {
+    id: "shopify_payments_external_links_combo_ready",
+    title: "Shopify Payments external-link export pack",
+    notes: [
+      "Create a Shopify / SHOPIFY_PAYMENTS_CHARGEBACK / PRODUCT_NOT_RECEIVED case.",
+      "Upload every file in this folder. Keep merchant_help_center_export.pdf mapped to ORDER_RECEIPT.",
+      "Expected: the exported PDF carries external links and non-PDF/A metadata. Auto-fix should remove the links, normalize the PDF, and unlock export."
+    ],
+    files: [
+      linkedPdfSpec("merchant_help_center_export.pdf"),
+      pdfSpec("delivery_proof.pdf", "Carrier delivery proof", [
+        "Tracking number 9400 LINKSHOP 1188",
+        "Delivered to reception desk",
+        "Carrier scan timestamp 2026-03-01 14:18",
+        "Shipment destination verified"
+      ]),
+      pdfSpec("customer_profile.pdf", "Customer profile", [
+        "Customer details",
+        "Customer name: Morgan Silva",
+        "Billing address: 50 Harbor Street",
+        "Email address: morgan.silva@example-demo.com"
+      ])
+    ]
+  },
+  {
+    id: "stripe_mastercard_19_page_autofix_ready",
+    title: "Stripe Mastercard 19-page auto-fix pack",
+    notes: [
+      "Create a Stripe / STRIPE_DISPUTE / PRODUCT_NOT_RECEIVED case with card network MASTERCARD.",
+      "Upload every file in this folder. Keep carrier_event_log.pdf mapped to FULFILLMENT_DELIVERY.",
+      "Expected: validate blocks on Mastercard's 19-page limit, auto-fix removes duplicate appendix pages, and export unlocks."
+    ],
+    files: [
+      multiPagePdfSpec(
+        "carrier_event_log.pdf",
+        "Carrier event log",
+        21,
+        (pageNumber) => pageNumber <= 16
+          ? [
+              "Carrier event log page " + pageNumber,
+              "Tracking number 9400 MC 1901",
+              "Carrier exception and delivery scan timeline",
+              "Mastercard evidence export from merchant dashboard"
+            ]
+          : [
+              "Duplicate appendix page",
+              "Repeated appendix copied by export tool",
+              "Repeated appendix copied by export tool"
+            ],
+        { showPageNumbers: false }
+      ),
+      pdfSpec("receipt.pdf", "Order receipt", [
+        "Order receipt",
+        "Order number MC-1901",
+        "Amount charged $33.71",
+        "Merchant checkout confirmed"
+      ]),
+      pdfSpec("customer_profile.pdf", "Customer profile", [
+        "Customer details",
+        "Customer name: Avery Cole",
+        "Billing address: 27 Union Square",
+        "Email address: avery.cole@example-demo.com"
+      ])
+    ]
+  },
+  {
+    id: "stripe_scanner_tiff_auto_convert",
+    title: "Stripe scanner TIFF auto-convert pack",
+    notes: [
+      "Create a Stripe / STRIPE_DISPUTE / PRODUCT_NOT_RECEIVED case.",
+      "Upload every file in this folder. Keep scanner_delivery_proof.tiff mapped to FULFILLMENT_DELIVERY.",
+      "Expected: upload shows auto-convert messaging, stores a JPEG, validation passes, and the free summary PDF unlocks."
+    ],
+    files: [
+      tiffScreenshotSpec("scanner_delivery_proof.tiff", "Carrier proof", [
+        "Tracking number 9400 TIFF 8812",
+        "Delivered on 2026-03-01",
+        "Front desk signature retained",
+        "Carrier proof exported from scanner"
+      ]),
+      pdfSpec("receipt.pdf", "Order receipt", [
+        "Order receipt",
+        "Order number TIFF-8812",
+        "Amount charged $57.84",
+        "Merchant checkout confirmed"
+      ]),
+      pdfSpec("customer_profile.pdf", "Customer profile", [
+        "Customer details",
+        "Customer name: Casey Monroe",
+        "Billing address: 9 Alder Court",
+        "Email address: casey@example-demo.com"
+      ])
+    ]
   }
 ];
 
@@ -370,6 +546,10 @@ function linkedPdfSpec(filename) {
   return { kind: "linked-pdf", filename };
 }
 
+function portfolioPdfSpec(filename) {
+  return { kind: "portfolio-pdf", filename };
+}
+
 function screenshotSpec(filename, title, lines) {
   return { kind: "png", filename, title, lines, width: 1170, height: 2532, style: "screenshot" };
 }
@@ -378,8 +558,16 @@ function gifScreenshotSpec(filename, title, lines) {
   return { kind: "gif", filename, title, lines, width: 1170, height: 2532, style: "screenshot" };
 }
 
+function tiffScreenshotSpec(filename, title, lines) {
+  return { kind: "tiff", filename, title, lines, width: 900, height: 1400, style: "screenshot" };
+}
+
 function noisyImageSpec(filename, width, height, seed) {
   return { kind: "png", filename, title: "Camera roll capture", lines: [], width, height, style: "noise", seed };
+}
+
+function cameraPhotoSpec(filename, width, height, seed, lines) {
+  return { kind: "png", filename, title: "Phone photo capture", lines, width, height, style: "photo", seed };
 }
 
 async function buildArtifact(spec) {
@@ -388,6 +576,9 @@ async function buildArtifact(spec) {
   }
   if (spec.kind === "linked-pdf") {
     return buildLinkedPdf();
+  }
+  if (spec.kind === "portfolio-pdf") {
+    return buildPortfolioPdf();
   }
   return buildImage(spec);
 }
@@ -459,6 +650,20 @@ trailer << /Root 1 0 R >>
   return Buffer.from(rawPdf, "latin1");
 }
 
+async function buildPortfolioPdf() {
+  const rawPdf = `%PDF-1.4
+1 0 obj << /Type /Catalog /Pages 2 0 R /Collection << /Type /Collection >> >>
+endobj
+2 0 obj << /Type /Pages /Count 1 /Kids [3 0 R] >>
+endobj
+3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] >>
+endobj
+trailer << /Root 1 0 R >>
+%%EOF
+`;
+  return Buffer.from(rawPdf, "latin1");
+}
+
 async function buildImage(spec) {
   if (spec.style === "noise") {
     const image = new Jimp({ width: spec.width, height: spec.height, color: rgba(236, 239, 243) });
@@ -469,6 +674,39 @@ async function buildImage(spec) {
         image.setPixelColor(rgba(noise, 255 - noise, (noise * 3) % 255), x, y);
       }
     }
+    return image.getBuffer(JimpMime.png);
+  }
+
+  if (spec.style === "photo") {
+    const image = new Jimp({ width: spec.width, height: spec.height, color: rgba(214, 208, 199) });
+    const seed = spec.seed ?? 1;
+    for (let y = 0; y < spec.height; y++) {
+      for (let x = 0; x < spec.width; x++) {
+        const noise = pseudoRandom(seed, x, y);
+        const red = Math.min(255, 168 + Math.floor(noise * 0.32));
+        const green = Math.min(255, 146 + Math.floor(noise * 0.28));
+        const blue = Math.min(255, 128 + Math.floor(noise * 0.18));
+        image.setPixelColor(rgba(red, green, blue), x, y);
+      }
+    }
+    fillRect(image, 110, 150, spec.width - 220, spec.height - 300, [252, 250, 246]);
+    fillRect(image, 110, 150, spec.width - 220, 96, [40, 44, 52]);
+    image.print({ font: fonts.smallWhite, x: 150, y: 184, text: spec.title, maxWidth: spec.width - 300 });
+
+    let y = 380;
+    for (const line of spec.lines) {
+      fillRect(image, 150, y - 26, spec.width - 300, 112, [255, 255, 255]);
+      image.print({ font: fonts.title, x: 190, y, text: line, maxWidth: spec.width - 380 });
+      y += 140;
+    }
+
+    image.print({
+      font: fonts.tiny,
+      x: 150,
+      y: spec.height - 150,
+      text: `SAMPLE / DEMO ONLY | ${spec.filename}`,
+      maxWidth: spec.width - 300
+    });
     return image.getBuffer(JimpMime.png);
   }
 
@@ -495,6 +733,9 @@ async function buildImage(spec) {
 
   if (spec.kind === "gif") {
     return image.getBuffer(JimpMime.gif);
+  }
+  if (spec.kind === "tiff") {
+    return image.getBuffer(JimpMime.tiff);
   }
   return image.getBuffer(JimpMime.png);
 }

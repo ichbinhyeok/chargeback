@@ -74,6 +74,19 @@
             <span class="inline-flex items-center rounded-full border border-green-100 bg-green-50 px-3 py-1 font-medium text-green-800">${checkoutPriceDisplay} to unlock downloads</span>
             <span class="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1 font-medium text-gray-700">ZIP + PDF + TXT outputs</span>
         </div>
+
+        <div class="mt-8 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm">
+            <div class="text-sm font-semibold text-gray-900">Already proven on real failed uploads</div>
+            <p class="mt-1 text-sm text-gray-600">The current auto-fix flow already cleared these live beta scenarios end-to-end.</p>
+            <div class="mt-4 flex flex-wrap gap-2 text-sm">
+                <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Shopify PDF/A required</span>
+                <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Shopify PDF portfolio</span>
+                <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Shopify 2MB receipt photo</span>
+                <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Shopify external-link PDF</span>
+                <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Stripe Mastercard 19-page packet</span>
+                <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Scanner TIFF to JPEG</span>
+            </div>
+        </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -117,7 +130,7 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002 2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
             </div>
             <h3 class="font-semibold text-neutral-800 mb-2">Auto-Fix Supported Blockers</h3>
-            <p class="text-sm text-gray-500 leading-relaxed">Merge duplicate per-type files, compress oversized Shopify images, and clean up supported upload blockers.</p>
+            <p class="text-sm text-gray-500 leading-relaxed">Fix PDF/A failures, flatten portfolio PDFs, compress oversized Shopify photos, remove hidden PDF links, trim duplicate PDF pages, and auto-convert scanner image formats.</p>
         </div>
         <div>
             <div class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mb-4">
