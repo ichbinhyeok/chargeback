@@ -47,8 +47,7 @@
             </div>
             <nav class="flex gap-6 items-center">
                 <a href="/new" class="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">New Case</a>
-                <a href="/guides" class="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Guides</a>
-                <a href="https://github.com/ichbinhyeok/chargeback" target="_blank" class="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Docs</a>
+                <a href="/guides" class="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Help Center</a>
             </nav>
         </div>
     </header>

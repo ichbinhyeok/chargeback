@@ -35,6 +35,6 @@ public record GuidePageView(
     }
 
     public String guideTypeLabel() {
-        return isErrorGuide() ? "Upload/Error Fix Guide" : "Reason-Code Guide";
+        return isErrorGuide() ? "Upload/Error Fix" : "Reason-Code Checklist";
     }
 }

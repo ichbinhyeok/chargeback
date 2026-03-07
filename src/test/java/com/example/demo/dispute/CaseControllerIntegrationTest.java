@@ -799,19 +799,33 @@ class CaseControllerIntegrationTest {
     void guidesPlatformAndDetailPagesRenderSeoContent() throws Exception {
         mockMvc.perform(get("/guides/stripe"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Evidence Guides")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Upload/Error Fix Guides")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Error Fixes &amp; Evidence Checklists")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Upload/Error Fixes")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Validation")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("See checklist &amp; steps")));
 
         mockMvc.perform(get("/guides/stripe/fraudulent"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Fraudulent Evidence Checklist for Upload Recovery")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start 3-Minute Fix")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stop Trial-And-Error Uploads")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Validation")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Official platform sources")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"@type\": \"FAQPage\"")));
 
         mockMvc.perform(get("/guides/stripe/evidence-file-size-limit-4-5mb"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe \"evidence file size limit 4.5MB\" upload fix")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Search Phrases This Page Solves")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("What you get when you start here")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Search Phrases This Page Solves"))));
+    }
+
+    @Test
+    void guidesIndexPromotesValidationFlow() throws Exception {
+        mockMvc.perform(get("/guides"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Get the manual checklist fast")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Find My Fix Flow")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Validation")));
     }
 
     @Test
