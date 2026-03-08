@@ -78,6 +78,26 @@
             </div>
         </section>
 
+        @if(guide.slugKey().equals("stripe/evidence-file-size-limit-4-5mb"))
+            <section class="mb-8 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-blue-950 shadow-sm">
+                <h2 class="text-base font-semibold">Stripe 4.5MB vs 5MB quick note</h2>
+                <p class="mt-2 text-base leading-7">
+                    Stripe's File Upload API references can mention a 5MB upload ceiling, but dispute evidence guidance is stricter at 4.5MB for the combined packet.
+                    Chargeback Builder uses the safer 4.5MB threshold in validation so you do not keep retrying a pack that still fails inside the dispute dashboard flow.
+                </p>
+            </section>
+        @endif
+
+        @if(guide.slugKey().equals("shopify/pdf-a-format-required-error"))
+            <section class="mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950 shadow-sm">
+                <h2 class="text-base font-semibold">Shopify PDF blockers can stack</h2>
+                <p class="mt-2 text-base leading-7">
+                    A PDF/A rejection is not always a single-rule problem. The same Shopify file can also carry portfolio structure or hidden external links,
+                    which is why the same PDF can keep failing after a naive re-export. The workflow checks those blockers together and can clear multiple PDF issues in one rerun.
+                </p>
+            </section>
+        @endif
+
         <section class="mb-10 rounded-2xl border border-gray-200 bg-white p-5 md:p-6 shadow-sm">
             <h2 class="text-base font-semibold text-gray-900">How to use this page</h2>
             <div class="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -104,6 +124,20 @@
                 </div>
             </div>
         </section>
+
+        @if(guide.targetSearchQueries() != null && !guide.targetSearchQueries().isEmpty())
+            <section class="mb-10 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:p-6 shadow-sm">
+                <h2 class="text-base font-semibold text-gray-900">Search terms this page is meant to answer</h2>
+                <p class="mt-2 max-w-3xl text-base leading-7 text-gray-700">
+                    These are the phrases this guide is targeting. If the platform error you are seeing is close to one of these, the same fix flow usually applies.
+                </p>
+                <div class="mt-4 flex flex-wrap gap-2">
+                    @for(String query : guide.targetSearchQueries())
+                        <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-800">${query}</span>
+                    @endfor
+                </div>
+            </section>
+        @endif
 
         <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.65fr)_minmax(260px,0.85fr)] gap-8">
             <div class="space-y-6">

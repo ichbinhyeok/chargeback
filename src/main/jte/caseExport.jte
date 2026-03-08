@@ -21,6 +21,9 @@
 @param ExportMetrics exportMetrics
 @param String displayCaseState
 @param String displayCaseStateBadgeClass
+@param boolean minimumCoreEvidenceCoverageReached
+@param int minimumCoreEvidenceReadyCount
+@param int minimumCoreEvidenceTargetCount
 
 @template.layout(
     title = "Export | " + report.caseToken(),
@@ -164,6 +167,39 @@
                 <p><strong>Disclaimer:</strong> This tool improves evidence formatting and consolidates assets. Passing validation means current automated checks passed for ${report.platform()}, but it <strong>does not</strong> guarantee favorable dispute outcomes or provide legal advice.</p>
             </div>
         @else
+            <div class="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-slate-950">
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-700">Current unlock state</div>
+                <div class="mt-4 grid gap-4 md:grid-cols-3 text-sm">
+                    <div class="rounded-lg border border-slate-200 bg-white p-4">
+                        <div class="font-semibold text-slate-900">Validation and blockers</div>
+                        @if(exportReady)
+                            <p class="mt-2 text-green-800">Export-ready state reached. The pack is structurally ready for checkout.</p>
+                        @else
+                            <p class="mt-2 text-amber-900">Still locked behind remaining blockers. Clear validation issues first, then return here.</p>
+                        @endif
+                    </div>
+                    <div class="rounded-lg border border-slate-200 bg-white p-4">
+                        <div class="font-semibold text-slate-900">Free watermarked guide</div>
+                        @if(exportReady && minimumCoreEvidenceCoverageReached)
+                            <p class="mt-2 text-green-800">Available now. You already met the free guide threshold.</p>
+                        @elseif(exportReady)
+                            <p class="mt-2 text-amber-900">Still locked for thin evidence. Current core coverage: <strong>${minimumCoreEvidenceReadyCount} / ${minimumCoreEvidenceTargetCount}</strong>.</p>
+                        @else
+                            <p class="mt-2 text-slate-700">Unlocks after validation blockers are cleared and the pack becomes export-ready.</p>
+                        @endif
+                    </div>
+                    <div class="rounded-lg border border-slate-200 bg-white p-4">
+                        <div class="font-semibold text-slate-900">Paid download pack</div>
+                        @if(exportReady && missingRequiredEvidenceTypes.isEmpty())
+                            <p class="mt-2 text-green-800">Ready to unlock for <strong>${checkoutPriceDisplay}</strong> once checkout is available.</p>
+                        @elseif(exportReady)
+                            <p class="mt-2 text-amber-900">Blocked by missing required evidence: <strong>${String.join(", ", missingRequiredEvidenceTypes)}</strong>.</p>
+                        @else
+                            <p class="mt-2 text-slate-700">ZIP, PDF, and TXT stay locked until the pack is validated and required evidence is complete.</p>
+                        @endif
+                    </div>
+                </div>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                 
                 <div class="cb-card border border-gray-200 border-t-4 border-t-primary-500 shadow-lg relative overflow-hidden">
@@ -239,12 +275,24 @@
                             <span class="text-sm text-gray-500">No ZIP downloads, explanation TXT export, or watermark removal</span>
                         </li>
                     </ul>
+
+                    @if(minimumCoreEvidenceTargetCount > 0 && !minimumCoreEvidenceCoverageReached)
+                        <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                            <strong>Free guide locked for thin evidence:</strong>
+                            add at least one more core required evidence type first.
+                            Current core coverage: <strong>${minimumCoreEvidenceReadyCount} / ${minimumCoreEvidenceTargetCount}</strong>.
+                        </div>
+                    @endif
                     
                     <div class="space-y-3">
-                        @if(exportReady)
+                        @if(exportReady && minimumCoreEvidenceCoverageReached)
                             <a href="/c/${report.caseToken()}/download/summary.pdf" class="flex justify-center items-center w-full px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded text-sm font-medium hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">
                                 Download Watermarked Guide PDF
                             </a>
+                        @elseif(exportReady)
+                            <button type="button" disabled class="flex justify-center items-center w-full px-4 py-2 bg-gray-100 text-gray-400 border border-gray-200 rounded text-sm font-medium cursor-not-allowed shadow-sm">
+                                Add More Core Evidence For Free PDF
+                            </button>
                         @else
                             <button type="button" disabled class="flex justify-center items-center w-full px-4 py-2 bg-gray-100 text-gray-400 border border-gray-200 rounded text-sm font-medium cursor-not-allowed shadow-sm">
                                 Run Validation to Unlock Free PDF

@@ -30,6 +30,8 @@ import com.example.demo.dispute.service.ReasonCodeChecklistService;
 import com.example.demo.dispute.service.ReadinessService;
 import com.example.demo.dispute.service.RetentionPolicyService;
 import com.example.demo.dispute.service.SubmissionExportService;
+import com.example.demo.dispute.service.TailTrimSuggestion;
+import com.example.demo.dispute.service.TailTrimSuggestionService;
 import com.example.demo.dispute.service.ValidationFreshnessService;
 import com.example.demo.dispute.service.ValidationHistoryService;
 import com.example.demo.dispute.service.ValidationService;
@@ -81,6 +83,7 @@ public class WebCaseController {
     private final SubmissionExportService submissionExportService;
     private final ExportMetricsService exportMetricsService;
     private final PaymentService paymentService;
+    private final TailTrimSuggestionService tailTrimSuggestionService;
     private final ValidationFreshnessService validationFreshnessService;
     private final ReadinessService readinessService;
     private final FixJobRepository fixJobRepository;
@@ -101,6 +104,7 @@ public class WebCaseController {
             SubmissionExportService submissionExportService,
             ExportMetricsService exportMetricsService,
             PaymentService paymentService,
+            TailTrimSuggestionService tailTrimSuggestionService,
             ValidationFreshnessService validationFreshnessService,
             ReadinessService readinessService,
             FixJobRepository fixJobRepository,
@@ -120,6 +124,7 @@ public class WebCaseController {
         this.submissionExportService = submissionExportService;
         this.exportMetricsService = exportMetricsService;
         this.paymentService = paymentService;
+        this.tailTrimSuggestionService = tailTrimSuggestionService;
         this.validationFreshnessService = validationFreshnessService;
         this.readinessService = readinessService;
         this.fixJobRepository = fixJobRepository;
@@ -274,6 +279,7 @@ public class WebCaseController {
             Model model
     ) {
         populateCaseModel(caseToken, model);
+        model.addAttribute("tailTrimSuggestion", resolveTailTrimSuggestion(model));
         model.addAttribute("message", message);
         model.addAttribute("error", error);
         return "caseValidate";
@@ -283,17 +289,66 @@ public class WebCaseController {
     public String validateStored(@PathVariable String caseToken) {
         try {
             DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
-            List<com.example.demo.dispute.api.EvidenceFileInput> files = evidenceFileService.listAsValidationInputs(disputeCase.getId());
-            if (files.isEmpty()) {
-                throw new IllegalArgumentException("No uploaded files found.");
-            }
-
-            caseService.transitionState(disputeCase, CaseState.VALIDATING);
-            ValidateCaseResponse response = validationService.validate(disputeCase, files, false);
-            validationHistoryService.record(disputeCase, response, ValidationSource.STORED_FILES, false, files);
-            caseService.transitionState(disputeCase, response.passed() ? CaseState.READY : CaseState.BLOCKED);
-
+            ValidateCaseResponse response = validateStoredFilesAndTransition(disputeCase, ValidationSource.STORED_FILES);
             String message = response.passed() ? "Validation passed." : "Validation completed with issues.";
+            return "redirect:/c/" + caseToken + "/validate?message=" + encode(message);
+        } catch (RuntimeException ex) {
+            return "redirect:/c/" + caseToken + "/validate?error=" + encode(ex.getMessage());
+        }
+    }
+
+    @PostMapping("/c/{caseToken}/trim-tail")
+    public String trimTailPages(
+            @PathVariable String caseToken,
+            @RequestParam("fileId") UUID fileId,
+            @RequestParam("trimStartPage") int trimStartPage,
+            @RequestParam("trimEndPage") int trimEndPage
+    ) {
+        try {
+            DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
+            evidenceFileService.trimPdfPages(disputeCase.getId(), fileId, trimStartPage, trimEndPage);
+            ValidateCaseResponse response = validateStoredFilesAndTransition(disputeCase, ValidationSource.STORED_FILES);
+            String message = response.passed()
+                    ? "Approved trim applied and validation passed."
+                    : "Approved trim applied. Validation completed with issues.";
+            return "redirect:/c/" + caseToken + "/validate?message=" + encode(message);
+        } catch (RuntimeException ex) {
+            return "redirect:/c/" + caseToken + "/validate?error=" + encode(ex.getMessage());
+        }
+    }
+
+    @PostMapping("/c/{caseToken}/compress-image")
+    public String compressImageForSizeRescue(
+            @PathVariable String caseToken,
+            @RequestParam("fileId") UUID fileId,
+            @RequestParam("targetBytes") long targetBytes
+    ) {
+        try {
+            DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
+            evidenceFileService.compressImageForCaseSizeRescue(disputeCase.getId(), fileId, targetBytes);
+            ValidateCaseResponse response = validateStoredFilesAndTransition(disputeCase, ValidationSource.STORED_FILES);
+            String message = response.passed()
+                    ? "Stronger image compression applied and validation passed."
+                    : "Stronger image compression applied. Validation completed with issues.";
+            return "redirect:/c/" + caseToken + "/validate?message=" + encode(message);
+        } catch (RuntimeException ex) {
+            return "redirect:/c/" + caseToken + "/validate?error=" + encode(ex.getMessage());
+        }
+    }
+
+    @PostMapping("/c/{caseToken}/compress-pdf")
+    public String compressPdfForSizeRescue(
+            @PathVariable String caseToken,
+            @RequestParam("fileId") UUID fileId,
+            @RequestParam("targetBytes") long targetBytes
+    ) {
+        try {
+            DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
+            evidenceFileService.compressPdfForCaseSizeRescue(disputeCase.getId(), fileId, targetBytes);
+            ValidateCaseResponse response = validateStoredFilesAndTransition(disputeCase, ValidationSource.STORED_FILES);
+            String message = response.passed()
+                    ? "Stronger PDF compression applied and validation passed."
+                    : "Stronger PDF compression applied. Validation completed with issues.";
             return "redirect:/c/" + caseToken + "/validate?message=" + encode(message);
         } catch (RuntimeException ex) {
             return "redirect:/c/" + caseToken + "/validate?error=" + encode(ex.getMessage());
@@ -437,6 +492,7 @@ public class WebCaseController {
     @GetMapping("/c/{caseToken}/download/summary.pdf")
     public void downloadSummaryPdf(@PathVariable String caseToken, HttpServletResponse response) throws Exception {
         DisputeCase disputeCase = caseService.getCaseByToken(caseToken);
+        CaseReportResponse report = caseReportService.getReport(disputeCase.getId());
         String publicCaseRef = PublicCaseReference.from(disputeCase);
         if (!isExportableState(disputeCase.getState())) {
             response.sendRedirect("/c/" + caseToken + "/export?error=" + encode("Run validation before downloading the summary guide."));
@@ -444,6 +500,14 @@ public class WebCaseController {
         }
 
         boolean paid = paymentService.isPaid(disputeCase.getId());
+        if (!paid && !readinessService.hasMinimumCoreEvidenceCoverage(report)) {
+            response.sendRedirect(
+                    "/c/" + caseToken + "/export?error=" + encode(
+                            "Add at least one more core required evidence type before downloading the free summary guide."
+                    )
+            );
+            return;
+        }
         response.setContentType("application/pdf");
         if (paid) {
             response.setHeader("Content-Disposition", "attachment; filename=\"Chargeback_Submission_Guide_" + publicCaseRef + ".pdf\"");
@@ -569,9 +633,35 @@ public class WebCaseController {
         model.addAttribute("validationFresh", freshness == ValidationFreshness.FRESH);
         model.addAttribute("reasonChecklist", reasonChecklist);
         model.addAttribute("nextStepGuidance", resolveNextStepGuidance(disputeCase.getId(), report, readiness, reasonChecklist));
+        ManualImageRescueAction manualImageRescueAction = resolveManualImageRescueAction(report);
+        model.addAttribute("manualImageRescueAction", manualImageRescueAction);
+        model.addAttribute(
+                "manualPdfRescueAction",
+                manualImageRescueAction == null ? resolveManualPdfRescueAction(disputeCase.getId(), report) : null
+        );
+        model.addAttribute("minimumCoreEvidenceCoverageReached", readinessService.hasMinimumCoreEvidenceCoverage(report));
+        model.addAttribute("minimumCoreEvidenceReadyCount", readinessService.coreRequiredEvidenceReadyCount(report));
+        model.addAttribute("minimumCoreEvidenceTargetCount", readinessService.minimumCoreEvidenceTargetCount(report));
+        model.addAttribute("checkoutPriceDisplay", paymentService.checkoutPriceDisplay());
         DisplayStateSummary displayState = resolveDisplayState(report, readiness, reasonChecklist);
         model.addAttribute("displayCaseState", displayState.label());
         model.addAttribute("displayCaseStateBadgeClass", displayState.badgeClass());
+    }
+
+    private ValidateCaseResponse validateStoredFilesAndTransition(
+            DisputeCase disputeCase,
+            ValidationSource validationSource
+    ) {
+        List<com.example.demo.dispute.api.EvidenceFileInput> files = evidenceFileService.listAsValidationInputs(disputeCase.getId());
+        if (files.isEmpty()) {
+            throw new IllegalArgumentException("No uploaded files found.");
+        }
+
+        caseService.transitionState(disputeCase, CaseState.VALIDATING);
+        ValidateCaseResponse response = validationService.validate(disputeCase, files, false);
+        validationHistoryService.record(disputeCase, response, validationSource, false, files);
+        caseService.transitionState(disputeCase, response.passed() ? CaseState.READY : CaseState.BLOCKED);
+        return response;
     }
 
     private void markDownloaded(String caseToken) {
@@ -795,6 +885,7 @@ public class WebCaseController {
                         "Run Auto-Fix",
                         "/c/" + report.caseToken() + "/fix",
                         true,
+                        null,
                         List.of()
                 );
             }
@@ -815,6 +906,7 @@ public class WebCaseController {
                         largestFile != null ? "Replace " + shortenFileName(largestFile.originalName()) : "Replace A Large File",
                         "/c/" + report.caseToken() + "/upload",
                         false,
+                        null,
                         sizePriorityList(report)
                 );
             }
@@ -829,15 +921,18 @@ public class WebCaseController {
                 String trimHint = largestPagedFile != null
                         ? pageTrimPrimaryHint(report, largestPagedFile)
                         : "Replace the longest PDF with a shorter export focused only on dispute-linked pages.";
+                String overageSummary = pageOverageSummary(report);
                 return new NextStepGuidance(
                         autoFixRun ? "Auto-fix helped, but page count is still over the limit." : "Replace one long PDF next.",
                         "Best next move: replace " + targetFileLabel
-                                + " with a shorter export so the total page count drops below the platform limit. " + trimHint,
+                                + " with a shorter export so the total page count drops below the platform limit. "
+                                + overageSummary + " " + trimHint,
                         autoFixProgressNote,
-                        largestPagedFile != null ? "Replace " + shortenFileName(largestPagedFile.originalName()) : "Replace Long PDF",
+                        largestPagedFile != null ? "Upload Trimmed PDF" : "Replace Long PDF",
                         "/c/" + report.caseToken() + "/upload",
                         false,
-                        pagePriorityList(report)
+                        "Manual trim playbook",
+                        pageManualTrimPlaybook(report, largestPagedFile)
                 );
             }
 
@@ -855,6 +950,7 @@ public class WebCaseController {
                         targetFile != null ? "Replace " + shortenFileName(targetFile.originalName()) : "Replace " + targetType,
                         "/c/" + report.caseToken() + "/upload",
                         false,
+                        null,
                         matchingEvidenceTypePriorityList(report, primaryIssue.targetEvidenceType())
                 );
             }
@@ -866,6 +962,7 @@ public class WebCaseController {
                     "Review Uploads",
                     "/c/" + report.caseToken() + "/upload",
                     false,
+                    null,
                     List.of()
             );
         }
@@ -887,11 +984,143 @@ public class WebCaseController {
                     "Upload " + firstMissing,
                     "/c/" + report.caseToken() + "/upload",
                     false,
+                    null,
                     missingEvidencePlaybook(firstMissingType, reasonChecklist)
             );
         }
 
         return null;
+    }
+
+    private TailTrimSuggestion resolveTailTrimSuggestion(Model model) {
+        Object disputeCaseAttr = model.asMap().get("disputeCase");
+        Object reportAttr = model.asMap().get("report");
+        if (!(disputeCaseAttr instanceof DisputeCase disputeCase)
+                || !(reportAttr instanceof CaseReportResponse report)
+                || report.latestValidation() == null
+                || report.latestValidation().source() != ValidationSource.AUTO_FIX) {
+            return null;
+        }
+
+        ValidationIssueResponse primaryIssue = pickPrimaryIssue(report.latestValidation().issues());
+        if (primaryIssue == null || !isPageLimitIssue(primaryIssue.code())) {
+            return null;
+        }
+
+        EvidenceFileReportResponse largestPagedFile = report.files().stream()
+                .max((left, right) -> Integer.compare(left.pageCount(), right.pageCount()))
+                .orElse(null);
+        if (largestPagedFile == null || largestPagedFile.fileId() == null) {
+            return null;
+        }
+
+        int trimTarget = pageTrimTargetFor(report);
+        int overflowPages = trimTarget > 0 ? Math.max(0, totalPagesFor(report) - trimTarget) : 0;
+        if (overflowPages <= 0) {
+            return null;
+        }
+
+        return tailTrimSuggestionService.suggest(disputeCase.getId(), largestPagedFile.fileId(), overflowPages)
+                .orElse(null);
+    }
+
+    private ManualImageRescueAction resolveManualImageRescueAction(CaseReportResponse report) {
+        if (report.latestValidation() == null || report.latestValidation().source() != ValidationSource.AUTO_FIX) {
+            return null;
+        }
+
+        ValidationIssueResponse primaryIssue = pickPrimaryIssue(report.latestValidation().issues());
+        if (primaryIssue == null || !isTotalSizeIssue(primaryIssue.code())) {
+            return null;
+        }
+
+        EvidenceFileReportResponse largestImageFile = report.files().stream()
+                .filter(this::isImageFile)
+                .max((left, right) -> Long.compare(left.sizeBytes(), right.sizeBytes()))
+                .orElse(null);
+        if (largestImageFile == null || largestImageFile.fileId() == null) {
+            return null;
+        }
+
+        long overflowBytes = Math.max(0L, totalUploadedBytes(report) - totalSizeLimitFor(report));
+        if (overflowBytes <= 0L) {
+            return null;
+        }
+
+        long targetBytes = suggestedManualImageRescueTargetBytes(largestImageFile, overflowBytes);
+        long estimatedSavings = Math.max(0L, largestImageFile.sizeBytes() - targetBytes);
+        if (estimatedSavings < 48L * 1024L) {
+            return null;
+        }
+
+        long residualOverflow = Math.max(0L, overflowBytes - estimatedSavings);
+        String impactSummary = estimatedSavings >= overflowBytes
+                ? "This one file can clear the current overage by itself if the stronger compression keeps the image readable."
+                : "This one file removes about " + formatBytesLabel(estimatedSavings)
+                        + ", which still leaves roughly " + formatBytesLabel(residualOverflow)
+                        + " over the current limit.";
+        return new ManualImageRescueAction(
+                "Optional stronger image compression",
+                largestImageFile.fileId(),
+                targetBytes,
+                fileLabel(largestImageFile),
+                formatBytesLabel(largestImageFile.sizeBytes()),
+                formatBytesLabel(targetBytes),
+                formatBytesLabel(estimatedSavings),
+                impactSummary,
+                "Use this only when the image is already the clearest candidate to shrink. Recheck readability after the new JPEG is generated."
+        );
+    }
+
+    private ManualPdfRescueAction resolveManualPdfRescueAction(UUID caseId, CaseReportResponse report) {
+        if (report.latestValidation() == null || report.latestValidation().source() != ValidationSource.AUTO_FIX) {
+            return null;
+        }
+
+        ValidationIssueResponse primaryIssue = pickPrimaryIssue(report.latestValidation().issues());
+        if (primaryIssue == null || !isTotalSizeIssue(primaryIssue.code())) {
+            return null;
+        }
+
+        EvidenceFileReportResponse largestPdfFile = report.files().stream()
+                .filter(this::isPdfFile)
+                .filter(file -> file.fileId() != null)
+                .sorted((left, right) -> Long.compare(right.sizeBytes(), left.sizeBytes()))
+                .filter(file -> evidenceFileService.isManualPdfCompressionLikelyUseful(caseId, file.fileId()))
+                .findFirst()
+                .orElse(null);
+        if (largestPdfFile == null) {
+            return null;
+        }
+
+        long overflowBytes = Math.max(0L, totalUploadedBytes(report) - totalSizeLimitFor(report));
+        if (overflowBytes <= 0L) {
+            return null;
+        }
+
+        long targetBytes = suggestedManualPdfRescueTargetBytes(largestPdfFile, overflowBytes);
+        long estimatedSavings = Math.max(0L, largestPdfFile.sizeBytes() - targetBytes);
+        if (estimatedSavings < 96L * 1024L) {
+            return null;
+        }
+
+        long residualOverflow = Math.max(0L, overflowBytes - estimatedSavings);
+        String impactSummary = estimatedSavings >= overflowBytes
+                ? "This rebuilt PDF can clear the current overage by itself if the rendered copy stays readable."
+                : "This rebuilt PDF removes about " + formatBytesLabel(estimatedSavings)
+                        + ", which still leaves roughly " + formatBytesLabel(residualOverflow)
+                        + " over the current limit.";
+        return new ManualPdfRescueAction(
+                "Optional stronger PDF compression",
+                largestPdfFile.fileId(),
+                targetBytes,
+                fileLabel(largestPdfFile),
+                formatBytesLabel(largestPdfFile.sizeBytes()),
+                formatBytesLabel(targetBytes),
+                formatBytesLabel(estimatedSavings),
+                impactSummary,
+                "Use this only for image-heavy PDFs. Text-heavy PDFs should usually be replaced or page-trimmed instead."
+        );
     }
 
     private ValidationIssueResponse pickPrimaryIssue(List<ValidationIssueResponse> issues) {
@@ -1096,14 +1325,46 @@ public class WebCaseController {
     }
 
     private List<String> pagePriorityList(CaseReportResponse report) {
-        int totalPages = report.files().stream().mapToInt(EvidenceFileReportResponse::pageCount).sum();
-        int pageLimit = pageLimitFor(report);
-        int overflowPages = pageLimit > 0 ? Math.max(0, totalPages - pageLimit) : 0;
+        int totalPages = totalPagesFor(report);
+        int trimTarget = pageTrimTargetFor(report);
+        int overflowPages = trimTarget > 0 ? Math.max(0, totalPages - trimTarget) : 0;
         return report.files().stream()
                 .filter(file -> file.pageCount() > 0)
                 .sorted((left, right) -> Integer.compare(right.pageCount(), left.pageCount()))
                 .limit(3)
                 .map(file -> pagePriorityLabel(file, overflowPages))
+                .toList();
+    }
+
+    private List<String> pageManualTrimPlaybook(
+            CaseReportResponse report,
+            EvidenceFileReportResponse targetFile
+    ) {
+        if (targetFile == null) {
+            return pagePriorityList(report);
+        }
+
+        int totalPages = totalPagesFor(report);
+        int trimTarget = pageTrimTargetFor(report);
+        int overflowPages = trimTarget > 0 ? Math.max(0, totalPages - trimTarget) : 0;
+        if (overflowPages <= 0) {
+            return List.of(
+                    "The pack is already within the page limit. Re-run validation after your latest upload to confirm the current state."
+                );
+        }
+
+        List<String> actions = new ArrayList<>();
+        actions.add(primaryTrimAction(targetFile, overflowPages));
+
+        String otherFilesAction = keepOtherFilesAction(report, targetFile, overflowPages);
+        if (!otherFilesAction.isBlank()) {
+            actions.add(otherFilesAction);
+        }
+
+        actions.add("Re-upload the trimmed PDF, then run validation again before export so the new page count is recorded.");
+        return actions.stream()
+                .filter(action -> action != null && !action.isBlank())
+                .limit(3)
                 .toList();
     }
 
@@ -1145,6 +1406,41 @@ public class WebCaseController {
         return "still leaves " + formatBytesLabel(residual) + " over limit";
     }
 
+    private boolean isImageFile(EvidenceFileReportResponse file) {
+        return file != null && (file.fileFormat() == com.example.demo.dispute.domain.FileFormat.JPEG
+                || file.fileFormat() == com.example.demo.dispute.domain.FileFormat.PNG);
+    }
+
+    private boolean isPdfFile(EvidenceFileReportResponse file) {
+        return file != null && file.fileFormat() == com.example.demo.dispute.domain.FileFormat.PDF;
+    }
+
+    private long totalUploadedBytes(CaseReportResponse report) {
+        return report.files().stream().mapToLong(EvidenceFileReportResponse::sizeBytes).sum();
+    }
+
+    private long suggestedManualImageRescueTargetBytes(EvidenceFileReportResponse file, long overflowBytes) {
+        long desiredSavings = overflowBytes + (96L * 1024L);
+        long floor = 96L * 1024L;
+        long target = file.sizeBytes() - desiredSavings;
+        if (target < floor) {
+            return floor;
+        }
+        long quarterDropTarget = Math.max(floor, Math.round(file.sizeBytes() * 0.75d));
+        return Math.min(target, quarterDropTarget);
+    }
+
+    private long suggestedManualPdfRescueTargetBytes(EvidenceFileReportResponse file, long overflowBytes) {
+        long desiredSavings = overflowBytes + (128L * 1024L);
+        long floor = 256L * 1024L;
+        long target = file.sizeBytes() - desiredSavings;
+        if (target < floor) {
+            return floor;
+        }
+        long thirtyPercentDropTarget = Math.max(floor, Math.round(file.sizeBytes() * 0.70d));
+        return Math.min(target, thirtyPercentDropTarget);
+    }
+
     private String pageImpactHint(int filePages, int overflowPages) {
         if (overflowPages <= 0) {
             return "largest page-count impact";
@@ -1160,14 +1456,83 @@ public class WebCaseController {
         if (file == null) {
             return "";
         }
-        int totalPages = report.files().stream().mapToInt(EvidenceFileReportResponse::pageCount).sum();
-        int pageLimit = pageLimitFor(report);
-        int overflowPages = pageLimit > 0 ? Math.max(0, totalPages - pageLimit) : 0;
+        int totalPages = totalPagesFor(report);
+        int trimTarget = pageTrimTargetFor(report);
+        int overflowPages = trimTarget > 0 ? Math.max(0, totalPages - trimTarget) : 0;
         String trimHint = pageTrimListHint(file.pageCount(), overflowPages);
         if (!trimHint.isBlank()) {
             return trimHint + " because " + pageTrimReason(file) + ".";
         }
         return "Start by removing appendix, cover, or verbose event-log pages that are not needed for this dispute.";
+    }
+
+    private String primaryTrimAction(EvidenceFileReportResponse file, int overflowPages) {
+        String fileName = shortenFileName(file.originalName());
+        String trimHint = pageTrimListHint(file.pageCount(), overflowPages);
+        if (!trimHint.isBlank()) {
+            String keepAndTrim = trimHint.replaceFirst("^start with", "keep");
+            return "Trim " + fileName + " first: " + keepAndTrim + ". This one file is enough to clear the "
+                    + overflowPages + " page overage because " + pageTrimReason(file) + ".";
+        }
+        return "Shorten " + fileName + " first. It has the largest page count in the pack and is the safest file to reduce below the limit.";
+    }
+
+    private String keepOtherFilesAction(
+            CaseReportResponse report,
+            EvidenceFileReportResponse targetFile,
+            int overflowPages
+    ) {
+        List<EvidenceFileReportResponse> otherFiles = report.files().stream()
+                .filter(file -> file.fileId() != null && !file.fileId().equals(targetFile.fileId())
+                        || file.fileId() == null && file != targetFile)
+                .sorted((left, right) -> Integer.compare(left.pageCount(), right.pageCount()))
+                .limit(2)
+                .toList();
+        if (otherFiles.isEmpty()) {
+            return "";
+        }
+
+        String fileNames = otherFiles.stream()
+                .map(file -> shortenFileName(file.originalName()))
+                .distinct()
+                .reduce((left, right) -> left + " and " + right)
+                .orElse("");
+        if (fileNames.isBlank()) {
+            return "";
+        }
+
+        int otherPageCount = otherFiles.stream().mapToInt(EvidenceFileReportResponse::pageCount).sum();
+        if (otherPageCount <= 0) {
+            return "Leave the smaller supporting files alone for now. Trim the long PDF first, then revalidate.";
+        }
+
+        int residual = Math.max(0, overflowPages - otherPageCount);
+        if (residual == 0) {
+            return "If the long PDF still needs help after that first trim, " + fileNames
+                    + " are the next-smallest files to shorten.";
+        }
+
+        return "Leave " + fileNames + " alone for now. Even trimming them first would still leave "
+                + residual + " page(s) over the limit, so the long PDF is the only useful first cut.";
+    }
+
+    private String pageOverageSummary(CaseReportResponse report) {
+        int displayLimit = pageLimitFor(report);
+        int trimTarget = pageTrimTargetFor(report);
+        if (displayLimit <= 0 || trimTarget <= 0) {
+            return "This packet is over the allowed page limit.";
+        }
+        int totalPages = totalPagesFor(report);
+        int overflowPages = Math.max(0, totalPages - trimTarget);
+        if (overflowPages <= 0) {
+            return "This packet is already at the allowed page limit.";
+        }
+        if (trimTarget == displayLimit) {
+            return "Current pack is " + totalPages + " total page(s), which is " + overflowPages
+                    + " page(s) over the " + pageLimitLabel(report) + ".";
+        }
+        return "Current pack is " + totalPages + " total page(s), which needs " + overflowPages
+                + " page(s) removed to get under the " + pageLimitLabel(report) + ".";
     }
 
     private String pageTrimListHint(int filePages, int overflowPages) {
@@ -1220,6 +1585,29 @@ public class WebCaseController {
         };
     }
 
+    private int pageTrimTargetFor(CaseReportResponse report) {
+        if (report.productScope() == null) {
+            return 0;
+        }
+        return switch (report.productScope()) {
+            case STRIPE_DISPUTE -> report.cardNetwork() == CardNetwork.MASTERCARD ? 19 : 49;
+            case SHOPIFY_PAYMENTS_CHARGEBACK, SHOPIFY_CREDIT_DISPUTE -> 49;
+        };
+    }
+
+    private int totalPagesFor(CaseReportResponse report) {
+        return report.files().stream().mapToInt(EvidenceFileReportResponse::pageCount).sum();
+    }
+
+    private String pageLimitLabel(CaseReportResponse report) {
+        if (report.productScope() == ProductScope.STRIPE_DISPUTE) {
+            return report.cardNetwork() == CardNetwork.MASTERCARD
+                    ? "19-page Mastercard limit"
+                    : "50-page Stripe limit";
+        }
+        return "50-page PDF limit";
+    }
+
     private record DisplayStateSummary(String label, String badgeClass) {
     }
 
@@ -1230,7 +1618,34 @@ public class WebCaseController {
             String ctaLabel,
             String ctaTarget,
             boolean postAction,
+            String supportingTitle,
             List<String> supportingActions
+    ) {
+    }
+
+    public record ManualImageRescueAction(
+            String title,
+            UUID fileId,
+            long targetBytes,
+            String fileLabel,
+            String currentSizeLabel,
+            String targetSizeLabel,
+            String estimatedSavingsLabel,
+            String impactSummary,
+            String caution
+    ) {
+    }
+
+    public record ManualPdfRescueAction(
+            String title,
+            UUID fileId,
+            long targetBytes,
+            String fileLabel,
+            String currentSizeLabel,
+            String targetSizeLabel,
+            String estimatedSavingsLabel,
+            String impactSummary,
+            String caution
     ) {
     }
 

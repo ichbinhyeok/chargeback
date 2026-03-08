@@ -92,13 +92,16 @@ public class EvidenceSuggestionService {
         for (FilePreviewContext context : contexts) {
             PreviewSuggestion suggestion = suggestFromPdfText(context, missingRequired, missingRecommended);
             if (suggestion == null) {
+                suggestion = suggestFromStrongFileName(context.lowerName());
+            }
+            if (suggestion == null) {
                 suggestion = suggestFromImageOcrText(context, missingRequired, missingRecommended);
             }
             if (suggestion == null) {
                 suggestion = suggestFromImageMetadata(context, imageDimensionCounts, missingRequired, missingRecommended);
             }
             if (suggestion == null) {
-                suggestion = suggestFromFileName(context.lowerName(), missingRequired, missingRecommended);
+                suggestion = suggestFromGenericFileName(context.lowerName(), missingRequired, missingRecommended);
             }
             if (suggestion == null) {
                 suggestion = new PreviewSuggestion(
@@ -240,7 +243,9 @@ public class EvidenceSuggestionService {
         TextScore fulfillment = buildTextScore(EvidenceType.FULFILLMENT_DELIVERY, text, missingRequired, missingRecommended,
                 "tracking number", "tracking", "delivered", "delivery", "shipment", "carrier", "signed");
         TextScore policies = buildTextScore(EvidenceType.POLICIES, text, missingRequired, missingRecommended,
-                "terms of service", "refund policy", "return policy", "cancellation policy", "policy");
+                "terms of service", "refund policy", "return policy", "cancellation policy", "policy",
+                "terms and conditions", "all sales final", "non-refundable", "non refundable", "return window",
+                "delivery policy", "shipping policy", "returns", "no returns", "exchanges", "final sale");
         TextScore refund = buildTextScore(EvidenceType.REFUND_CANCELLATION, text, missingRequired, missingRecommended,
                 "refund", "refunded", "cancelled", "canceled", "credit issued", "voided", "reversed");
         TextScore customerDetails = buildTextScore(EvidenceType.CUSTOMER_DETAILS, text, missingRequired, missingRecommended,
@@ -254,6 +259,7 @@ public class EvidenceSuggestionService {
             int conversationBonus = conversationSignalBonus(text);
             communication = boostScore(communication, conversationBonus, "merchant", "replied", "where is my order");
         }
+        policies = boostScore(policies, policyContextBonus(text, fulfillment), "policy heading", "help center");
 
         TextScore best = bestTextScore(List.of(
                 orderReceipt,
@@ -282,6 +288,26 @@ public class EvidenceSuggestionService {
             bonus += 2;
         }
         if (matchesAny(normalizedText, "hi ", "hello", "where is my order", "nothing was received", "carrier trace", "promised follow-up")) {
+            bonus += 2;
+        }
+        return bonus;
+    }
+
+    private int policyContextBonus(String normalizedText, TextScore fulfillment) {
+        int bonus = 0;
+        if (matchesAny(normalizedText,
+                "policy",
+                "terms",
+                "conditions",
+                "delivery policy",
+                "shipping policy",
+                "help center",
+                "storefront")) {
+            bonus += 2;
+        }
+        if (fulfillment != null
+                && fulfillment.score() > 0
+                && matchesAny(normalizedText, "policy", "terms", "conditions", "returns", "exchanges", "final sale")) {
             bonus += 2;
         }
         return bonus;
@@ -321,29 +347,40 @@ public class EvidenceSuggestionService {
             List<EvidenceType> missingRequired,
             List<EvidenceType> missingRecommended
     ) {
-        if (missingRequired.contains(EvidenceType.CUSTOMER_COMMUNICATION)) {
-            return EvidenceType.CUSTOMER_COMMUNICATION;
+        List<EvidenceType> requiredCandidates = screenshotGapCandidates(missingRequired);
+        if (requiredCandidates.size() == 1) {
+            return requiredCandidates.getFirst();
         }
-        if (missingRecommended.contains(EvidenceType.CUSTOMER_COMMUNICATION)) {
-            return EvidenceType.CUSTOMER_COMMUNICATION;
+        if (!requiredCandidates.isEmpty()) {
+            return null;
         }
-        if (missingRequired.contains(EvidenceType.ORDER_RECEIPT)) {
-            return EvidenceType.ORDER_RECEIPT;
-        }
-        if (missingRequired.contains(EvidenceType.CUSTOMER_DETAILS)) {
-            return EvidenceType.CUSTOMER_DETAILS;
-        }
-        if (missingRecommended.contains(EvidenceType.ORDER_RECEIPT)) {
-            return EvidenceType.ORDER_RECEIPT;
+
+        List<EvidenceType> recommendedCandidates = screenshotGapCandidates(missingRecommended);
+        if (recommendedCandidates.size() == 1) {
+            return recommendedCandidates.getFirst();
         }
         return null;
     }
 
-    private PreviewSuggestion suggestFromFileName(
-            String lowerName,
-            List<EvidenceType> missingRequired,
-            List<EvidenceType> missingRecommended
-    ) {
+    private List<EvidenceType> screenshotGapCandidates(List<EvidenceType> gaps) {
+        List<EvidenceType> candidates = new ArrayList<>();
+        if (gaps == null || gaps.isEmpty()) {
+            return candidates;
+        }
+        for (EvidenceType type : List.of(
+                EvidenceType.CUSTOMER_COMMUNICATION,
+                EvidenceType.CUSTOMER_DETAILS,
+                EvidenceType.ORDER_RECEIPT,
+                EvidenceType.FULFILLMENT_DELIVERY
+        )) {
+            if (gaps.contains(type)) {
+                candidates.add(type);
+            }
+        }
+        return candidates;
+    }
+
+    private PreviewSuggestion suggestFromStrongFileName(String lowerName) {
         if (matchesAny(lowerName, "policy", "terms", "agreement", "contract", "conditions")) {
             return new PreviewSuggestion(EvidenceType.POLICIES, "Filename looks like policy or terms evidence.", "keyword");
         }
@@ -365,6 +402,14 @@ public class EvidenceSuggestionService {
         if (matchesAny(lowerName, "usage", "log", "access", "session", "device", "download", "ip", "activity", "digital")) {
             return new PreviewSuggestion(EvidenceType.DIGITAL_USAGE_LOGS, "Filename looks like digital usage or access logs.", "keyword");
         }
+        return null;
+    }
+
+    private PreviewSuggestion suggestFromGenericFileName(
+            String lowerName,
+            List<EvidenceType> missingRequired,
+            List<EvidenceType> missingRecommended
+    ) {
         if (GENERIC_SCREENSHOT_NAME.matcher(lowerName).matches()) {
             EvidenceType screenshotType = preferredScreenshotEvidenceType(missingRequired, missingRecommended);
             if (screenshotType != null) {

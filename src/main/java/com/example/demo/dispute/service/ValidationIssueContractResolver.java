@@ -34,18 +34,32 @@ public class ValidationIssueContractResolver {
         );
     }
 
-    public ValidationIssueResponse rehydrate(String code, String ruleId, IssueSeverity severity, String message) {
+    public ValidationIssueResponse rehydrate(
+            String code,
+            String ruleId,
+            IssueSeverity severity,
+            String message,
+            IssueTargetScope targetScope,
+            EvidenceType targetEvidenceType,
+            String targetFileId,
+            String targetGroupKey,
+            FixStrategy fixStrategy
+    ) {
         return build(
                 code,
                 ruleId,
                 severity,
                 message,
-                inferTargetScope(code),
-                null,
-                null,
-                null,
-                inferFixStrategy(code, severity)
+                normalizeTargetScope(code, targetScope),
+                targetEvidenceType,
+                targetFileId,
+                targetGroupKey,
+                normalizeFixStrategy(code, severity, fixStrategy)
         );
+    }
+
+    private IssueTargetScope normalizeTargetScope(String code, IssueTargetScope targetScope) {
+        return targetScope == null ? inferTargetScope(code) : targetScope;
     }
 
     private IssueTargetScope inferTargetScope(String code) {
@@ -79,6 +93,13 @@ public class ValidationIssueContractResolver {
             return FixStrategy.MANUAL;
         }
         return FixStrategy.NONE;
+    }
+
+    private FixStrategy normalizeFixStrategy(String code, IssueSeverity severity, FixStrategy fixStrategy) {
+        if (fixStrategy == null) {
+            return inferFixStrategy(code, severity);
+        }
+        return normalizeFixStrategy(fixStrategy, severity);
     }
 
     private FixStrategy normalizeFixStrategy(FixStrategy fixStrategy, IssueSeverity severity) {

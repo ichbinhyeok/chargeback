@@ -75,6 +75,11 @@ public class ValidationHistoryService {
         entity.setRuleId(issue.ruleId());
         entity.setSeverity(issue.severity());
         entity.setMessage(issue.message());
+        entity.setTargetScope(issue.targetScope());
+        entity.setTargetEvidenceType(issue.targetEvidenceType());
+        entity.setTargetFileId(issue.targetFileId());
+        entity.setTargetGroupKey(issue.targetGroupKey());
+        entity.setFixStrategy(issue.fixStrategy());
         return entity;
     }
 }

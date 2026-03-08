@@ -3,6 +3,9 @@
 @import com.example.demo.dispute.domain.EvidenceType
 @import com.example.demo.dispute.persistence.PaymentEntity
 @import com.example.demo.dispute.service.ReasonCodeChecklistService
+@import com.example.demo.dispute.service.TailTrimSuggestion
+@import com.example.demo.dispute.web.WebCaseController.ManualImageRescueAction
+@import com.example.demo.dispute.web.WebCaseController.ManualPdfRescueAction
 @import com.example.demo.dispute.web.WebCaseController.NextStepGuidance
 @param DisputeCase disputeCase
 @param CaseReportResponse report
@@ -15,6 +18,14 @@
 @param String displayCaseState
 @param String displayCaseStateBadgeClass
 @param NextStepGuidance nextStepGuidance
+@param TailTrimSuggestion tailTrimSuggestion
+@param ManualImageRescueAction manualImageRescueAction
+@param ManualPdfRescueAction manualPdfRescueAction
+@param boolean exportReady
+@param boolean minimumCoreEvidenceCoverageReached
+@param int minimumCoreEvidenceReadyCount
+@param int minimumCoreEvidenceTargetCount
+@param String checkoutPriceDisplay
 
 @template.layout(
     title = "Validate | " + report.caseToken(),
@@ -77,12 +88,26 @@
         </nav>
     </div>
 
+    @if(report.productScope().name().equals("STRIPE_DISPUTE"))
+        <div class="mb-8 p-4 rounded-xl border border-blue-200 bg-blue-50 text-blue-950">
+            <div class="font-semibold mb-1">Stripe evidence size note</div>
+            <p class="text-sm leading-6">
+                Some Stripe File Upload API references mention 5MB uploads, but dispute evidence guidance is stricter at a 4.5MB combined pack limit.
+                This validation flow uses the safer 4.5MB rule so a pack marked ready here is less likely to fail in the dispute dashboard.
+            </p>
+        </div>
+    @endif
+
     @if(report.productScope().name().equals("SHOPIFY_PAYMENTS_CHARGEBACK"))
         <div class="mb-8 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-950">
             <div class="font-semibold mb-1">Shopify Payments PDF/A note</div>
             <p class="text-sm leading-6">
                 PDF/A status is checked automatically and may differ from Shopify's uploader in edge cases.
                 If Shopify still says "PDF/A required" after this tool passes, re-export the original document as PDF/A from your scanner or editor and upload that file again.
+            </p>
+            <p class="mt-2 text-sm leading-6">
+                One Shopify PDF can also fail on portfolio structure or hidden external links at the same time.
+                Auto-fix may clear multiple PDF blockers in one pass before you revalidate.
             </p>
         </div>
     @endif
@@ -148,7 +173,9 @@
                             <p class="mt-2 text-sm leading-6 text-sky-900">${nextStepGuidance.description()}</p>
                             @if(!nextStepGuidance.supportingActions().isEmpty())
                                 <div class="mt-4">
-                                    <div class="text-xs font-semibold uppercase tracking-wide text-sky-700">Priority order</div>
+                                    <div class="text-xs font-semibold uppercase tracking-wide text-sky-700">
+                                        ${nextStepGuidance.supportingTitle() != null && !nextStepGuidance.supportingTitle().isBlank() ? nextStepGuidance.supportingTitle() : "Priority order"}
+                                    </div>
                                     <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm text-sky-900">
                                         @for(String action : nextStepGuidance.supportingActions())
                                             <li>${action}</li>
@@ -164,6 +191,97 @@
                         @else
                             <a href="${nextStepGuidance.ctaTarget()}" class="cb-btn cb-btn-primary shrink-0 shadow-sm">${nextStepGuidance.ctaLabel()}</a>
                         @endif
+                    </div>
+                </div>
+            @endif
+
+            @if(manualImageRescueAction != null)
+                <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-950">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Optional rescue action</div>
+                    <h3 class="mt-1 text-lg font-bold text-emerald-950">${manualImageRescueAction.title()}</h3>
+                    <p class="mt-2 text-sm leading-6 text-emerald-900">
+                        <strong>${manualImageRescueAction.fileLabel()}</strong>
+                    </p>
+                    <p class="mt-2 text-sm leading-6 text-emerald-900">
+                        Current size: <strong>${manualImageRescueAction.currentSizeLabel()}</strong>
+                        · Suggested stronger-compression target: <strong>${manualImageRescueAction.targetSizeLabel()}</strong>
+                        · Estimated savings: <strong>${manualImageRescueAction.estimatedSavingsLabel()}</strong>
+                    </p>
+                    <p class="mt-2 text-sm leading-6 text-emerald-900">${manualImageRescueAction.impactSummary()}</p>
+                    <p class="mt-2 text-sm leading-6 text-emerald-900">${manualImageRescueAction.caution()}</p>
+                    <form method="post" action="/c/${report.caseToken()}/compress-image" class="mt-4">
+                        <input type="hidden" name="fileId" value="${manualImageRescueAction.fileId().toString()}">
+                        <input type="hidden" name="targetBytes" value="${manualImageRescueAction.targetBytes()}">
+                        <button type="submit" class="cb-btn cb-btn-primary shadow-sm">Apply Stronger Compression</button>
+                    </form>
+                </div>
+            @endif
+
+            @if(manualPdfRescueAction != null)
+                <div class="mb-6 rounded-xl border border-cyan-200 bg-cyan-50 p-5 text-cyan-950">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-cyan-700">Optional rescue action</div>
+                    <h3 class="mt-1 text-lg font-bold text-cyan-950">${manualPdfRescueAction.title()}</h3>
+                    <p class="mt-2 text-sm leading-6 text-cyan-900">
+                        <strong>${manualPdfRescueAction.fileLabel()}</strong>
+                    </p>
+                    <p class="mt-2 text-sm leading-6 text-cyan-900">
+                        Current size: <strong>${manualPdfRescueAction.currentSizeLabel()}</strong>
+                        / Suggested stronger-compression target: <strong>${manualPdfRescueAction.targetSizeLabel()}</strong>
+                        / Estimated savings: <strong>${manualPdfRescueAction.estimatedSavingsLabel()}</strong>
+                    </p>
+                    <p class="mt-2 text-sm leading-6 text-cyan-900">${manualPdfRescueAction.impactSummary()}</p>
+                    <p class="mt-2 text-sm leading-6 text-cyan-900">${manualPdfRescueAction.caution()}</p>
+                    <form method="post" action="/c/${report.caseToken()}/compress-pdf" class="mt-4">
+                        <input type="hidden" name="fileId" value="${manualPdfRescueAction.fileId().toString()}">
+                        <input type="hidden" name="targetBytes" value="${manualPdfRescueAction.targetBytes()}">
+                        <button type="submit" class="cb-btn cb-btn-primary shadow-sm">Apply Stronger PDF Compression</button>
+                    </form>
+                </div>
+            @endif
+
+            @if(tailTrimSuggestion != null)
+                <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-amber-700">Optional review</div>
+                    <h3 class="mt-1 text-lg font-bold text-amber-950">${tailTrimSuggestion.title()}</h3>
+                    <p class="mt-2 text-sm leading-6 text-amber-900">
+                        <strong>${tailTrimSuggestion.fileLabel()} · ${tailTrimSuggestion.pageRange()}</strong>
+                    </p>
+                    <p class="mt-2 text-sm leading-6 text-amber-900">${tailTrimSuggestion.reason()}</p>
+                    <p class="mt-2 text-sm leading-6 text-amber-900">${tailTrimSuggestion.signalSummary()}</p>
+                    <p class="mt-2 text-sm leading-6 text-amber-900">${tailTrimSuggestion.caution()}</p>
+                    <form method="post" action="/c/${report.caseToken()}/trim-tail" class="mt-4">
+                        <input type="hidden" name="fileId" value="${tailTrimSuggestion.fileId().toString()}">
+                        <input type="hidden" name="trimStartPage" value="${tailTrimSuggestion.trimStartPage()}">
+                        <input type="hidden" name="trimEndPage" value="${tailTrimSuggestion.trimEndPage()}">
+                        <button type="submit" class="cb-btn cb-btn-primary shadow-sm">Apply Approved Trim</button>
+                    </form>
+                </div>
+            @endif
+
+            @if(!isPaid)
+                <div class="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-5 text-slate-950">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-slate-700">What unlocks after this</div>
+                    <div class="mt-4 grid gap-4 md:grid-cols-2 text-sm">
+                        <div class="rounded-lg border border-slate-200 bg-white p-4">
+                            <div class="font-semibold text-slate-900">Free watermarked summary guide</div>
+                            @if(exportReady && minimumCoreEvidenceCoverageReached)
+                                <p class="mt-2 text-green-800">Available now. You already cleared the free summary threshold.</p>
+                            @elseif(exportReady && minimumCoreEvidenceTargetCount > 0)
+                                <p class="mt-2 text-amber-900">
+                                    Still locked for thin evidence.
+                                    Current core coverage: <strong>${minimumCoreEvidenceReadyCount} / ${minimumCoreEvidenceTargetCount}</strong>.
+                                </p>
+                            @else
+                                <p class="mt-2 text-slate-700">Unlocks after the remaining blockers are cleared and the case reaches export-ready state.</p>
+                            @endif
+                        </div>
+                        <div class="rounded-lg border border-slate-200 bg-white p-4">
+                            <div class="font-semibold text-slate-900">Paid final pack</div>
+                            <p class="mt-2 text-slate-700">
+                                After the case is export-ready, unlock the final ZIP, guide PDF without watermark, and explanation draft for
+                                <strong>${checkoutPriceDisplay}</strong>.
+                            </p>
+                        </div>
                     </div>
                 </div>
             @endif

@@ -17,6 +17,17 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, UUID> {
     @Query("select p from PaymentEntity p where p.checkoutSessionId = :checkoutSessionId")
     Optional<PaymentEntity> findByCheckoutSessionIdForUpdate(@Param("checkoutSessionId") String checkoutSessionId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select p
+            from PaymentEntity p
+            where p.id = :paymentId and p.provider = :provider
+            """)
+    Optional<PaymentEntity> findByIdAndProviderForUpdate(
+            @Param("paymentId") UUID paymentId,
+            @Param("provider") String provider
+    );
+
     Optional<PaymentEntity> findFirstByDisputeCaseIdOrderByCreatedAtDesc(UUID caseId);
 
     Optional<PaymentEntity> findFirstByDisputeCaseIdAndProviderOrderByCreatedAtDesc(UUID caseId, String provider);

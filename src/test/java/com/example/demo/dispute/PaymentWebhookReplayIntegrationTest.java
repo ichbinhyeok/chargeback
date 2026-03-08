@@ -2,6 +2,7 @@ package com.example.demo.dispute;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.example.demo.dispute.api.CreateCaseRequest;
 import com.example.demo.dispute.domain.CaseState;
@@ -17,6 +18,7 @@ import com.example.demo.dispute.service.CaseService;
 import com.example.demo.dispute.service.PaymentService;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
@@ -118,7 +120,7 @@ class PaymentWebhookReplayIntegrationTest {
         DisputeCase disputeCase = createReadyCase("lemon_webhook_replay");
         try {
             PaymentEntity payment = createPayment(disputeCase, "lemonsqueezy", "lemon_checkout_replay_01");
-            String payload = lemonPayload(disputeCase.getCaseToken(), "order_12345", "merchant@example.com");
+            String payload = lemonPayload(disputeCase.getCaseToken(), payment.getId(), "order_12345", "merchant@example.com");
             String signature = hmacSha256Hex("lemon_replay_test", payload);
 
             paymentService.processLemonWebhook(payload, signature);
@@ -140,6 +142,31 @@ class PaymentWebhookReplayIntegrationTest {
                     1L,
                     auditLogRepository.countByDisputeCaseIdAndAction(disputeCase.getId(), "PAYMENT_COMPLETED")
             );
+        } finally {
+            caseService.deleteCase(disputeCase.getId());
+        }
+    }
+
+    @Test
+    void lemonWebhookPrefersExplicitPaymentIdOverLatestPaymentRow() throws Exception {
+        DisputeCase disputeCase = createReadyCase("lemon_payment_id_match");
+        try {
+            PaymentEntity olderPayment = createPayment(disputeCase, "lemonsqueezy", "lemon_checkout_old_01");
+            Thread.sleep(5L);
+            PaymentEntity newerPayment = createPayment(disputeCase, "lemonsqueezy", "lemon_checkout_new_01");
+
+            String payload = lemonPayload(disputeCase.getCaseToken(), olderPayment.getId(), "order_98765", "merchant@example.com");
+            String signature = hmacSha256Hex("lemon_replay_test", payload);
+
+            paymentService.processLemonWebhook(payload, signature);
+
+            PaymentEntity savedOlder = paymentRepository.findById(olderPayment.getId()).orElseThrow();
+            PaymentEntity savedNewer = paymentRepository.findById(newerPayment.getId()).orElseThrow();
+
+            assertEquals(PaymentStatus.PAID, savedOlder.getStatus());
+            assertEquals("order_98765", savedOlder.getPaymentIntentId());
+            assertEquals(PaymentStatus.CREATED, savedNewer.getStatus());
+            assertNull(savedNewer.getPaymentIntentId());
         } finally {
             caseService.deleteCase(disputeCase.getId());
         }
@@ -193,12 +220,18 @@ class PaymentWebhookReplayIntegrationTest {
         return "t=" + timestamp + ",v1=" + digest;
     }
 
-    private String lemonPayload(String caseToken, String orderId, String email) {
+    private String lemonPayload(String caseToken, UUID paymentId, String orderId, String email) {
+        String paymentIdLine = paymentId == null
+                ? ""
+                : """
+                        "payment_id": "%s",
+                """.formatted(paymentId);
         return """
                 {
                   "meta": {
                     "event_name": "order_created",
                     "custom_data": {
+                      %s
                       "case_token": "%s"
                     }
                   },
@@ -209,7 +242,7 @@ class PaymentWebhookReplayIntegrationTest {
                     }
                   }
                 }
-                """.formatted(caseToken, orderId, email);
+                """.formatted(paymentIdLine, caseToken, orderId, email);
     }
 
     private String hmacSha256Hex(String secret, String payload) throws Exception {

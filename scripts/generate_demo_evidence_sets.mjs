@@ -283,6 +283,36 @@ const scenarios = [
     transactionId: "pi_demo_edge_7208",
     ...baseScenarios.harborCredit,
   },
+  {
+    id: "stripe_fraud_digital_logs_mix",
+    title: "Stripe fraud digital logs mix",
+    messyInputs: "Phone screenshots, one admin session-log capture, and mixed merchant-facing proof.",
+    whyServiceMatters: "Expands testing beyond INR so digital-usage evidence is exercised on a reason-specific Stripe flow.",
+    docs: ["receipt_email_png", "customer_profile_png", "digital_session_screenshot_png", "chat_screenshot_png", "policy_screenshot_png"],
+    orderId: "SFL-MIX-8101",
+    transactionId: "pi_demo_mix_8101",
+    ...baseScenarios.signalFraud,
+  },
+  {
+    id: "shopify_unacceptable_policy_refund_mix",
+    title: "Shopify unacceptable policy refund mix",
+    messyInputs: "Messy screenshots, help-center capture, refund email, and one delivery photo in the same pack.",
+    whyServiceMatters: "Covers Shopify product-unacceptable disputes where merchants need policy, communication, and refund context together.",
+    docs: ["receipt_email_png", "chat_screenshot_png", "policy_screenshot_png", "refund_email_png", "delivery_photo_jpg"],
+    orderId: "SHL-MIX-8202",
+    transactionId: "shop_demo_mix_8202",
+    ...baseScenarios.softHarborUnacceptable,
+  },
+  {
+    id: "edge_bad_ocr_manual_mapping",
+    title: "Edge case bad OCR manual mapping",
+    messyInputs: "Generic IMG filenames, blur, low contrast, and screenshot captures that should weaken OCR confidence.",
+    whyServiceMatters: "Tests whether the mapping flow still feels usable when both filenames and OCR are weak.",
+    docs: ["bad_ocr_receipt_photo_jpg", "bad_ocr_chat_capture_png", "bad_ocr_policy_capture_png"],
+    orderId: "SHL-EDGE-8303",
+    transactionId: "shop_demo_edge_8303",
+    ...baseScenarios.softHarborUnacceptable,
+  },
 ];
 
 const artifactTemplates = {
@@ -330,6 +360,28 @@ const artifactTemplates = {
     ["Customer", s.customer],
     ["Amount", s.amount],
   ], [{ heading: "Usage highlights", bullets: s.digitalBullets }]),
+  digital_session_screenshot_png: (s) => phoneArtifact("device_activity_capture.png", "DIGITAL_USAGE_LOGS", "Session activity capture", "Admin screenshot", {
+    appName: "Risk Console",
+    headerTag: "Sessions",
+    cards: [
+      {
+        heading: "Session overview",
+        rows: [
+          ["Customer", s.customer],
+          ["Reference", `${s.orderId}-DIGI`],
+          ["Primary device", "Desktop Chrome on macOS"],
+        ],
+      },
+      {
+        heading: "Recent activity",
+        bullets: s.digitalBullets,
+      },
+      {
+        heading: "Signals",
+        paragraphs: ["IP address 203.0.113.42", "Session token refreshed after payment succeeded."],
+      },
+    ],
+  }),
   timeline_pdf: (s) => pdfArtifact("timeline_summary.pdf", "OTHER_SUPPORTING", "Timeline summary", "Synthetic demo document", [
     ["Case", s.title],
     ["Order ID", s.orderId],
@@ -520,6 +572,54 @@ const artifactTemplates = {
     quality: 90,
     deskColor: [191, 196, 203],
     rotation: -0.7,
+  }),
+  bad_ocr_receipt_photo_jpg: (s) => photoArtifact("IMG_2201.JPG", "ORDER_RECEIPT", "Receipt photo", "Blurry phone capture from camera roll", [
+    ["Merchant", s.merchant],
+    ["Order ID", s.orderId],
+    ["Amount", s.amount],
+  ], [{
+    heading: "Observed details",
+    bullets: [
+      "Low-contrast photo captured quickly under uneven light.",
+      `Transaction reference ${s.transactionId}`,
+      "Receipt text is intentionally harder for OCR to read.",
+    ],
+  }], {
+    quality: 87,
+    deskColor: [183, 176, 165],
+    rotation: 4.8,
+    blur: 2,
+    contrast: -0.42,
+    brightness: 0.06,
+  }),
+  bad_ocr_chat_capture_png: (s) => phoneArtifact("IMG_2202.PNG", "CUSTOMER_COMMUNICATION", "Support thread capture", "Low-contrast screenshot export", {
+    appName: "Gallery",
+    headerTag: "IMG_2202",
+    blur: 2,
+    contrast: -0.48,
+    brightness: 0.08,
+    messages: [
+      { side: "left", text: s.communicationBullets[0] },
+      { side: "right", text: s.communicationBullets[1] },
+      { side: "left", text: s.communicationBullets[2] },
+    ],
+  }),
+  bad_ocr_policy_capture_png: (s) => phoneArtifact("IMG_2203.PNG", "POLICIES", "Policy capture", "Washed-out help center screenshot", {
+    appName: "Browser",
+    headerTag: "IMG_2203",
+    blur: 1,
+    contrast: -0.45,
+    brightness: 0.1,
+    cards: [
+      {
+        heading: "Return and quality policy",
+        paragraphs: s.policyParagraphs,
+      },
+      {
+        heading: "Store note",
+        paragraphs: ["Synthetic help-center capture with weak contrast and partial blur for OCR testing."],
+      },
+    ],
   }),
   generic_receipt_capture: (s) => phoneArtifact("document_01.png", "ORDER_RECEIPT", "Receipt capture", "Generic export filename", {
     appName: "Files",
@@ -737,6 +837,7 @@ async function buildArtifact(scenario, spec) {
   const image = spec.layout === "photo"
     ? await buildPhotoCapture(scenario, spec)
     : await buildPhoneCapture(scenario, spec);
+  applyImageAdjustments(image, spec);
 
   if (spec.kind === "jpeg") {
     return {
@@ -748,6 +849,21 @@ async function buildArtifact(scenario, spec) {
     bytes: await image.getBuffer(JimpMime.png),
     format: "PNG",
   };
+}
+
+function applyImageAdjustments(image, spec) {
+  if (spec.blur) {
+    image.blur(spec.blur);
+  }
+  if (typeof spec.contrast === "number") {
+    image.contrast(spec.contrast);
+  }
+  if (typeof spec.brightness === "number") {
+    image.brightness(spec.brightness);
+  }
+  if (spec.greyscale) {
+    image.greyscale();
+  }
 }
 
 async function buildPhoneCapture(scenario, spec) {
@@ -818,17 +934,19 @@ async function buildPhotoCapture(scenario, spec) {
 
   y += 12;
   for (const section of spec.sections ?? []) {
+    const bullets = (section.bullets ?? []).filter(Boolean);
+    const paragraphs = (section.paragraphs ?? []).filter(Boolean);
     page.print({ font: fonts.small, x: 52, y, text: section.heading, maxWidth: pageWidth - 104 });
     y += 34;
-    if (section.bullets) {
-      for (const bullet of section.bullets) {
+    if (bullets.length > 0) {
+      for (const bullet of bullets) {
         const bulletHeight = measureTextHeight(fonts.body, bullet, pageWidth - 150);
         page.print({ font: fonts.body, x: 80, y, text: `- ${bullet}`, maxWidth: pageWidth - 132 });
         y += bulletHeight + 14;
       }
     }
-    if (section.paragraphs) {
-      for (const paragraph of section.paragraphs) {
+    if (paragraphs.length > 0) {
+      for (const paragraph of paragraphs) {
         const paragraphHeight = measureTextHeight(fonts.body, paragraph, pageWidth - 104);
         page.print({ font: fonts.body, x: 52, y, text: paragraph, maxWidth: pageWidth - 104 });
         y += paragraphHeight + 14;
@@ -862,15 +980,18 @@ async function buildPhotoCapture(scenario, spec) {
 
 function drawInfoCard(image, card, x, y, width) {
   const bodyWidth = width - 48;
+  const rows = card.rows ?? [];
+  const bullets = (card.bullets ?? []).filter(Boolean);
+  const paragraphs = (card.paragraphs ?? []).filter(Boolean);
   let contentHeight = 32;
 
-  for (const row of card.rows ?? []) {
+  for (const row of rows) {
     contentHeight += 18 + measureTextHeight(fonts.body, String(row[1]), bodyWidth) + 26;
   }
-  for (const bullet of card.bullets ?? []) {
+  for (const bullet of bullets) {
     contentHeight += measureTextHeight(fonts.body, bullet, bodyWidth - 24) + 18;
   }
-  for (const paragraph of card.paragraphs ?? []) {
+  for (const paragraph of paragraphs) {
     contentHeight += measureTextHeight(fonts.body, paragraph, bodyWidth) + 18;
   }
 
@@ -880,18 +1001,18 @@ function drawInfoCard(image, card, x, y, width) {
   image.print({ font: fonts.small, x: x + 24, y: y + 20, text: card.heading, maxWidth: width - 48 });
 
   let cursorY = y + 56;
-  for (const row of card.rows ?? []) {
+  for (const row of rows) {
     image.print({ font: fonts.tiny, x: x + 24, y: cursorY, text: row[0], maxWidth: 220 });
     cursorY += 18;
     image.print({ font: fonts.body, x: x + 24, y: cursorY, text: String(row[1]), maxWidth: bodyWidth });
     cursorY += measureTextHeight(fonts.body, String(row[1]), bodyWidth) + 22;
     fillRect(image, x + 24, cursorY - 10, width - 48, 1, [235, 239, 244]);
   }
-  for (const bullet of card.bullets ?? []) {
+  for (const bullet of bullets) {
     image.print({ font: fonts.body, x: x + 24, y: cursorY, text: `- ${bullet}`, maxWidth: bodyWidth });
     cursorY += measureTextHeight(fonts.body, bullet, bodyWidth - 24) + 18;
   }
-  for (const paragraph of card.paragraphs ?? []) {
+  for (const paragraph of paragraphs) {
     image.print({ font: fonts.body, x: x + 24, y: cursorY, text: paragraph, maxWidth: bodyWidth });
     cursorY += measureTextHeight(fonts.body, paragraph, bodyWidth) + 18;
   }

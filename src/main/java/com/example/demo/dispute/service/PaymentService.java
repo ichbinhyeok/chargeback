@@ -140,6 +140,9 @@ public class PaymentService {
         String requiredEvidenceSnapshot = serializeRequiredEvidence(policy.requiredEvidenceTypes());
         String provider = activeProvider();
         assertCheckoutConfigured(provider);
+        if (LEMON_PROVIDER.equals(provider)) {
+            return startLemonCheckout(disputeCase, policy.policyVersion(), requiredEvidenceSnapshot);
+        }
         CheckoutSession session = createCheckoutSession(disputeCase, provider);
         Optional<PaymentEntity> existing = paymentRepository.findByCheckoutSessionId(session.id());
         if (existing.isPresent()) {
@@ -311,6 +314,7 @@ public class PaymentService {
         if (caseToken == null || caseToken.isBlank()) {
             return;
         }
+        UUID paymentId = parseUuid(event.path("meta").path("custom_data").path("payment_id").asText(null));
 
         DisputeCase disputeCase;
         try {
@@ -325,10 +329,7 @@ public class PaymentService {
                 event.path("data").path("attributes").path("customer_email").asText(null)
         );
 
-        Optional<PaymentEntity> payment = paymentRepository
-                .findLockedByDisputeCaseIdAndProviderOrderByCreatedAtDesc(disputeCase.getId(), LEMON_PROVIDER)
-                .stream()
-                .findFirst();
+        Optional<PaymentEntity> payment = findLemonPaymentForWebhook(disputeCase.getId(), paymentId);
         if (payment.isEmpty()) {
             return;
         }
@@ -397,9 +398,41 @@ public class PaymentService {
         return null;
     }
 
+    private CheckoutStartResult startLemonCheckout(
+            DisputeCase disputeCase,
+            String policyVersion,
+            String requiredEvidenceSnapshot
+    ) {
+        PaymentEntity payment = new PaymentEntity();
+        payment.setDisputeCase(disputeCase);
+        payment.setProvider(LEMON_PROVIDER);
+        payment.setCheckoutSessionId(null);
+        payment.setPaymentIntentId(null);
+        payment.setStatus(PaymentStatus.CREATED);
+        payment.setAmountCents(amountCents);
+        payment.setCurrency(currency);
+        payment.setCustomerEmail(null);
+        payment.setPolicyVersion(policyVersion);
+        payment.setRequiredEvidenceSnapshot(requiredEvidenceSnapshot);
+        PaymentEntity savedPayment = paymentRepository.save(payment);
+
+        CheckoutSession session = createLemonCheckoutSession(disputeCase, savedPayment.getId());
+        savedPayment.setCheckoutSessionId(session.id());
+        paymentRepository.save(savedPayment);
+
+        auditLogService.log(
+                disputeCase,
+                "SYSTEM",
+                "CHECKOUT_SESSION_CREATED",
+                "provider=" + LEMON_PROVIDER + ",sessionId=" + session.id()
+        );
+
+        return new CheckoutStartResult(session.url(), false);
+    }
+
     private CheckoutSession createCheckoutSession(DisputeCase disputeCase, String provider) {
         if (LEMON_PROVIDER.equals(provider)) {
-            return createLemonCheckoutSession(disputeCase);
+            return createLemonCheckoutSession(disputeCase, null);
         }
         return createStripeCheckoutSession(disputeCase);
     }
@@ -442,15 +475,13 @@ public class PaymentService {
         return new CheckoutSession(sessionId, url);
     }
 
-    private CheckoutSession createLemonCheckoutSession(DisputeCase disputeCase) {
+    private CheckoutSession createLemonCheckoutSession(DisputeCase disputeCase, UUID paymentId) {
         Map<String, Object> payload = Map.of(
                 "data", Map.of(
                         "type", "checkouts",
                         "attributes", Map.of(
                                 "checkout_data", Map.of(
-                                        "custom", Map.of(
-                                                "case_token", disputeCase.getCaseToken()
-                                        )
+                                        "custom", lemonCustomData(disputeCase, paymentId)
                                 ),
                                 "product_options", Map.of(
                                         "redirect_url", interpolateCaseToken(successUrlTemplate, disputeCase.getCaseToken())
@@ -495,12 +526,34 @@ public class PaymentService {
         return new CheckoutSession(checkoutId, url);
     }
 
+    private Map<String, Object> lemonCustomData(DisputeCase disputeCase, UUID paymentId) {
+        if (paymentId == null) {
+            return Map.of("case_token", disputeCase.getCaseToken());
+        }
+        return Map.of(
+                "case_token", disputeCase.getCaseToken(),
+                "payment_id", paymentId.toString()
+        );
+    }
+
     private String interpolateCaseToken(String template, String caseToken) {
         return template.replace("{caseToken}", caseToken);
     }
 
     private String valueAsString(Object value) {
         return value == null ? null : value.toString();
+    }
+
+    private Optional<PaymentEntity> findLemonPaymentForWebhook(UUID caseId, UUID paymentId) {
+        if (paymentId != null) {
+            Optional<PaymentEntity> payment = paymentRepository.findByIdAndProviderForUpdate(paymentId, LEMON_PROVIDER);
+            if (payment.isPresent() && payment.get().getDisputeCase().getId().equals(caseId)) {
+                return payment;
+            }
+        }
+        return paymentRepository.findLockedByDisputeCaseIdAndProviderOrderByCreatedAtDesc(caseId, LEMON_PROVIDER)
+                .stream()
+                .findFirst();
     }
 
     private void backfillSnapshotIfMissing(
@@ -554,6 +607,17 @@ public class PaymentService {
 
     private boolean supportsCheckout(CaseState state) {
         return state == CaseState.READY || state == CaseState.PAID || state == CaseState.DOWNLOADED;
+    }
+
+    private UUID parseUuid(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(raw);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     private boolean isDuplicateWebhookEvent(String provider, String eventType, String eventId) {

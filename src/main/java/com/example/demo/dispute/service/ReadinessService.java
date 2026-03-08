@@ -96,6 +96,50 @@ public class ReadinessService {
         );
     }
 
+    public int minimumCoreEvidenceTargetCount(CaseReportResponse report) {
+        PolicyCatalogService.ResolvedPolicy policy = resolvePolicy(report);
+        if (policy == null
+                || policy.canonicalReasonKey() == null
+                || policy.canonicalReasonKey().isBlank()
+                || policy.requiredEvidenceTypes() == null
+                || policy.requiredEvidenceTypes().size() < 3) {
+            return 0;
+        }
+        return 2;
+    }
+
+    public int coreRequiredEvidenceReadyCount(CaseReportResponse report) {
+        PolicyCatalogService.ResolvedPolicy policy = resolvePolicy(report);
+        if (policy == null || policy.requiredEvidenceTypes() == null || policy.requiredEvidenceTypes().isEmpty()) {
+            return 0;
+        }
+
+        EnumSet<EvidenceType> presentTypes = EnumSet.noneOf(EvidenceType.class);
+        report.files().forEach(file -> presentTypes.add(file.evidenceType()));
+
+        return (int) policy.requiredEvidenceTypes().stream()
+                .distinct()
+                .filter(presentTypes::contains)
+                .count();
+    }
+
+    public boolean hasMinimumCoreEvidenceCoverage(CaseReportResponse report) {
+        int targetCount = minimumCoreEvidenceTargetCount(report);
+        if (targetCount <= 0) {
+            return true;
+        }
+        return coreRequiredEvidenceReadyCount(report) >= targetCount;
+    }
+
+    private PolicyCatalogService.ResolvedPolicy resolvePolicy(CaseReportResponse report) {
+        return policyCatalogService.resolve(
+                report.platform(),
+                report.productScope(),
+                report.reasonCode(),
+                report.cardNetwork()
+        );
+    }
+
     public record ReadinessSummary(
             int score,
             String label,

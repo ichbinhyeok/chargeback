@@ -1,5 +1,8 @@
 package com.example.demo.dispute.persistence;
 
+import com.example.demo.dispute.domain.EvidenceType;
+import com.example.demo.dispute.domain.FixStrategy;
+import com.example.demo.dispute.domain.IssueTargetScope;
 import com.example.demo.dispute.domain.IssueSeverity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -36,6 +39,24 @@ public class ValidationIssueEntity {
 
     @Column(name = "message", nullable = false, length = 2000)
     private String message;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_scope")
+    private IssueTargetScope targetScope;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_evidence_type")
+    private EvidenceType targetEvidenceType;
+
+    @Column(name = "target_file_id", length = 64)
+    private String targetFileId;
+
+    @Column(name = "target_group_key", length = 128)
+    private String targetGroupKey;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fix_strategy")
+    private FixStrategy fixStrategy;
 
     @PrePersist
     void prePersist() {
@@ -90,6 +111,46 @@ public class ValidationIssueEntity {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public IssueTargetScope getTargetScope() {
+        return targetScope;
+    }
+
+    public void setTargetScope(IssueTargetScope targetScope) {
+        this.targetScope = targetScope;
+    }
+
+    public EvidenceType getTargetEvidenceType() {
+        return targetEvidenceType;
+    }
+
+    public void setTargetEvidenceType(EvidenceType targetEvidenceType) {
+        this.targetEvidenceType = targetEvidenceType;
+    }
+
+    public String getTargetFileId() {
+        return targetFileId;
+    }
+
+    public void setTargetFileId(String targetFileId) {
+        this.targetFileId = targetFileId;
+    }
+
+    public String getTargetGroupKey() {
+        return targetGroupKey;
+    }
+
+    public void setTargetGroupKey(String targetGroupKey) {
+        this.targetGroupKey = targetGroupKey;
+    }
+
+    public FixStrategy getFixStrategy() {
+        return fixStrategy;
+    }
+
+    public void setFixStrategy(FixStrategy fixStrategy) {
+        this.fixStrategy = fixStrategy;
     }
 }
 

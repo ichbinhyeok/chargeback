@@ -20,6 +20,7 @@ public class PdfMetadataExtractor {
     private static final Pattern PAGE_PATTERN = Pattern.compile("/Type\\s*/Page\\b");
     private static final Pattern EXTERNAL_LINK_PATTERN = Pattern.compile("/URI\\s*\\(");
     private static final Pattern PORTFOLIO_PATTERN = Pattern.compile("/Collection\\b");
+    private static final Pattern PDF_HEADER_PATTERN = Pattern.compile("^%PDF-", Pattern.MULTILINE);
     private final PdfAComplianceService pdfAComplianceService;
 
     public PdfMetadataExtractor(PdfAComplianceService pdfAComplianceService) {
@@ -54,6 +55,7 @@ public class PdfMetadataExtractor {
         try {
             byte[] raw = Files.readAllBytes(path);
             String content = new String(raw, StandardCharsets.ISO_8859_1);
+            ensureLikelyPdf(content);
 
             int pageCount = countPages(content);
             boolean externalLinkDetected = EXTERNAL_LINK_PATTERN.matcher(content).find();
@@ -71,7 +73,10 @@ public class PdfMetadataExtractor {
         while (matcher.find()) {
             count++;
         }
-        return Math.max(count, 1);
+        if (count <= 0) {
+            throw new IllegalArgumentException("failed to read pdf metadata: unreadable pdf content");
+        }
+        return count;
     }
 
     private boolean hasExternalLink(PDDocument document) throws IOException {
@@ -95,5 +100,16 @@ public class PdfMetadataExtractor {
     private boolean isPortfolio(PDDocument document) {
         PDDocumentCatalog catalog = document.getDocumentCatalog();
         return catalog != null && catalog.getCOSObject().containsKey(COSName.COLLECTION);
+    }
+
+    private void ensureLikelyPdf(String content) {
+        boolean hasHeader = PDF_HEADER_PATTERN.matcher(content).find();
+        boolean hasTrailer = content.contains("trailer");
+        boolean hasRoot = content.contains("/Root");
+        boolean hasEof = content.contains("%%EOF");
+        if (hasHeader && hasTrailer && hasRoot && hasEof) {
+            return;
+        }
+        throw new IllegalArgumentException("failed to read pdf metadata: unreadable pdf content");
     }
 }

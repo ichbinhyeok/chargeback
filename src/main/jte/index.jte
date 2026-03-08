@@ -86,37 +86,43 @@
                 <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Stripe Mastercard 19-page packet</span>
                 <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Scanner TIFF to JPEG</span>
             </div>
+            <div class="mt-4 grid gap-3 md:grid-cols-2 text-sm">
+                <div class="rounded-xl border border-blue-100 bg-blue-50 p-3 text-blue-950">
+                    <p class="font-semibold">Stripe size-limit note</p>
+                    <p class="mt-1 leading-6">Some Stripe docs mention a 5MB file-upload ceiling, but dispute dashboard guidance is stricter at 4.5MB for the evidence pack. Validation uses the safer 4.5MB rule.</p>
+                </div>
+                <div class="rounded-xl border border-amber-100 bg-amber-50 p-3 text-amber-950">
+                    <p class="font-semibold">Shopify PDF note</p>
+                    <p class="mt-1 leading-6">The same Shopify PDF can fail on PDF/A, portfolio structure, and hidden links together. Auto-fix may clear more than one blocker in a single rerun.</p>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <section class="cb-card">
-            <h2 class="text-lg font-semibold text-gray-900 mb-2">Resume Existing Case</h2>
-            <p class="text-sm text-gray-600 mb-4">Paste a case token or full case URL to continue without login.</p>
-            <form method="post" action="/open-case" class="space-y-3">
-                <input type="text" name="caseTokenOrUrl" placeholder="case_abcd1234... or https://.../c/case_abcd1234" class="cb-input" required>
-                <button type="submit" class="cb-btn cb-btn-primary">Open Case</button>
-            </form>
-            <div class="mt-4 pt-4 border-t border-gray-100">
-                <p class="text-xs text-gray-500 mb-2">Have an access key file?</p>
-                <input id="access-key-file" type="file" accept=".txt" class="cb-input text-sm">
+        <section class="mt-8 rounded-2xl border border-slate-200 bg-slate-950 p-6 text-slate-50 shadow-sm">
+            <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <div class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">How it works in 3 moves</div>
+                    <h2 class="mt-2 text-2xl font-bold tracking-tight">Cold traffic should understand the path in under a minute.</h2>
+                </div>
+                <a href="/new" class="cb-btn bg-white text-slate-950 hover:bg-slate-100">Start Free Validation</a>
+            </div>
+            <div class="mt-5 grid gap-4 md:grid-cols-3">
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-sky-200">1. Start from the upload error</div>
+                    <p class="mt-2 text-sm leading-6 text-slate-100">Use the exact Stripe or Shopify rejection text so you stop guessing which file is actually failing.</p>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-sky-200">2. Validate and fix the pack</div>
+                    <p class="mt-2 text-sm leading-6 text-slate-100">Upload evidence, run validation, and let auto-fix handle supported blockers before you retry the dashboard.</p>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-sky-200">3. Unlock the final download set</div>
+                    <p class="mt-2 text-sm leading-6 text-slate-100">When the pack is ready, unlock the ZIP, PDF guide, and explanation draft you actually submit.</p>
+                </div>
             </div>
         </section>
-
-        <section class="cb-card">
-            <div class="flex items-center justify-between mb-3">
-                <h2 class="text-lg font-semibold text-gray-900">Recent Cases (This Browser)</h2>
-                <button type="button" class="cb-btn cb-btn-secondary text-xs px-3 py-2" onclick="window.cbCaseVault.clear(); window.cbCaseVault.render('recent-cases-list')">Clear</button>
-            </div>
-            <label class="mb-3 flex items-start gap-2 text-sm text-gray-700">
-                <input id="remember-cases-toggle" type="checkbox" class="mt-0.5 rounded border-gray-300">
-                <span>Remember cases on this device</span>
-            </label>
-            <p id="remember-cases-status" class="text-xs text-gray-500 mb-3"></p>
-            <div id="recent-cases-list" class="space-y-2"></div>
-        </section>
     </div>
-    
+
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 border-t border-gray-100 pt-12">
         <div>
             <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
@@ -140,6 +146,40 @@
             <p class="text-sm text-gray-500 leading-relaxed">Download a merchant-ready submission ZIP, summary PDF, and explanation draft once the pack is ready.</p>
         </div>
     </div>
+
+    <section class="mt-12 border-t border-gray-100 pt-10">
+        <div class="mb-5 max-w-2xl">
+            <h2 class="text-xl font-semibold text-gray-900">Returning to an existing case?</h2>
+            <p class="mt-1 text-sm text-gray-600">Resume a case only after you already have a case token or access key. New visitors should usually start with free validation above.</p>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <section class="cb-card">
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Resume Existing Case</h3>
+                <p class="text-sm text-gray-600 mb-4">Paste a case token or full case URL to continue without login.</p>
+                <form method="post" action="/open-case" class="space-y-3">
+                    <input type="text" name="caseTokenOrUrl" placeholder="case_abcd1234... or https://.../c/case_abcd1234" class="cb-input" required>
+                    <button type="submit" class="cb-btn cb-btn-primary">Open Case</button>
+                </form>
+                <div class="mt-4 pt-4 border-t border-gray-100">
+                    <p class="text-xs text-gray-500 mb-2">Have an access key file?</p>
+                    <input id="access-key-file" type="file" accept=".txt" class="cb-input text-sm">
+                </div>
+            </section>
+
+            <section class="cb-card">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-semibold text-gray-900">Recent Cases (This Browser)</h3>
+                    <button type="button" class="cb-btn cb-btn-secondary text-xs px-3 py-2" onclick="window.cbCaseVault.clear(); window.cbCaseVault.render('recent-cases-list')">Clear</button>
+                </div>
+                <label class="mb-3 flex items-start gap-2 text-sm text-gray-700">
+                    <input id="remember-cases-toggle" type="checkbox" class="mt-0.5 rounded border-gray-300">
+                    <span>Remember cases on this device</span>
+                </label>
+                <p id="remember-cases-status" class="text-xs text-gray-500 mb-3"></p>
+                <div id="recent-cases-list" class="space-y-2"></div>
+            </section>
+        </div>
+    </section>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {

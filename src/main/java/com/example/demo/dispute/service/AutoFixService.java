@@ -242,7 +242,7 @@ public class AutoFixService {
         compressedImages += compressImagesForTotalSize(disputeCase);
         ShopifyPdfFixChange shopifyPdfFix = normalizeShopifyPdfFiles(disputeCase);
         int compressedPdfFiles = compressPdfFilesForTotalSize(disputeCase);
-        int linkSanitizedFiles = removeExternalLinksFromPdfFiles(disputeCase);
+        int linkSanitizedFiles = shopifyPdfFix.linkSanitizedFiles() + removeExternalLinksFromPdfFiles(disputeCase);
         long totalBytesAfter = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId()).stream()
                 .mapToLong(EvidenceFileEntity::getSizeBytes)
                 .sum();
@@ -268,11 +268,12 @@ public class AutoFixService {
     private ShopifyPdfFixChange normalizeShopifyPdfFiles(DisputeCase disputeCase) {
         if (disputeCase.getPlatform() != Platform.SHOPIFY
                 || disputeCase.getProductScope() != ProductScope.SHOPIFY_PAYMENTS_CHARGEBACK) {
-            return new ShopifyPdfFixChange(0, 0);
+            return new ShopifyPdfFixChange(0, 0, 0);
         }
 
         int convertedPdfa = 0;
         int flattenedPortfolio = 0;
+        int linkSanitized = 0;
         List<EvidenceFileEntity> files = evidenceFileRepository.findByDisputeCaseId(disputeCase.getId());
         for (EvidenceFileEntity file : files) {
             if (file.getFileFormat() != FileFormat.PDF) {
@@ -286,6 +287,7 @@ public class AutoFixService {
             Path normalizedPath = buildTargetPdfPath(file.getStoragePath());
             boolean converted = !file.isPdfACompliant();
             boolean flattened = file.isPdfPortfolio();
+            boolean hadExternalLinks = file.isExternalLinkDetected();
 
             byte[] normalizedBytes = normalizeShopifyPdfToPdfaBytes(originalPath, SHOPIFY_FILE_LIMIT_BYTES);
             if (normalizedBytes.length == 0) {
@@ -334,6 +336,9 @@ public class AutoFixService {
             if (flattened && !metadata.pdfPortfolio()) {
                 flattenedPortfolio++;
             }
+            if (hadExternalLinks && !metadata.externalLinkDetected()) {
+                linkSanitized++;
+            }
 
             auditLogService.log(
                     disputeCase,
@@ -342,11 +347,12 @@ public class AutoFixService {
                     "fileId=" + file.getId()
                             + ",convertedPdfa=" + converted
                             + ",flattenedPortfolio=" + flattened
+                            + ",sanitizedExternalLinks=" + (hadExternalLinks && !metadata.externalLinkDetected())
                             + ",newSize=" + normalizedSize
             );
         }
 
-        return new ShopifyPdfFixChange(convertedPdfa, flattenedPortfolio);
+        return new ShopifyPdfFixChange(convertedPdfa, flattenedPortfolio, linkSanitized);
     }
 
     private int mergeFilesByEvidenceType(DisputeCase disputeCase) {
@@ -1443,6 +1449,6 @@ public class AutoFixService {
     private record PageFingerprint(boolean blank, String value) {
     }
 
-    private record ShopifyPdfFixChange(int convertedPdfaFiles, int flattenedPortfolioFiles) {
+    private record ShopifyPdfFixChange(int convertedPdfaFiles, int flattenedPortfolioFiles, int linkSanitizedFiles) {
     }
 }

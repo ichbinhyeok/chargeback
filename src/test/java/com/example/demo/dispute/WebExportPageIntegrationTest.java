@@ -330,6 +330,7 @@ class WebExportPageIntegrationTest {
                     .andExpect(content().string(containsString("Since previous scan")))
                     .andExpect(content().string(containsString("1 fewer actionable than previous scan")))
                     .andExpect(content().string(containsString("Previous scan #1 had 1 actionable issue(s).")))
+                    .andExpect(content().string(containsString("Current unlock state")))
                     .andExpect(content().string(containsString("Unlock upload-ready evidence pack")))
                     .andExpect(content().string(containsString("one-time after free validation")))
                     .andExpect(content().string(containsString("Free Validation")));

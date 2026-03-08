@@ -94,9 +94,51 @@ class ReadinessServiceTest {
         assertEquals("Critical", summary.label());
     }
 
+    @Test
+    void minimumCoreCoverageRequiresTwoReasonSpecificRequiredTypes() {
+        CaseReportResponse thinReport = report(
+                Platform.STRIPE,
+                ProductScope.STRIPE_DISPUTE,
+                "PRODUCT_NOT_RECEIVED",
+                List.of(file(EvidenceType.ORDER_RECEIPT)),
+                null
+        );
+
+        assertEquals(2, service.minimumCoreEvidenceTargetCount(thinReport));
+        assertEquals(1, service.coreRequiredEvidenceReadyCount(thinReport));
+        assertFalse(service.hasMinimumCoreEvidenceCoverage(thinReport));
+
+        CaseReportResponse coveredReport = report(
+                Platform.STRIPE,
+                ProductScope.STRIPE_DISPUTE,
+                "PRODUCT_NOT_RECEIVED",
+                List.of(file(EvidenceType.ORDER_RECEIPT), file(EvidenceType.CUSTOMER_DETAILS)),
+                null
+        );
+
+        assertEquals(2, service.minimumCoreEvidenceTargetCount(coveredReport));
+        assertEquals(2, service.coreRequiredEvidenceReadyCount(coveredReport));
+        assertTrue(service.hasMinimumCoreEvidenceCoverage(coveredReport));
+    }
+
+    @Test
+    void minimumCoreCoverageDoesNotApplyWithoutReasonSpecificThreeTypePolicy() {
+        CaseReportResponse report = report(
+                Platform.STRIPE,
+                ProductScope.STRIPE_DISPUTE,
+                null,
+                List.of(file(EvidenceType.ORDER_RECEIPT)),
+                null
+        );
+
+        assertEquals(0, service.minimumCoreEvidenceTargetCount(report));
+        assertTrue(service.hasMinimumCoreEvidenceCoverage(report));
+    }
+
     private CaseReportResponse report(
             Platform platform,
             ProductScope productScope,
+            String reasonCode,
             List<EvidenceFileReportResponse> files,
             ValidationRunReportResponse validation
     ) {
@@ -105,13 +147,22 @@ class ReadinessServiceTest {
                 "case_test",
                 platform,
                 productScope,
-                null,
+                reasonCode,
                 null,
                 CaseState.READY,
                 Instant.now(),
                 validation,
                 files
         );
+    }
+
+    private CaseReportResponse report(
+            Platform platform,
+            ProductScope productScope,
+            List<EvidenceFileReportResponse> files,
+            ValidationRunReportResponse validation
+    ) {
+        return report(platform, productScope, null, files, validation);
     }
 
     private EvidenceFileReportResponse file(EvidenceType evidenceType) {

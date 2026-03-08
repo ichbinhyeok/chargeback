@@ -69,7 +69,7 @@
     <div class="border-b border-gray-200 mb-8 overflow-x-auto shrink-0">
         <nav class="-mb-px flex space-x-8" aria-label="Tabs">
             <a href="/c/${report.caseToken()}" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Dashboard</a>
-            <a href="/c/${report.caseToken()}/upload" class="border-primary-600 text-primary-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" aria-current="page">Upload & Validate</a>
+            <a href="/c/${report.caseToken()}/upload" class="border-primary-600 text-primary-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" aria-current="page">Upload Evidence</a>
             <a href="/c/${report.caseToken()}/explanation" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Explanation Draft</a>
             <a href="/c/${report.caseToken()}/export" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Export Pack</a>
         </nav>
@@ -112,12 +112,26 @@
         </div>
     </div>
 
+    @if(report.productScope().name().equals("STRIPE_DISPUTE"))
+        <div class="mb-8 p-4 rounded-xl border border-blue-200 bg-blue-50 text-blue-950">
+            <div class="font-semibold mb-1">Stripe evidence size note</div>
+            <p class="text-sm leading-6">
+                Some Stripe File Upload API references mention 5MB uploads, but dispute evidence guidance is stricter at a 4.5MB combined pack limit.
+                This workflow validates against the safer 4.5MB rule so you do not clean a pack that still fails in the dispute dashboard.
+            </p>
+        </div>
+    @endif
+
     @if(report.productScope().name().equals("SHOPIFY_PAYMENTS_CHARGEBACK"))
         <div class="mb-8 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-950">
             <div class="font-semibold mb-1">Shopify Payments PDF/A note</div>
             <p class="text-sm leading-6">
                 PDF/A status is checked automatically and may differ from Shopify's uploader in edge cases.
                 If Shopify still says "PDF/A required" after this tool passes, re-export the original document as PDF/A from your scanner or editor and upload that file again.
+            </p>
+            <p class="mt-2 text-sm leading-6">
+                One Shopify PDF can also fail on portfolio structure or hidden external links at the same time.
+                Auto-fix may clear multiple PDF blockers in one pass before you revalidate.
             </p>
         </div>
     @endif
@@ -129,7 +143,7 @@
                 <ol class="mt-3 space-y-2 pl-5 text-sm leading-6 list-decimal">
                     <li>Click <strong>Browse Files</strong> or drag files here. Nothing uploads until you confirm in the mapping modal.</li>
                     <li>Review the guessed evidence type for each file and change it if needed.</li>
-                    <li>Unsupported but decodable image files can be auto-converted to <strong>JPEG</strong> during upload before validation.</li>
+                    <li>Unsupported but decodable image files can be auto-converted to <strong>JPEG</strong> during upload before validation. HEIC / HEIF from iPhone Photos is converted to JPEG in your browser before upload, but AVIF still needs manual conversion to JPG or PNG first.</li>
                     <li>Click <strong>Upload Files</strong>. Validation starts automatically after each confirmed upload.</li>
                     <li>Format checks can pass before export is ready. Export review stays locked until required evidence is complete.</li>
                 </ol>
@@ -265,7 +279,7 @@
                             <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
                             <h3 class="font-bold text-white text-lg tracking-wide">Validation Engine</h3>
                         </div>
-                        <p class="text-slate-300 text-sm max-w-sm">Validation runs automatically after you confirm uploads. Upload can auto-convert decodable image formats like GIF, BMP, and WEBP to JPEG. Auto-fix handles the remaining supported blockers after validation.</p>
+                        <p class="text-slate-300 text-sm max-w-sm">Validation runs automatically after you confirm uploads. Upload can auto-convert decodable image formats like GIF, BMP, and WEBP after transfer. iPhone HEIC / HEIF is converted to JPEG in your browser before upload. AVIF still needs manual conversion before upload. Auto-fix handles the remaining supported blockers after validation.</p>
                     </div>
                     <div class="flex flex-col gap-2 shrink-0">
                         <form method="post" action="/c/${report.caseToken()}/validate">
@@ -314,6 +328,7 @@
         </select>
     </template>
 
+    <script src="/js/vendor/heic2any.min.js"></script>
     <script>
         const dropzone = document.getElementById('dropzone');
         const fileInput = document.getElementById('file-input');
@@ -386,11 +401,11 @@
         });
 
         dropzone.addEventListener('drop', (e) => {
-            handleFiles(e.dataTransfer.files);
+            void handleFiles(e.dataTransfer.files);
         });
 
         fileInput.addEventListener('change', function() {
-            handleFiles(this.files);
+            void handleFiles(this.files);
             this.value = '';
         });
 
@@ -434,24 +449,44 @@
             }
         });
 
-        function handleFiles(fileList) {
+        async function handleFiles(fileList) {
             if (!fileList || fileList.length === 0) {
                 return;
             }
             hideClientError();
             const errors = [];
-            const selectedFiles = Array.from(fileList);
+            const preparedSelection = await convertHeicSelections(Array.from(fileList));
+            const selectedFiles = preparedSelection.files;
             const accepted = [];
             const rejected = [];
+            const avifRejected = [];
             for (const file of selectedFiles) {
-                if (isDirectUploadFile(file) || isConvertibleImageSelection(file)) {
+                if (isAvifSelection(file)) {
+                    avifRejected.push(file.name);
+                } else if (isDirectUploadFile(file) || isConvertibleImageSelection(file)) {
                     accepted.push(file);
                 } else {
                     rejected.push(file.name);
                 }
             }
+            const browserConvertedHeic = selectedFiles.filter((file) => file._convertedFromHeic);
+            if (browserConvertedHeic.length > 0) {
+                errors.push(
+                    'HEIC / HEIF files were converted locally in your browser to JPEG before upload:\n- '
+                    + browserConvertedHeic.map((file) => (file._sourceName || file.name) + ' -> ' + file.name).join('\n- ')
+                );
+            }
+            if (preparedSelection.failed.length > 0) {
+                errors.push(
+                    'HEIC / HEIF conversion failed in this browser. Convert these files to JPG or PNG before upload:\n- '
+                    + preparedSelection.failed.join('\n- ')
+                );
+            }
+            if (avifRejected.length > 0) {
+                errors.push('AVIF is not supported in this upload pipeline yet. Convert these files to JPG or PNG before upload:\n- ' + avifRejected.join('\n- '));
+            }
             if (rejected.length > 0) {
-                errors.push('Unsupported file type (direct upload: PDF, PNG, JPG, JPEG; image auto-convert attempts for GIF, BMP, WEBP and other browser-recognized images):\n- ' + rejected.join('\n- '));
+                errors.push('Unsupported file type (direct upload: PDF, PNG, JPG, JPEG; image auto-convert attempts for GIF, BMP, WEBP, and other browser-recognized images; HEIC / HEIF should convert in-browser first):\n- ' + rejected.join('\n- '));
             }
             if (accepted.length === 0) {
                 if (errors.length > 0) {
@@ -527,9 +562,11 @@
                 const info = document.createElement('div');
                 info.className = 'min-w-0 flex-1';
                 const kb = (file.size / 1024).toFixed(1);
-                const autoConvertBadge = isConvertibleImageSelection(file)
-                    ? '<span class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900">Auto-convert to JPEG</span>'
-                    : '';
+                const autoConvertBadge = file._convertedFromHeic
+                    ? '<span class="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900">Browser HEIC -> JPEG</span>'
+                    : isConvertibleImageSelection(file)
+                        ? '<span class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900">Auto-convert to JPEG</span>'
+                        : '';
                 const suggestion = suggestionPlan.get(index) || fallbackSuggestion();
                 const suggestionBadge = suggestion.source === 'content'
                     ? '<span class="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-900">Content match</span>'
@@ -544,11 +581,14 @@
                                 : suggestion.source === 'keyword'
                                     ? '<span class="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-900">Name match</span>'
                                     : '<span class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-semibold text-gray-700">Fallback</span>';
-                const sourceHint = isConvertibleImageSelection(file)
-                    ? 'Uploaded as image, stored as JPEG after conversion'
-                    : kb + ' KB';
+                const sourceHint = file._convertedFromHeic
+                    ? 'Converted locally from ' + (file._sourceName || 'HEIC / HEIF') + ' to ' + file.name + ' before upload'
+                    : isConvertibleImageSelection(file)
+                        ? 'Uploaded as image, stored as JPEG after conversion'
+                        : kb + ' KB';
+                const displayName = file._sourceName || file.name;
                 info.innerHTML =
-                    '<div class="font-medium text-gray-900 truncate flex items-center gap-2 flex-wrap">' + escapeHtml(file.name) + autoConvertBadge + suggestionBadge + '</div>' +
+                    '<div class="font-medium text-gray-900 truncate flex items-center gap-2 flex-wrap">' + escapeHtml(displayName) + autoConvertBadge + suggestionBadge + '</div>' +
                     '<div class="text-xs text-gray-500 mt-1">' + escapeHtml(sourceHint) + '</div>' +
                     '<div class="mt-2 text-xs text-sky-900">Suggested: <strong>' + escapeHtml(humanizeEvidenceTypeName(suggestion.evidenceType)) + '</strong> - ' + escapeHtml(suggestion.reason) + '</div>';
                 left.appendChild(preview);
@@ -787,15 +827,32 @@
             if (isDirectUploadFile(file)) {
                 return false;
             }
+            if (isAvifSelection(file)) {
+                return false;
+            }
             const lower = (file.name || '').toLowerCase();
             const type = (file.type || '').toLowerCase();
             return type.startsWith('image/')
                 || lower.endsWith('.gif')
                 || lower.endsWith('.bmp')
-                || lower.endsWith('.webp')
-                || lower.endsWith('.heic')
+                || lower.endsWith('.webp');
+        }
+
+        function isHeicSelection(file) {
+            const lower = (file.name || '').toLowerCase();
+            const type = (file.type || '').toLowerCase();
+            return lower.endsWith('.heic')
                 || lower.endsWith('.heif')
-                || lower.endsWith('.avif');
+                || type === 'image/heic'
+                || type === 'image/heif'
+                || type === 'image/heic-sequence'
+                || type === 'image/heif-sequence';
+        }
+
+        function isAvifSelection(file) {
+            const lower = (file.name || '').toLowerCase();
+            const type = (file.type || '').toLowerCase();
+            return lower.endsWith('.avif') || type === 'image/avif';
         }
 
         function buildPreviewTile(file) {
@@ -803,6 +860,14 @@
             wrapper.className = 'h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50';
             const lower = (file.name || '').toLowerCase();
             const type = (file.type || '').toLowerCase();
+
+            if (isHeicSelection(file)) {
+                const fallback = document.createElement('div');
+                fallback.className = 'flex h-full w-full items-center justify-center text-center text-[11px] font-semibold uppercase tracking-wide text-sky-900 bg-sky-50';
+                fallback.textContent = 'HEIC';
+                wrapper.appendChild(fallback);
+                return wrapper;
+            }
 
             if (type.startsWith('image/')) {
                 const image = document.createElement('img');
@@ -834,6 +899,55 @@
                 file._previewUrl = URL.createObjectURL(file);
             }
             return file._previewUrl;
+        }
+
+        async function convertHeicSelections(files) {
+            const prepared = [];
+            const failed = [];
+            for (const file of files) {
+                if (!isHeicSelection(file)) {
+                    prepared.push(file);
+                    continue;
+                }
+                try {
+                    prepared.push(await convertHeicFileToJpeg(file));
+                } catch (_) {
+                    failed.push(file.name);
+                }
+            }
+            return { files: prepared, failed };
+        }
+
+        async function convertHeicFileToJpeg(file) {
+            if (typeof window.heic2any !== 'function') {
+                throw new Error('heic2any unavailable');
+            }
+            const converted = await window.heic2any({
+                blob: file,
+                toType: 'image/jpeg',
+                quality: 0.92
+            });
+            const convertedBlob = Array.isArray(converted) ? converted[0] : converted;
+            if (!(convertedBlob instanceof Blob) || convertedBlob.size === 0) {
+                throw new Error('empty converted blob');
+            }
+            const convertedFile = new File(
+                [convertedBlob],
+                convertedJpegName(file.name || 'upload.heic'),
+                {
+                    type: 'image/jpeg',
+                    lastModified: file.lastModified || Date.now()
+                }
+            );
+            convertedFile._convertedFromHeic = true;
+            convertedFile._sourceName = file.name || 'upload.heic';
+            convertedFile._sourceContentType = file.type || '';
+            return convertedFile;
+        }
+
+        function convertedJpegName(name) {
+            const base = (name || 'upload').replace(/\.[^.]+$/, '');
+            return (base || 'upload') + '_autoconvert.jpg';
         }
 
         function setPendingFiles(nextFiles) {

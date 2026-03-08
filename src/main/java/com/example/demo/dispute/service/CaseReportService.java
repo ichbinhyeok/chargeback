@@ -71,7 +71,12 @@ public class CaseReportService {
                         item.getCode(),
                         item.getRuleId(),
                         item.getSeverity(),
-                        item.getMessage()
+                        item.getMessage(),
+                        item.getTargetScope(),
+                        item.getTargetEvidenceType(),
+                        item.getTargetFileId(),
+                        item.getTargetGroupKey(),
+                        item.getFixStrategy()
                 ))
                 .toList();
 
