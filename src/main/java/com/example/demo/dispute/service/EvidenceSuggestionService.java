@@ -6,9 +6,6 @@ import com.example.demo.dispute.persistence.DisputeCase;
 import com.example.demo.dispute.persistence.EvidenceFileRepository;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
@@ -16,13 +13,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,22 +31,22 @@ public class EvidenceSuggestionService {
     private static final int PDF_PREVIEW_PAGES = 2;
     private static final int PDF_PREVIEW_CHARS = 1600;
     private static final int OCR_PREVIEW_CHARS = 600;
-    private static final boolean WINDOWS = System.getProperty("os.name", "")
-            .toLowerCase(Locale.ROOT)
-            .contains("win");
 
     private final CaseService caseService;
     private final EvidenceFileRepository evidenceFileRepository;
     private final PolicyCatalogService policyCatalogService;
+    private final EvidenceTextExtractionService evidenceTextExtractionService;
 
     public EvidenceSuggestionService(
             CaseService caseService,
             EvidenceFileRepository evidenceFileRepository,
-            PolicyCatalogService policyCatalogService
+            PolicyCatalogService policyCatalogService,
+            EvidenceTextExtractionService evidenceTextExtractionService
     ) {
         this.caseService = caseService;
         this.evidenceFileRepository = evidenceFileRepository;
         this.policyCatalogService = policyCatalogService;
+        this.evidenceTextExtractionService = evidenceTextExtractionService;
     }
 
     public List<PreviewEvidenceSuggestionResponse> previewSuggestions(UUID caseId, List<MultipartFile> files) {
@@ -138,10 +131,13 @@ public class EvidenceSuggestionService {
         String lowerName = fileName.toLowerCase(Locale.ROOT);
         String contentType = defaultString(file.getContentType(), "").toLowerCase(Locale.ROOT);
 
-        String pdfText = isPdf(lowerName, contentType) ? extractPdfText(file) : null;
+        String pdfText = isPdf(lowerName, contentType)
+                ? evidenceTextExtractionService.extractPdfPreview(file, PDF_PREVIEW_PAGES, PDF_PREVIEW_CHARS)
+                : null;
         ImageSignal imageSignal = isImage(lowerName, contentType) ? extractImageSignal(file) : null;
-        String imageOcrText = imageSignal != null && shouldAttemptImageOcr(imageSignal)
-                ? extractImageOcrText(file, lowerName)
+        String imageOcrText = imageSignal != null
+                && evidenceTextExtractionService.shouldAttemptImageOcr(imageSignal.width(), imageSignal.height())
+                ? evidenceTextExtractionService.extractImageOcrText(file, lowerName, OCR_PREVIEW_CHARS)
                 : null;
 
         return new FilePreviewContext(
@@ -421,101 +417,6 @@ public class EvidenceSuggestionService {
             }
         }
         return null;
-    }
-
-    private String extractPdfText(MultipartFile file) {
-        try (PDDocument document = Loader.loadPDF(file.getBytes())) {
-            PDFTextStripper stripper = new PDFTextStripper();
-            stripper.setSortByPosition(true);
-            stripper.setStartPage(1);
-            stripper.setEndPage(Math.min(PDF_PREVIEW_PAGES, Math.max(1, document.getNumberOfPages())));
-            String text = stripper.getText(document)
-                    .replace('\r', ' ')
-                    .replace('\n', ' ')
-                    .replaceAll("\\s+", " ")
-                    .trim()
-                    .toLowerCase(Locale.ROOT);
-            if (text.length() > PDF_PREVIEW_CHARS) {
-                return text.substring(0, PDF_PREVIEW_CHARS);
-            }
-            return text;
-        } catch (IOException ex) {
-            return null;
-        }
-    }
-
-    private boolean shouldAttemptImageOcr(ImageSignal imageSignal) {
-        return WINDOWS && imageSignal.width() >= 500 && imageSignal.height() >= 500;
-    }
-
-    private String extractImageOcrText(MultipartFile file, String lowerName) {
-        Path tempFile = null;
-        try {
-            tempFile = Files.createTempFile("chargeback-ocr-", lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") ? ".jpg" : ".png");
-            try (var in = file.getInputStream()) {
-                Files.copy(in, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            }
-
-            String escapedPath = tempFile.toAbsolutePath().toString().replace("'", "''");
-            String script = "$ErrorActionPreference='Stop';"
-                    + "Add-Type -AssemblyName System.Runtime.WindowsRuntime;"
-                    + "$null=[Windows.Storage.StorageFile, Windows.Storage, ContentType=WindowsRuntime];"
-                    + "$null=[Windows.Media.Ocr.OcrEngine, Windows.Foundation, ContentType=WindowsRuntime];"
-                    + "$null=[Windows.Graphics.Imaging.BitmapDecoder, Windows.Foundation, ContentType=WindowsRuntime];"
-                    + "$null=[Windows.Storage.FileAccessMode, Windows.Storage, ContentType=WindowsRuntime];"
-                    + "function Await($AsyncOperation,[Type]$ResultType){"
-                    + "$asTask=[System.WindowsRuntimeSystemExtensions].GetMethods()|Where-Object{$_.Name -eq 'AsTask' -and $_.IsGenericMethod -and $_.GetParameters().Count -eq 1}|Select-Object -First 1;"
-                    + "$netTask=$asTask.MakeGenericMethod($ResultType).Invoke($null,@($AsyncOperation));"
-                    + "$netTask.Wait();"
-                    + "return $netTask.Result};"
-                    + "$file=Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync('" + escapedPath + "')) ([Windows.Storage.StorageFile]);"
-                    + "$stream=Await ($file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream]);"
-                    + "$decoder=Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder]);"
-                    + "$bitmap=Await ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap]);"
-                    + "$engine=[Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages();"
-                    + "if($engine -eq $null){ return };"
-                    + "$result=Await ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult]);"
-                    + "Write-Output $result.Text;";
-
-            Process process = new ProcessBuilder("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
-                    .redirectErrorStream(true)
-                    .start();
-            boolean finished = process.waitFor(8, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                return null;
-            }
-            if (process.exitValue() != 0) {
-                return null;
-            }
-
-            String text = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8)
-                    .replace('\r', ' ')
-                    .replace('\n', ' ')
-                    .replaceAll("\\s+", " ")
-                    .trim()
-                    .toLowerCase(Locale.ROOT);
-            if (text.isBlank()) {
-                return null;
-            }
-            if (text.length() > OCR_PREVIEW_CHARS) {
-                return text.substring(0, OCR_PREVIEW_CHARS);
-            }
-            return text;
-        } catch (IOException | InterruptedException ex) {
-            if (ex instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
-            }
-            return null;
-        } finally {
-            if (tempFile != null) {
-                try {
-                    Files.deleteIfExists(tempFile);
-                } catch (IOException ignored) {
-                    // best-effort temp cleanup
-                }
-            }
-        }
     }
 
     private ImageSignal extractImageSignal(MultipartFile file) {

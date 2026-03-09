@@ -5,28 +5,32 @@
       "required": [],
       "recommended": []
     },
-    "limits": {
+    "rules": {
+      "allowedFormats": ["PDF", "JPEG", "PNG"],
       "totalSizeLimitBytes": 10485760
     }
   },
   "platform": {},
   "scope": {
     "STRIPE_DISPUTE": {
-      "limits": {
-        "totalSizeLimitBytes": 4718592
+      "rules": {
+        "singleFilePerEvidenceType": true,
+        "externalLinksAllowed": false,
+        "totalSizeLimitBytes": 4718592,
+        "totalPagesLimit": 49
       }
     }
   },
   "reason": {
     "RC_TIGHT": {
-      "limits": {
+      "rules": {
         "totalSizeLimitBytes": 1024
       }
     }
   },
   "network": {
     "VISA": {
-      "limits": {
+      "rules": {
         "totalSizeLimitBytes": 2048
       }
     }

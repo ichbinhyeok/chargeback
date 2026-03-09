@@ -5,8 +5,13 @@
       "required": [],
       "recommended": []
     },
-    "limits": {
-      "totalSizeLimitBytes": 4194304
+    "rules": {
+      "allowedFormats": ["PDF", "JPEG", "PNG"],
+      "singleFilePerEvidenceType": false,
+      "externalLinksAllowed": true,
+      "totalSizeLimitBytes": 4194304,
+      "portfolioPdfAllowed": true,
+      "pdfARequired": false
     }
   },
   "platform": {
@@ -23,6 +28,9 @@
           "REFUND_CANCELLATION",
           "DIGITAL_USAGE_LOGS"
         ]
+      },
+      "rules": {
+        "externalLinksAllowed": false
       }
     },
     "SHOPIFY": {
@@ -41,8 +49,11 @@
   },
   "scope": {
     "STRIPE_DISPUTE": {
-      "limits": {
-        "totalSizeLimitBytes": 4718592
+      "rules": {
+        "singleFilePerEvidenceType": true,
+        "externalLinksAllowed": false,
+        "totalSizeLimitBytes": 4718592,
+        "totalPagesLimit": 49
       }
     },
     "SHOPIFY_PAYMENTS_CHARGEBACK": {
@@ -58,13 +69,21 @@
           "REFUND_CANCELLATION"
         ]
       },
-      "limits": {
-        "totalSizeLimitBytes": 4194304
+      "rules": {
+        "singleFilePerEvidenceType": true,
+        "externalLinksAllowed": false,
+        "totalSizeLimitBytes": 4194304,
+        "perFileSizeLimitBytes": 2097152,
+        "perImageFileSizeLimitBytes": 2097152,
+        "perPdfPageLimit": 49,
+        "pdfARequired": true,
+        "portfolioPdfAllowed": false
       }
     },
     "SHOPIFY_CREDIT_DISPUTE": {
-      "limits": {
-        "totalSizeLimitBytes": 4718592
+      "rules": {
+        "totalSizeLimitBytes": 4718592,
+        "perPdfPageLimit": 49
       }
     }
   },
@@ -381,5 +400,11 @@
       }
     }
   },
-  "network": {}
+  "network": {
+    "MASTERCARD": {
+      "rules": {
+        "totalPagesLimit": 19
+      }
+    }
+  }
 }

@@ -14,7 +14,9 @@ public record ValidationIssueResponse(
         EvidenceType targetEvidenceType,
         String targetFileId,
         String targetGroupKey,
-        FixStrategy fixStrategy
+        FixStrategy fixStrategy,
+        String guideSlug,
+        String guideTitle
 ) {
 }
 

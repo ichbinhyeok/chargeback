@@ -10,6 +10,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class ValidationIssueContractResolver {
 
+    private final ValidationIssueCatalog validationIssueCatalog;
+
+    public ValidationIssueContractResolver(ValidationIssueCatalog validationIssueCatalog) {
+        this.validationIssueCatalog = validationIssueCatalog;
+    }
+
     public ValidationIssueResponse build(
             String code,
             String ruleId,
@@ -21,6 +27,7 @@ public class ValidationIssueContractResolver {
             String targetGroupKey,
             FixStrategy fixStrategy
     ) {
+        ValidationIssueCatalog.IssueDefinition definition = validationIssueCatalog.find(code);
         return new ValidationIssueResponse(
                 code,
                 ruleId,
@@ -30,7 +37,9 @@ public class ValidationIssueContractResolver {
                 targetEvidenceType,
                 targetFileId,
                 targetGroupKey,
-                normalizeFixStrategy(fixStrategy, severity)
+                normalizeFixStrategy(fixStrategy, severity),
+                definition == null ? null : definition.guideSlug(),
+                definition == null ? null : definition.title()
         );
     }
 

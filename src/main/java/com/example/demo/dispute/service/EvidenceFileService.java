@@ -56,20 +56,13 @@ public class EvidenceFileService {
 
     private static final long MIN_MANUAL_COMPRESS_TARGET_BYTES = 96L * 1024L;
     private static final long MIN_MANUAL_COMPRESS_SAVINGS_BYTES = 32L * 1024L;
-    private static final long MIN_MANUAL_PDF_COMPRESS_TARGET_BYTES = 256L * 1024L;
     private static final long MIN_MANUAL_PDF_COMPRESS_SAVINGS_BYTES = 64L * 1024L;
-    private static final long STRIPE_MIN_BYTES_PER_PAGE_AFTER_COMPRESSION = 4_000L;
-    private static final int STRIPE_MIN_DPI = 115;
-    private static final int STRIPE_TEXT_HEAVY_CHAR_THRESHOLD = 800;
-    private static final int[] STRIPE_COMPRESSION_DPIS = new int[] {170, 150, 130, 115};
-    private static final float[] STRIPE_COMPRESSION_QUALITIES = new float[] {0.9f, 0.82f, 0.74f, 0.65f};
-    private static final int[] SHOPIFY_PDFA_DPIS = new int[] {170, 150, 130, 115};
-    private static final float[] SHOPIFY_PDFA_QUALITIES = new float[] {0.9f, 0.82f, 0.74f, 0.65f};
 
     private final CaseService caseService;
     private final EvidenceFileRepository evidenceFileRepository;
     private final PdfMetadataExtractor pdfMetadataExtractor;
     private final AuditLogService auditLogService;
+    private final DocumentNormalizationService documentNormalizationService;
     private final Path storageRoot;
     private final int caseMaxFiles;
 
@@ -78,6 +71,7 @@ public class EvidenceFileService {
             EvidenceFileRepository evidenceFileRepository,
             PdfMetadataExtractor pdfMetadataExtractor,
             AuditLogService auditLogService,
+            DocumentNormalizationService documentNormalizationService,
             @Value("${app.storage.root:./data/evidence}") String storageRoot,
             @Value("${app.case.max-files:100}") int caseMaxFiles
     ) {
@@ -85,6 +79,7 @@ public class EvidenceFileService {
         this.evidenceFileRepository = evidenceFileRepository;
         this.pdfMetadataExtractor = pdfMetadataExtractor;
         this.auditLogService = auditLogService;
+        this.documentNormalizationService = documentNormalizationService;
         this.storageRoot = Path.of(storageRoot);
         this.caseMaxFiles = caseMaxFiles;
     }
@@ -329,7 +324,7 @@ public class EvidenceFileService {
         }
 
         long currentSize = entity.getSizeBytes();
-        if (currentSize <= MIN_MANUAL_PDF_COMPRESS_TARGET_BYTES) {
+        if (currentSize <= documentNormalizationService.minimumPdfTargetBytes()) {
             throw new IllegalArgumentException("pdf is already small enough; replace or trim a different file first");
         }
         if (isTextHeavyPdf(Path.of(entity.getStoragePath()))) {
@@ -337,7 +332,7 @@ public class EvidenceFileService {
         }
 
         long boundedTargetBytes = Math.max(
-                MIN_MANUAL_PDF_COMPRESS_TARGET_BYTES,
+                documentNormalizationService.minimumPdfTargetBytes(),
                 Math.min(targetBytes, currentSize - MIN_MANUAL_PDF_COMPRESS_SAVINGS_BYTES)
         );
         if (boundedTargetBytes >= currentSize) {
@@ -646,166 +641,15 @@ public class EvidenceFileService {
     }
 
     private byte[] compressPdfToSmallerBytes(Path sourcePath, long preferredMaxBytes) {
-        int pageCount = readPdfPageCount(sourcePath);
-        byte[] bestGuarded = new byte[0];
-
-        for (int dpi : STRIPE_COMPRESSION_DPIS) {
-            for (float quality : STRIPE_COMPRESSION_QUALITIES) {
-                byte[] candidate = renderPdfAsImagePdf(sourcePath, dpi, quality);
-                if (candidate.length == 0) {
-                    continue;
-                }
-                if (!passesStripeCompressionGuard(pageCount, dpi, candidate.length)) {
-                    continue;
-                }
-                if (bestGuarded.length == 0 || candidate.length < bestGuarded.length) {
-                    bestGuarded = candidate;
-                }
-                if (candidate.length <= preferredMaxBytes) {
-                    return candidate;
-                }
-            }
-        }
-
-        return bestGuarded.length > 0 ? bestGuarded : new byte[0];
+        return documentNormalizationService.compressPdfToSmallerBytes(sourcePath, preferredMaxBytes);
     }
 
     private byte[] normalizeShopifyPdfToPdfaBytes(Path sourcePath, long preferredMaxBytes) {
-        byte[] best = new byte[0];
-
-        for (int dpi : SHOPIFY_PDFA_DPIS) {
-            for (float quality : SHOPIFY_PDFA_QUALITIES) {
-                byte[] candidate = renderPdfAsPdfABytes(sourcePath, dpi, quality);
-                if (candidate.length == 0) {
-                    continue;
-                }
-                if (best.length == 0 || candidate.length < best.length) {
-                    best = candidate;
-                }
-                if (candidate.length <= preferredMaxBytes) {
-                    return candidate;
-                }
-            }
-        }
-
-        return best;
-    }
-
-    private byte[] renderPdfAsImagePdf(Path sourcePath, int dpi, float jpegQuality) {
-        try (PDDocument source = Loader.loadPDF(sourcePath.toFile()); PDDocument compressed = new PDDocument()) {
-            PDFRenderer renderer = new PDFRenderer(source);
-            for (int index = 0; index < source.getNumberOfPages(); index++) {
-                BufferedImage rendered = renderer.renderImageWithDPI(index, dpi, ImageType.RGB);
-                PDRectangle sourceBox = source.getPage(index).getMediaBox();
-                float width = sourceBox != null && sourceBox.getWidth() > 0
-                        ? sourceBox.getWidth()
-                        : (float) rendered.getWidth() * 72f / dpi;
-                float height = sourceBox != null && sourceBox.getHeight() > 0
-                        ? sourceBox.getHeight()
-                        : (float) rendered.getHeight() * 72f / dpi;
-
-                PDPage page = new PDPage(new PDRectangle(width, height));
-                compressed.addPage(page);
-                PDImageXObject image = JPEGFactory.createFromImage(compressed, rendered, jpegQuality);
-                try (PDPageContentStream content = new PDPageContentStream(compressed, page)) {
-                    content.drawImage(image, 0, 0, width, height);
-                }
-            }
-
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            compressed.save(out);
-            return out.toByteArray();
-        } catch (IOException ex) {
-            return new byte[0];
-        }
-    }
-
-    private byte[] renderPdfAsPdfABytes(Path sourcePath, int dpi, float jpegQuality) {
-        try (PDDocument source = Loader.loadPDF(sourcePath.toFile()); PDDocument normalized = new PDDocument()) {
-            PDFRenderer renderer = new PDFRenderer(source);
-            for (int index = 0; index < source.getNumberOfPages(); index++) {
-                BufferedImage rendered = renderer.renderImageWithDPI(index, dpi, ImageType.RGB);
-                PDRectangle sourceBox = source.getPage(index).getMediaBox();
-                float width = sourceBox != null && sourceBox.getWidth() > 0
-                        ? sourceBox.getWidth()
-                        : (float) rendered.getWidth() * 72f / dpi;
-                float height = sourceBox != null && sourceBox.getHeight() > 0
-                        ? sourceBox.getHeight()
-                        : (float) rendered.getHeight() * 72f / dpi;
-
-                PDPage page = new PDPage(new PDRectangle(width, height));
-                normalized.addPage(page);
-                PDImageXObject image = JPEGFactory.createFromImage(normalized, rendered, jpegQuality);
-                try (PDPageContentStream content = new PDPageContentStream(normalized, page)) {
-                    content.drawImage(image, 0, 0, width, height);
-                }
-            }
-
-            applyPdfaProfile(normalized);
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            normalized.save(out);
-            return out.toByteArray();
-        } catch (IOException ex) {
-            return new byte[0];
-        }
-    }
-
-    private void applyPdfaProfile(PDDocument document) throws IOException {
-        String xmp = """
-                <?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>
-                <x:xmpmeta xmlns:x="adobe:ns:meta/">
-                  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-                    <rdf:Description rdf:about=""
-                      xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/"
-                      xmlns:cb="urn:chargeback:manualcompress"
-                      pdfaid:part="1"
-                      pdfaid:conformance="B"
-                      cb:marker="manual_pdfa_candidate"/>
-                  </rdf:RDF>
-                </x:xmpmeta>
-                <?xpacket end="w"?>
-                """;
-        PDDocumentCatalog catalog = document.getDocumentCatalog();
-        PDMetadata metadata = new PDMetadata(document);
-        metadata.importXMPMetadata(xmp.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        catalog.setMetadata(metadata);
-
-        ICC_Profile profile = ICC_Profile.getInstance(ColorSpace.CS_sRGB);
-        PDOutputIntent outputIntent = new PDOutputIntent(document, new ByteArrayInputStream(profile.getData()));
-        outputIntent.setInfo("sRGB IEC61966-2.1");
-        outputIntent.setOutputCondition("sRGB IEC61966-2.1");
-        outputIntent.setOutputConditionIdentifier("sRGB IEC61966-2.1");
-        outputIntent.setRegistryName("https://www.color.org");
-        catalog.addOutputIntent(outputIntent);
-    }
-
-    private int readPdfPageCount(Path sourcePath) {
-        try (PDDocument source = Loader.loadPDF(sourcePath.toFile())) {
-            return Math.max(1, source.getNumberOfPages());
-        } catch (IOException ex) {
-            return 1;
-        }
+        return documentNormalizationService.normalizePdfToPdfaBytes(sourcePath, preferredMaxBytes, "manual_pdfa_candidate");
     }
 
     private boolean isTextHeavyPdf(Path sourcePath) {
-        try (PDDocument source = Loader.loadPDF(sourcePath.toFile())) {
-            PDFTextStripper stripper = new PDFTextStripper();
-            String text = stripper.getText(source);
-            if (text == null) {
-                return false;
-            }
-            return text.replaceAll("\\s+", "").length() >= STRIPE_TEXT_HEAVY_CHAR_THRESHOLD;
-        } catch (IOException ex) {
-            return false;
-        }
-    }
-
-    private boolean passesStripeCompressionGuard(int pageCount, int dpi, long sizeBytes) {
-        if (dpi < STRIPE_MIN_DPI) {
-            return false;
-        }
-        long perPageBytes = sizeBytes / Math.max(1, pageCount);
-        return perPageBytes >= STRIPE_MIN_BYTES_PER_PAGE_AFTER_COMPRESSION;
+        return documentNormalizationService.isTextHeavyPdf(sourcePath);
     }
 
     private String convertedName(String originalName, String extension) {

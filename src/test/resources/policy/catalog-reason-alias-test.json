@@ -5,7 +5,8 @@
       "required": [],
       "recommended": []
     },
-    "limits": {
+    "rules": {
+      "allowedFormats": ["PDF", "JPEG", "PNG"],
       "totalSizeLimitBytes": 12345
     }
   },

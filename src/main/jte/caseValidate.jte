@@ -338,6 +338,16 @@
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-600 leading-relaxed font-medium">
                                         ${issue.message()}
+                                        @if(issue.guideSlug() != null && !issue.guideSlug().isBlank())
+                                            <div class="mt-2">
+                                                <a
+                                                    href="${"/guides/" + report.platform().name().toLowerCase() + "/" + issue.guideSlug()}"
+                                                    class="inline-flex items-center text-xs font-semibold text-blue-700 hover:text-blue-900"
+                                                >
+                                                    Open exact fix guide
+                                                </a>
+                                            </div>
+                                        @endif
                                     </td>
                                 </tr>
                             @endfor

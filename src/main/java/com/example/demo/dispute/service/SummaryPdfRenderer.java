@@ -110,6 +110,14 @@ public final class SummaryPdfRenderer {
             for (int i = 0; i < limit; i++) {
                 ValidationIssueResponse issue = issues.get(i);
                 lines.add(String.format(Locale.ROOT, "  %d) %s - %s", i + 1, issue.severity(), issue.message()));
+                if (issue.guideSlug() != null && !issue.guideSlug().isBlank()) {
+                    lines.add(String.format(
+                            Locale.ROOT,
+                            "     Fix guide: /guides/%s/%s",
+                            report.platform().name().toLowerCase(Locale.ROOT),
+                            issue.guideSlug()
+                    ));
+                }
             }
         }
 

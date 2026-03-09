@@ -19,6 +19,7 @@ import com.example.demo.dispute.domain.ProductScope;
 import com.example.demo.dispute.domain.CardNetwork;
 import com.example.demo.dispute.persistence.DisputeCase;
 import com.example.demo.dispute.service.PolicyCatalogService;
+import com.example.demo.dispute.service.ValidationIssueCatalog;
 import com.example.demo.dispute.service.ValidationIssueContractResolver;
 import com.example.demo.dispute.service.ValidationService;
 import java.util.List;
@@ -26,9 +27,12 @@ import org.junit.jupiter.api.Test;
 
 class ValidationServiceTest {
 
+    private final ValidationIssueCatalog validationIssueCatalog = new ValidationIssueCatalog();
+
     private final ValidationService validationService = new ValidationService(
-            new ValidationIssueContractResolver(),
-            new PolicyCatalogService("policy/catalog-v1.json")
+            new ValidationIssueContractResolver(validationIssueCatalog),
+            new PolicyCatalogService("policy/catalog-v1.json"),
+            validationIssueCatalog
     );
 
     @Test
@@ -66,8 +70,9 @@ class ValidationServiceTest {
     @Test
     void stripeUsesReasonSpecificTotalLimitFromPolicyCatalog() {
         ValidationService customPolicyService = new ValidationService(
-                new ValidationIssueContractResolver(),
-                new PolicyCatalogService("policy/catalog-validation-test.json")
+                new ValidationIssueContractResolver(validationIssueCatalog),
+                new PolicyCatalogService("policy/catalog-validation-test.json"),
+                validationIssueCatalog
         );
         DisputeCase disputeCase = newStripeCase(CardNetwork.OTHER);
         disputeCase.setReasonCode("RC_TIGHT");
@@ -85,8 +90,9 @@ class ValidationServiceTest {
     @Test
     void stripeNetworkRuleOverridesReasonLimitByPrecedence() {
         ValidationService customPolicyService = new ValidationService(
-                new ValidationIssueContractResolver(),
-                new PolicyCatalogService("policy/catalog-validation-test.json")
+                new ValidationIssueContractResolver(validationIssueCatalog),
+                new PolicyCatalogService("policy/catalog-validation-test.json"),
+                validationIssueCatalog
         );
         DisputeCase disputeCase = newStripeCase(CardNetwork.VISA);
         disputeCase.setReasonCode("RC_TIGHT");

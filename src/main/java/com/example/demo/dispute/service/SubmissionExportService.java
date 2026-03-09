@@ -1,7 +1,6 @@
 package com.example.demo.dispute.service;
 
 import com.example.demo.dispute.api.CaseReportResponse;
-import com.example.demo.dispute.api.EvidenceFileReportResponse;
 import com.example.demo.dispute.api.ValidationRunReportResponse;
 import com.example.demo.dispute.api.ValidationIssueResponse;
 import com.example.demo.dispute.domain.CaseState;
@@ -23,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -34,6 +34,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class SubmissionExportService {
+    private static final String UPLOAD_DIR = "upload_to_platform/";
+    private static final String REFERENCE_DIR = "reference/";
+    private static final String README_NAME = "README_FIRST.txt";
+    private static final String MANIFEST_NAME = REFERENCE_DIR + "manifest.json";
+    private static final String EXPLANATION_NAME = REFERENCE_DIR + "dispute_explanation_draft.txt";
 
     private final CaseService caseService;
     private final CaseReportService caseReportService;
@@ -89,7 +94,7 @@ public class SubmissionExportService {
                         : "";
                 String zipName = String.format(
                         Locale.ROOT,
-                        "%02d_%s%s%s",
+                        UPLOAD_DIR + "%02d_%s%s%s",
                         order,
                         file.getEvidenceType().name(),
                         repeatedTypeSuffix,
@@ -103,6 +108,7 @@ public class SubmissionExportService {
                 zip.closeEntry();
                 zippedFileRows.add(new ZippedFileRow(zipName, file));
             }
+            writeReadmeEntry(zip, disputeCase, zippedFileRows);
             writeExplanationEntry(zip, report);
             writeManifestEntry(zip, disputeCase, report, zippedFileRows);
         } catch (IOException ex) {
@@ -206,6 +212,22 @@ public class SubmissionExportService {
             validationNode.put("passed", validation.passed());
             validationNode.put("source", validation.source().name());
             validationNode.put("validatedAt", validation.createdAt().toString());
+            List<Map<String, Object>> issueNodes = new ArrayList<>();
+            for (ValidationIssueResponse issue : validation.issues()) {
+                Map<String, Object> issueNode = new LinkedHashMap<>();
+                issueNode.put("code", issue.code());
+                issueNode.put("severity", issue.severity().name());
+                issueNode.put("ruleId", issue.ruleId());
+                issueNode.put("message", issue.message());
+                issueNode.put("fixStrategy", issue.fixStrategy().name());
+                if (issue.guideSlug() != null && !issue.guideSlug().isBlank()) {
+                    issueNode.put("guideSlug", issue.guideSlug());
+                    issueNode.put("guideTitle", issue.guideTitle());
+                    issueNode.put("guidePath", issueGuidePath(report, issue));
+                }
+                issueNodes.add(issueNode);
+            }
+            validationNode.put("issues", issueNodes);
         }
         root.put("validation", validationNode);
 
@@ -222,7 +244,7 @@ public class SubmissionExportService {
         root.put("files", fileNodes);
 
         byte[] manifestBytes = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(root);
-        ZipEntry manifest = new ZipEntry("manifest.json");
+        ZipEntry manifest = new ZipEntry(MANIFEST_NAME);
         zip.putNextEntry(manifest);
         zip.write(manifestBytes);
         zip.closeEntry();
@@ -231,9 +253,60 @@ public class SubmissionExportService {
     private void writeExplanationEntry(ZipOutputStream zip, CaseReportResponse report) throws IOException {
         DisputeExplanationService.ExplanationDraft draft = disputeExplanationService.buildDraft(report);
         byte[] explanationBytes = draft.text().getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        ZipEntry explanation = new ZipEntry("dispute_explanation_draft.txt");
+        ZipEntry explanation = new ZipEntry(EXPLANATION_NAME);
         zip.putNextEntry(explanation);
         zip.write(explanationBytes);
+        zip.closeEntry();
+    }
+
+    private void writeReadmeEntry(
+            ZipOutputStream zip,
+            DisputeCase disputeCase,
+            List<ZippedFileRow> zippedFileRows
+    ) throws IOException {
+        CaseReportResponse report = caseReportService.getReport(disputeCase.getId());
+        StringBuilder readme = new StringBuilder();
+        readme.append("Chargeback Submission Pack").append(System.lineSeparator()).append(System.lineSeparator());
+        readme.append("Upload only the files inside '").append(UPLOAD_DIR).append("'.").append(System.lineSeparator());
+        readme.append("Do not upload files inside '").append(REFERENCE_DIR).append("'.").append(System.lineSeparator()).append(System.lineSeparator());
+        readme.append("What to do").append(System.lineSeparator());
+        readme.append("1. Extract this ZIP.").append(System.lineSeparator());
+        readme.append("2. Open '").append(UPLOAD_DIR).append("' and upload those PDF/JPG/PNG files to your dispute dashboard.")
+                .append(System.lineSeparator());
+        readme.append("3. Use '").append(EXPLANATION_NAME)
+                .append("' only as a writing aid if the platform asks for additional explanation text.").append(System.lineSeparator());
+        readme.append("4. Ignore '").append(MANIFEST_NAME).append("' for platform submission.").append(System.lineSeparator()).append(System.lineSeparator());
+        readme.append("Prepared upload files").append(System.lineSeparator());
+        for (ZippedFileRow row : zippedFileRows) {
+            readme.append("- ")
+                    .append(row.zipName())
+                    .append(" -> ")
+                    .append(row.file().getEvidenceType().name())
+                    .append(System.lineSeparator());
+        }
+        List<ValidationIssueResponse> issues = report.latestValidation() == null ? List.of() : report.latestValidation().issues();
+        List<ValidationIssueResponse> issueGuides = distinctIssueGuides(issues).stream()
+                .limit(3)
+                .toList();
+        if (!issueGuides.isEmpty()) {
+            readme.append(System.lineSeparator());
+            readme.append("Issue-specific fix guides").append(System.lineSeparator());
+            for (ValidationIssueResponse issue : issueGuides) {
+                readme.append("- ")
+                        .append(issue.guideTitle() == null || issue.guideTitle().isBlank() ? issue.code() : issue.guideTitle())
+                        .append(": ")
+                        .append(issueGuidePath(report, issue))
+                        .append(System.lineSeparator());
+            }
+        }
+        readme.append(System.lineSeparator());
+        readme.append("Case ref: ").append(PublicCaseReference.from(disputeCase)).append(System.lineSeparator());
+        readme.append("Disclaimer: This pack helps organize evidence files but does not guarantee platform acceptance or dispute outcomes.")
+                .append(System.lineSeparator());
+
+        ZipEntry readmeEntry = new ZipEntry(README_NAME);
+        zip.putNextEntry(readmeEntry);
+        zip.write(readme.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
         zip.closeEntry();
     }
 
@@ -243,6 +316,21 @@ public class SubmissionExportService {
             case JPEG -> ".jpg";
             case PNG -> ".png";
         };
+    }
+
+    private String issueGuidePath(CaseReportResponse report, ValidationIssueResponse issue) {
+        return "/guides/" + report.platform().name().toLowerCase(Locale.ROOT) + "/" + issue.guideSlug();
+    }
+
+    private List<ValidationIssueResponse> distinctIssueGuides(List<ValidationIssueResponse> issues) {
+        LinkedHashMap<String, ValidationIssueResponse> byGuideSlug = new LinkedHashMap<>();
+        for (ValidationIssueResponse issue : issues) {
+            if (issue.guideSlug() == null || issue.guideSlug().isBlank()) {
+                continue;
+            }
+            byGuideSlug.putIfAbsent(issue.guideSlug(), issue);
+        }
+        return List.copyOf(byGuideSlug.values());
     }
 
     private void ensureExportableState(DisputeCase disputeCase) {

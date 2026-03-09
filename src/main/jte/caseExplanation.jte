@@ -94,6 +94,28 @@
         </div>
     @endif
 
+    @if(!explanationDraft.evidenceAnchorReview().isEmpty())
+        <div class="cb-card mb-6">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Evidence Anchors</h3>
+            <ul class="space-y-1 text-sm text-gray-700">
+                @for(var note : explanationDraft.evidenceAnchorReview())
+                    <li>${note}</li>
+                @endfor
+            </ul>
+        </div>
+    @endif
+
+    @if(!explanationDraft.narrativeSpine().isEmpty())
+        <div class="cb-card mb-6">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Narrative Spine</h3>
+            <ul class="space-y-1 text-sm text-gray-700">
+                @for(var note : explanationDraft.narrativeSpine())
+                    <li>${note}</li>
+                @endfor
+            </ul>
+        </div>
+    @endif
+
     @if(!explanationDraft.sourceUrls().isEmpty())
         <div class="cb-card">
             <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Policy Sources</h3>

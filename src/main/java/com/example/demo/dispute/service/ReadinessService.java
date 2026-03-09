@@ -15,9 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReadinessService {
 
     private final PolicyCatalogService policyCatalogService;
+    private final EvidenceFactsService evidenceFactsService;
 
-    public ReadinessService(PolicyCatalogService policyCatalogService) {
+    public ReadinessService(
+            PolicyCatalogService policyCatalogService,
+            EvidenceFactsService evidenceFactsService
+    ) {
         this.policyCatalogService = policyCatalogService;
+        this.evidenceFactsService = evidenceFactsService;
     }
 
     public ReadinessSummary summarize(CaseReportResponse report) {
@@ -51,6 +56,10 @@ public class ReadinessService {
         List<EvidenceType> missingRecommended = policy.recommendedEvidenceTypes().stream()
                 .filter(type -> !presentTypes.contains(type))
                 .toList();
+        EvidenceFactsService.CaseEvidenceFacts evidenceFacts = evidenceFactsService.analyze(
+                report.caseId(),
+                report.files()
+        );
 
         int score = 100;
         score -= blocked * 30;
@@ -58,6 +67,7 @@ public class ReadinessService {
         score -= warning * 5;
         score -= Math.min(36, missingRequired.size() * 12);
         score -= Math.min(16, missingRecommended.size() * 4);
+        score += Math.round((evidenceFacts.coherenceScore() - 50) / 4.0f);
         if (report.files().isEmpty()) {
             score = Math.min(score, 10);
         }
@@ -92,7 +102,9 @@ public class ReadinessService {
                 warning,
                 missingAll,
                 missingRequiredNames,
-                missingRecommendedNames
+                missingRecommendedNames,
+                evidenceFacts.coherenceScore(),
+                evidenceFacts.coherenceHighlights()
         );
     }
 
@@ -148,7 +160,9 @@ public class ReadinessService {
             int warningCount,
             List<String> missingEvidenceTypes,
             List<String> missingRequiredEvidenceTypes,
-            List<String> missingRecommendedEvidenceTypes
+            List<String> missingRecommendedEvidenceTypes,
+            int coherenceScore,
+            List<String> coherenceHighlights
     ) {
     }
 }

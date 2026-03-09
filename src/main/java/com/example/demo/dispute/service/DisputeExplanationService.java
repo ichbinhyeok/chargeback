@@ -23,9 +23,14 @@ public class DisputeExplanationService {
             .withZone(ZoneId.systemDefault());
 
     private final ReasonCodeChecklistService reasonCodeChecklistService;
+    private final EvidenceFactsService evidenceFactsService;
 
-    public DisputeExplanationService(ReasonCodeChecklistService reasonCodeChecklistService) {
+    public DisputeExplanationService(
+            ReasonCodeChecklistService reasonCodeChecklistService,
+            EvidenceFactsService evidenceFactsService
+    ) {
         this.reasonCodeChecklistService = reasonCodeChecklistService;
+        this.evidenceFactsService = evidenceFactsService;
     }
 
     public ExplanationDraft buildDraft(CaseReportResponse report) {
@@ -48,13 +53,21 @@ public class DisputeExplanationService {
 
         String context = buildContextLine(report, checklist);
         List<String> evidenceIndex = buildEvidenceIndex(report.files());
-        List<String> readinessNotes = buildReadinessNotes(checklist);
+        EvidenceFactsService.CaseEvidenceFacts evidenceFacts = evidenceFactsService.analyze(
+                report.caseId(),
+                report.files()
+        );
+        List<String> readinessNotes = buildReadinessNotes(checklist, evidenceFacts);
+        List<String> evidenceAnchorReview = evidenceFacts.coherenceHighlights();
+        List<String> narrativeSpine = evidenceFacts.narrativeSpine();
 
         String body = buildBody(
                 title,
                 context,
                 summary,
                 evidenceIndex,
+                evidenceAnchorReview,
+                narrativeSpine,
                 readinessNotes,
                 checklist.sourceUrls()
         );
@@ -67,6 +80,8 @@ public class DisputeExplanationService {
                 context,
                 summary,
                 evidenceIndex,
+                evidenceAnchorReview,
+                narrativeSpine,
                 readinessNotes,
                 checklist.sourceUrls(),
                 body
@@ -131,7 +146,10 @@ public class DisputeExplanationService {
         return List.copyOf(lines);
     }
 
-    private List<String> buildReadinessNotes(ReasonCodeChecklistService.ReasonChecklist checklist) {
+    private List<String> buildReadinessNotes(
+            ReasonCodeChecklistService.ReasonChecklist checklist,
+            EvidenceFactsService.CaseEvidenceFacts evidenceFacts
+    ) {
         List<String> notes = new ArrayList<>();
         if (!checklist.missingRequiredEvidence().isEmpty()) {
             notes.add("Missing required evidence: " + String.join(", ", checklist.missingRequiredEvidence()) + ".");
@@ -142,6 +160,12 @@ public class DisputeExplanationService {
         if (!checklist.priorityActions().isEmpty()) {
             notes.add("Priority actions:");
             checklist.priorityActions().forEach(action -> notes.add("- " + action));
+        }
+        if (evidenceFacts != null && evidenceFacts.coherenceScore() > 0) {
+            notes.add("Evidence coherence score: " + evidenceFacts.coherenceScore() + "/100.");
+            evidenceFacts.coherenceHighlights().stream()
+                    .limit(2)
+                    .forEach(notes::add);
         }
         if (notes.isEmpty()) {
             notes.add("No checklist gaps detected for current uploaded evidence types.");
@@ -178,6 +202,8 @@ public class DisputeExplanationService {
             String context,
             String summary,
             List<String> evidenceIndex,
+            List<String> evidenceAnchorReview,
+            List<String> narrativeSpine,
             List<String> readinessNotes,
             List<String> sourceUrls
     ) {
@@ -193,6 +219,20 @@ public class DisputeExplanationService {
         text.append('\n');
         text.append("Evidence Index").append('\n');
         evidenceIndex.forEach(line -> text.append(line).append('\n'));
+        text.append('\n');
+        text.append("Evidence Anchor Review").append('\n');
+        if (evidenceAnchorReview == null || evidenceAnchorReview.isEmpty()) {
+            text.append("No anchor review available.").append('\n');
+        } else {
+            evidenceAnchorReview.forEach(line -> text.append("- ").append(line).append('\n'));
+        }
+        text.append('\n');
+        text.append("Suggested Narrative Spine").append('\n');
+        if (narrativeSpine == null || narrativeSpine.isEmpty()) {
+            text.append("Build the narrative around one stable order, tracking, or customer identifier.").append('\n');
+        } else {
+            narrativeSpine.forEach(line -> text.append("- ").append(line).append('\n'));
+        }
         text.append('\n');
         text.append("Checklist Gaps and Actions").append('\n');
         readinessNotes.forEach(line -> text.append(line).append('\n'));
@@ -214,6 +254,8 @@ public class DisputeExplanationService {
             String contextLine,
             String summaryLine,
             List<String> evidenceIndex,
+            List<String> evidenceAnchorReview,
+            List<String> narrativeSpine,
             List<String> readinessNotes,
             List<String> sourceUrls,
             String text

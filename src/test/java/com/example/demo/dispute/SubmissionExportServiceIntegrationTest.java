@@ -6,8 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.demo.dispute.api.CreateCaseRequest;
+import com.example.demo.dispute.api.EvidenceFileInput;
+import com.example.demo.dispute.api.ValidateCaseResponse;
+import com.example.demo.dispute.api.ValidationIssueResponse;
 import com.example.demo.dispute.domain.CaseState;
 import com.example.demo.dispute.domain.EvidenceType;
+import com.example.demo.dispute.domain.FixStrategy;
+import com.example.demo.dispute.domain.IssueSeverity;
+import com.example.demo.dispute.domain.IssueTargetScope;
 import com.example.demo.dispute.domain.Platform;
 import com.example.demo.dispute.domain.ProductScope;
 import com.example.demo.dispute.domain.ValidationSource;
@@ -104,26 +110,30 @@ class SubmissionExportServiceIntegrationTest {
             Map<String, byte[]> entries = unzip(zipBytes.toByteArray());
             assertEquals(
                     List.of(
-                            "01_ORDER_RECEIPT.pdf",
-                            "02_CUSTOMER_DETAILS.pdf",
-                            "03_CUSTOMER_COMMUNICATION.pdf",
-                            "04_POLICIES.png",
-                            "dispute_explanation_draft.txt",
-                            "manifest.json"
+                            "upload_to_platform/01_ORDER_RECEIPT.pdf",
+                            "upload_to_platform/02_CUSTOMER_DETAILS.pdf",
+                            "upload_to_platform/03_CUSTOMER_COMMUNICATION.pdf",
+                            "upload_to_platform/04_POLICIES.png",
+                            "README_FIRST.txt",
+                            "reference/dispute_explanation_draft.txt",
+                            "reference/manifest.json"
                     ),
                     new ArrayList<>(entries.keySet())
             );
-            assertArrayEquals(receiptPdf, entries.get("01_ORDER_RECEIPT.pdf"));
-            assertArrayEquals(customerPdf, entries.get("02_CUSTOMER_DETAILS.pdf"));
-            assertArrayEquals(communicationPdf, entries.get("03_CUSTOMER_COMMUNICATION.pdf"));
-            assertArrayEquals(policyPng, entries.get("04_POLICIES.png"));
-            String explanation = new String(entries.get("dispute_explanation_draft.txt"), StandardCharsets.UTF_8);
+            assertArrayEquals(receiptPdf, entries.get("upload_to_platform/01_ORDER_RECEIPT.pdf"));
+            assertArrayEquals(customerPdf, entries.get("upload_to_platform/02_CUSTOMER_DETAILS.pdf"));
+            assertArrayEquals(communicationPdf, entries.get("upload_to_platform/03_CUSTOMER_COMMUNICATION.pdf"));
+            assertArrayEquals(policyPng, entries.get("upload_to_platform/04_POLICIES.png"));
+            String readme = new String(entries.get("README_FIRST.txt"), StandardCharsets.UTF_8);
+            assertTrue(readme.contains("Upload only the files inside 'upload_to_platform/'"));
+            assertTrue(readme.contains("reference/dispute_explanation_draft.txt"));
+            String explanation = new String(entries.get("reference/dispute_explanation_draft.txt"), StandardCharsets.UTF_8);
             String publicCaseRef = PublicCaseReference.from(disputeCase);
             assertTrue(explanation.contains("Dispute Explanation Draft"));
             assertTrue(explanation.contains(publicCaseRef));
             assertTrue(explanation.contains("Disclaimer: This draft is a submission-writing aid only."));
             assertTrue(!explanation.contains(disputeCase.getCaseToken()));
-            String manifest = new String(entries.get("manifest.json"), StandardCharsets.UTF_8);
+            String manifest = new String(entries.get("reference/manifest.json"), StandardCharsets.UTF_8);
             assertTrue(manifest.contains("\"publicCaseRef\""));
             assertTrue(!manifest.contains("\"caseId\""));
             assertTrue(!manifest.contains(disputeCase.getCaseToken()));
@@ -166,6 +176,68 @@ class SubmissionExportServiceIntegrationTest {
                 assertTrue(contentStream.contains("FREE VERSION"));
                 assertTrue(contentStream.contains("WATERMARKED"));
             }
+        } finally {
+            caseService.deleteCase(disputeCase.getId());
+        }
+    }
+
+    @Test
+    void submissionZipReadmeAndManifestExposeIssueGuideMetadata() throws Exception {
+        DisputeCase disputeCase = caseService.createCase(new CreateCaseRequest(
+                Platform.STRIPE,
+                ProductScope.STRIPE_DISPUTE,
+                "zip_issue_guide_test",
+                null,
+                null
+        ));
+
+        try {
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.ORDER_RECEIPT,
+                    new MockMultipartFile("file", "receipt.pdf", "application/pdf", simplePdf("guide"))
+            );
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.CUSTOMER_DETAILS,
+                    new MockMultipartFile("file", "customer.pdf", "application/pdf", simplePdf("guide-customer"))
+            );
+            moveCaseToReady(disputeCase);
+
+            validationHistoryService.record(
+                    disputeCase,
+                    new ValidateCaseResponse(
+                            true,
+                            List.of(new ValidationIssueResponse(
+                                    "ERR_STRIPE_TOTAL_SIZE",
+                                    "STR_SIZE_001",
+                                    IssueSeverity.WARNING,
+                                    "Synthetic warning issue to verify guide links in export artifacts.",
+                                    IssueTargetScope.GLOBAL,
+                                    null,
+                                    null,
+                                    null,
+                                    FixStrategy.REDUCE_TOTAL_SIZE,
+                                    "evidence-file-size-limit-4-5mb",
+                                    "Stripe evidence size limit"
+                            ))
+                    ),
+                    ValidationSource.STORED_FILES,
+                    false,
+                    evidenceFileService.listAsValidationInputs(disputeCase.getId())
+            );
+
+            ByteArrayOutputStream zipBytes = new ByteArrayOutputStream();
+            submissionExportService.writeSubmissionZip(disputeCase.getCaseToken(), zipBytes);
+
+            Map<String, byte[]> entries = unzip(zipBytes.toByteArray());
+            String readme = new String(entries.get("README_FIRST.txt"), StandardCharsets.UTF_8);
+            String manifest = new String(entries.get("reference/manifest.json"), StandardCharsets.UTF_8);
+
+            assertTrue(readme.contains("Issue-specific fix guides"));
+            assertTrue(readme.contains("/guides/stripe/evidence-file-size-limit-4-5mb"));
+            assertTrue(manifest.contains("\"guideSlug\" : \"evidence-file-size-limit-4-5mb\""));
+            assertTrue(manifest.contains("\"guidePath\" : \"/guides/stripe/evidence-file-size-limit-4-5mb\""));
         } finally {
             caseService.deleteCase(disputeCase.getId());
         }
@@ -220,19 +292,20 @@ class SubmissionExportServiceIntegrationTest {
             Map<String, byte[]> entries = unzip(zipBytes.toByteArray());
             assertEquals(
                     List.of(
-                            "01_ORDER_RECEIPT_01.pdf",
-                            "02_ORDER_RECEIPT_02.pdf",
-                            "03_CUSTOMER_DETAILS.png",
-                            "04_CUSTOMER_COMMUNICATION.pdf",
-                            "dispute_explanation_draft.txt",
-                            "manifest.json"
+                            "upload_to_platform/01_ORDER_RECEIPT_01.pdf",
+                            "upload_to_platform/02_ORDER_RECEIPT_02.pdf",
+                            "upload_to_platform/03_CUSTOMER_DETAILS.png",
+                            "upload_to_platform/04_CUSTOMER_COMMUNICATION.pdf",
+                            "README_FIRST.txt",
+                            "reference/dispute_explanation_draft.txt",
+                            "reference/manifest.json"
                     ),
                     new ArrayList<>(entries.keySet())
             );
-            assertArrayEquals(firstReceipt, entries.get("01_ORDER_RECEIPT_01.pdf"));
-            assertArrayEquals(secondReceipt, entries.get("02_ORDER_RECEIPT_02.pdf"));
-            assertArrayEquals(customerPng, entries.get("03_CUSTOMER_DETAILS.png"));
-            assertArrayEquals(communicationPdf, entries.get("04_CUSTOMER_COMMUNICATION.pdf"));
+            assertArrayEquals(firstReceipt, entries.get("upload_to_platform/01_ORDER_RECEIPT_01.pdf"));
+            assertArrayEquals(secondReceipt, entries.get("upload_to_platform/02_ORDER_RECEIPT_02.pdf"));
+            assertArrayEquals(customerPng, entries.get("upload_to_platform/03_CUSTOMER_DETAILS.png"));
+            assertArrayEquals(communicationPdf, entries.get("upload_to_platform/04_CUSTOMER_COMMUNICATION.pdf"));
         } finally {
             caseService.deleteCase(disputeCase.getId());
         }

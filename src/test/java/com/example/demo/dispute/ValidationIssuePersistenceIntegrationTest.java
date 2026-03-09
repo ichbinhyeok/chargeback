@@ -55,7 +55,9 @@ class ValidationIssuePersistenceIntegrationTest {
                             EvidenceType.ORDER_RECEIPT,
                             null,
                             null,
-                            FixStrategy.MANUAL
+                            FixStrategy.MANUAL,
+                            "evidence-file-too-large-2mb",
+                            "Shopify evidence file too large"
                     ))
             );
 
@@ -75,6 +77,8 @@ class ValidationIssuePersistenceIntegrationTest {
             assertEquals(IssueTargetScope.EVIDENCE_TYPE, persistedIssue.targetScope());
             assertEquals(EvidenceType.ORDER_RECEIPT, persistedIssue.targetEvidenceType());
             assertEquals(FixStrategy.MANUAL, persistedIssue.fixStrategy());
+            assertEquals("evidence-file-too-large-2mb", persistedIssue.guideSlug());
+            assertEquals("Shopify evidence file too large", persistedIssue.guideTitle());
         } finally {
             caseService.deleteCase(disputeCase.getId());
         }

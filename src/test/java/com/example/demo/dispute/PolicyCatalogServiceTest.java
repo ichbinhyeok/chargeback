@@ -1,9 +1,12 @@
 package com.example.demo.dispute;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.demo.dispute.domain.CardNetwork;
 import com.example.demo.dispute.domain.EvidenceType;
+import com.example.demo.dispute.domain.FileFormat;
 import com.example.demo.dispute.domain.Platform;
 import com.example.demo.dispute.domain.ProductScope;
 import com.example.demo.dispute.service.PolicyCatalogService;
@@ -28,6 +31,11 @@ class PolicyCatalogServiceTest {
         assertEquals(1, policy.requiredEvidenceTypes().size());
         assertEquals(EvidenceType.FULFILLMENT_DELIVERY, policy.requiredEvidenceTypes().get(0));
         assertEquals(5000L, policy.totalSizeLimitBytes());
+        assertEquals(List.of(FileFormat.PDF), policy.allowedFormats());
+        assertTrue(policy.singleFilePerEvidenceType());
+        assertFalse(policy.externalLinksAllowed());
+        assertEquals(10, policy.perPdfPageLimit());
+        assertEquals(49, policy.totalPagesLimit());
         assertEquals(
                 "platform=STRIPE|scope=STRIPE_DISPUTE|reason=RC_1|network=VISA",
                 policy.contextKey()

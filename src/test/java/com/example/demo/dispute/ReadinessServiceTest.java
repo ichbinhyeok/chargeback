@@ -17,6 +17,9 @@ import com.example.demo.dispute.domain.IssueTargetScope;
 import com.example.demo.dispute.domain.Platform;
 import com.example.demo.dispute.domain.ProductScope;
 import com.example.demo.dispute.domain.ValidationSource;
+import com.example.demo.dispute.service.EvidenceAliasCatalogService;
+import com.example.demo.dispute.service.EvidenceFactsService;
+import com.example.demo.dispute.service.EvidenceTextExtractionService;
 import com.example.demo.dispute.service.PolicyCatalogService;
 import com.example.demo.dispute.service.ReadinessService;
 import java.time.Instant;
@@ -27,7 +30,8 @@ import org.junit.jupiter.api.Test;
 class ReadinessServiceTest {
 
     private final ReadinessService service = new ReadinessService(
-            new PolicyCatalogService("policy/catalog-v1.json")
+            new PolicyCatalogService("policy/catalog-v1.json"),
+            new EvidenceFactsService(null, new EvidenceTextExtractionService(), new EvidenceAliasCatalogService())
     );
 
     @Test
@@ -70,7 +74,9 @@ class ReadinessServiceTest {
                 null,
                 null,
                 null,
-                FixStrategy.MANUAL
+                FixStrategy.MANUAL,
+                null,
+                null
         );
         ValidationRunReportResponse validation = new ValidationRunReportResponse(
                 UUID.randomUUID(),
@@ -135,6 +141,26 @@ class ReadinessServiceTest {
         assertTrue(service.hasMinimumCoreEvidenceCoverage(report));
     }
 
+    @Test
+    void sharedAnchorsImproveCoherenceScore() {
+        CaseReportResponse report = report(
+                Platform.STRIPE,
+                ProductScope.STRIPE_DISPUTE,
+                "PRODUCT_NOT_RECEIVED",
+                List.of(
+                        file(EvidenceType.ORDER_RECEIPT, "invoice_order_A-2042.pdf"),
+                        file(EvidenceType.CUSTOMER_COMMUNICATION, "support_order_A-2042_email_buyer@example.com.pdf"),
+                        file(EvidenceType.FULFILLMENT_DELIVERY, "tracking_1Z999AA10123456784_order_A-2042.pdf")
+                ),
+                null
+        );
+
+        ReadinessService.ReadinessSummary summary = service.summarize(report);
+
+        assertTrue(summary.coherenceScore() >= 70);
+        assertTrue(summary.coherenceHighlights().stream().anyMatch(line -> line.contains("A-2042")));
+    }
+
     private CaseReportResponse report(
             Platform platform,
             ProductScope productScope,
@@ -166,10 +192,14 @@ class ReadinessServiceTest {
     }
 
     private EvidenceFileReportResponse file(EvidenceType evidenceType) {
+        return file(evidenceType, evidenceType.name().toLowerCase() + ".pdf");
+    }
+
+    private EvidenceFileReportResponse file(EvidenceType evidenceType, String originalName) {
         return new EvidenceFileReportResponse(
                 UUID.randomUUID(),
                 evidenceType,
-                evidenceType.name().toLowerCase() + ".pdf",
+                originalName,
                 FileFormat.PDF,
                 1200,
                 1,

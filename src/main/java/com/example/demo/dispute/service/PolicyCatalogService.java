@@ -2,6 +2,7 @@ package com.example.demo.dispute.service;
 
 import com.example.demo.dispute.domain.CardNetwork;
 import com.example.demo.dispute.domain.EvidenceType;
+import com.example.demo.dispute.domain.FileFormat;
 import com.example.demo.dispute.domain.Platform;
 import com.example.demo.dispute.domain.ProductScope;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -88,17 +89,28 @@ public class PolicyCatalogService {
         CoverageNode coverage = merged.coverage() == null
                 ? new CoverageNode(List.of(), List.of())
                 : merged.coverage();
-        LimitsNode limits = merged.limits() == null
-                ? new LimitsNode(null)
-                : merged.limits();
+        RulesNode rules = merged.rules() == null
+                ? RulesNode.empty()
+                : merged.rules();
 
         return new ResolvedPolicy(
                 catalog.version(),
                 buildContextKey(platform, productScope, canonicalReasonKey, cardNetwork),
                 canonicalReasonKey,
-                coverage.required() == null ? List.of() : coverage.required(),
-                coverage.recommended() == null ? List.of() : coverage.recommended(),
-                limits.totalSizeLimitBytes()
+                coverage.required() == null ? List.of() : List.copyOf(coverage.required()),
+                coverage.recommended() == null ? List.of() : List.copyOf(coverage.recommended()),
+                new ResolvedRules(
+                        rules.allowedFormats() == null ? List.of() : List.copyOf(rules.allowedFormats()),
+                        rules.singleFilePerEvidenceType(),
+                        rules.externalLinksAllowed(),
+                        rules.totalSizeLimitBytes(),
+                        rules.perFileSizeLimitBytes(),
+                        rules.perImageFileSizeLimitBytes(),
+                        rules.totalPagesLimit(),
+                        rules.perPdfPageLimit(),
+                        rules.pdfARequired(),
+                        rules.portfolioPdfAllowed()
+                )
         );
     }
 
@@ -116,7 +128,7 @@ public class PolicyCatalogService {
     }
 
     private PolicyNode emptyNode() {
-        return new PolicyNode(new CoverageNode(List.of(), List.of()), new LimitsNode(null));
+        return new PolicyNode(new CoverageNode(List.of(), List.of()), RulesNode.empty());
     }
 
     private PolicyNode merge(PolicyNode base, PolicyNode override) {
@@ -124,8 +136,8 @@ public class PolicyCatalogService {
             return base;
         }
         CoverageNode mergedCoverage = mergeCoverage(base.coverage(), override.coverage());
-        LimitsNode mergedLimits = mergeLimits(base.limits(), override.limits());
-        return new PolicyNode(mergedCoverage, mergedLimits);
+        RulesNode mergedRules = mergeRules(base.rules(), override.rules());
+        return new PolicyNode(mergedCoverage, mergedRules);
     }
 
     private CoverageNode mergeCoverage(CoverageNode base, CoverageNode override) {
@@ -144,7 +156,7 @@ public class PolicyCatalogService {
         );
     }
 
-    private LimitsNode mergeLimits(LimitsNode base, LimitsNode override) {
+    private RulesNode mergeRules(RulesNode base, RulesNode override) {
         if (base == null && override == null) {
             return null;
         }
@@ -154,10 +166,35 @@ public class PolicyCatalogService {
         if (override == null) {
             return base;
         }
-        return new LimitsNode(
+        return new RulesNode(
+                override.allowedFormats() != null ? override.allowedFormats() : base.allowedFormats(),
+                override.singleFilePerEvidenceType() != null
+                        ? override.singleFilePerEvidenceType()
+                        : base.singleFilePerEvidenceType(),
+                override.externalLinksAllowed() != null
+                        ? override.externalLinksAllowed()
+                        : base.externalLinksAllowed(),
                 override.totalSizeLimitBytes() != null
                         ? override.totalSizeLimitBytes()
-                        : base.totalSizeLimitBytes()
+                        : base.totalSizeLimitBytes(),
+                override.perFileSizeLimitBytes() != null
+                        ? override.perFileSizeLimitBytes()
+                        : base.perFileSizeLimitBytes(),
+                override.perImageFileSizeLimitBytes() != null
+                        ? override.perImageFileSizeLimitBytes()
+                        : base.perImageFileSizeLimitBytes(),
+                override.totalPagesLimit() != null
+                        ? override.totalPagesLimit()
+                        : base.totalPagesLimit(),
+                override.perPdfPageLimit() != null
+                        ? override.perPdfPageLimit()
+                        : base.perPdfPageLimit(),
+                override.pdfARequired() != null
+                        ? override.pdfARequired()
+                        : base.pdfARequired(),
+                override.portfolioPdfAllowed() != null
+                        ? override.portfolioPdfAllowed()
+                        : base.portfolioPdfAllowed()
         );
     }
 
@@ -242,13 +279,41 @@ public class PolicyCatalogService {
     ) {
     }
 
-    private record PolicyNode(CoverageNode coverage, LimitsNode limits) {
+    private record PolicyNode(CoverageNode coverage, RulesNode rules) {
     }
 
     private record CoverageNode(List<EvidenceType> required, List<EvidenceType> recommended) {
     }
 
-    private record LimitsNode(Long totalSizeLimitBytes) {
+    private record RulesNode(
+            List<FileFormat> allowedFormats,
+            Boolean singleFilePerEvidenceType,
+            Boolean externalLinksAllowed,
+            Long totalSizeLimitBytes,
+            Long perFileSizeLimitBytes,
+            Long perImageFileSizeLimitBytes,
+            Integer totalPagesLimit,
+            Integer perPdfPageLimit,
+            Boolean pdfARequired,
+            Boolean portfolioPdfAllowed
+    ) {
+        private static RulesNode empty() {
+            return new RulesNode(null, null, null, null, null, null, null, null, null, null);
+        }
+    }
+
+    public record ResolvedRules(
+            List<FileFormat> allowedFormats,
+            Boolean singleFilePerEvidenceType,
+            Boolean externalLinksAllowed,
+            Long totalSizeLimitBytes,
+            Long perFileSizeLimitBytes,
+            Long perImageFileSizeLimitBytes,
+            Integer totalPagesLimit,
+            Integer perPdfPageLimit,
+            Boolean pdfARequired,
+            Boolean portfolioPdfAllowed
+    ) {
     }
 
     public record ResolvedPolicy(
@@ -257,7 +322,46 @@ public class PolicyCatalogService {
             String canonicalReasonKey,
             List<EvidenceType> requiredEvidenceTypes,
             List<EvidenceType> recommendedEvidenceTypes,
-            Long totalSizeLimitBytes
+            ResolvedRules rules
     ) {
+        public List<FileFormat> allowedFormats() {
+            return rules == null || rules.allowedFormats() == null ? List.of() : rules.allowedFormats();
+        }
+
+        public Boolean singleFilePerEvidenceType() {
+            return rules == null ? null : rules.singleFilePerEvidenceType();
+        }
+
+        public Boolean externalLinksAllowed() {
+            return rules == null ? null : rules.externalLinksAllowed();
+        }
+
+        public Long totalSizeLimitBytes() {
+            return rules == null ? null : rules.totalSizeLimitBytes();
+        }
+
+        public Long perFileSizeLimitBytes() {
+            return rules == null ? null : rules.perFileSizeLimitBytes();
+        }
+
+        public Long perImageFileSizeLimitBytes() {
+            return rules == null ? null : rules.perImageFileSizeLimitBytes();
+        }
+
+        public Integer totalPagesLimit() {
+            return rules == null ? null : rules.totalPagesLimit();
+        }
+
+        public Integer perPdfPageLimit() {
+            return rules == null ? null : rules.perPdfPageLimit();
+        }
+
+        public Boolean pdfARequired() {
+            return rules == null ? null : rules.pdfARequired();
+        }
+
+        public Boolean portfolioPdfAllowed() {
+            return rules == null ? null : rules.portfolioPdfAllowed();
+        }
     }
 }

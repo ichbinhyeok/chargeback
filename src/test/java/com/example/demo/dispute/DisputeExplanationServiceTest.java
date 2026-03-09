@@ -11,6 +11,9 @@ import com.example.demo.dispute.domain.FileFormat;
 import com.example.demo.dispute.domain.Platform;
 import com.example.demo.dispute.domain.ProductScope;
 import com.example.demo.dispute.service.DisputeExplanationService;
+import com.example.demo.dispute.service.EvidenceAliasCatalogService;
+import com.example.demo.dispute.service.EvidenceFactsService;
+import com.example.demo.dispute.service.EvidenceTextExtractionService;
 import com.example.demo.dispute.service.PolicyCatalogService;
 import com.example.demo.dispute.service.ReasonCodeChecklistService;
 import java.time.Instant;
@@ -24,7 +27,8 @@ class DisputeExplanationServiceTest {
             new ReasonCodeChecklistService(
                     new PolicyCatalogService("policy/catalog-v1.json"),
                     "policy/reason-checklists-v1.json"
-            )
+            ),
+            new EvidenceFactsService(null, new EvidenceTextExtractionService(), new EvidenceAliasCatalogService())
     );
 
     @Test
@@ -79,11 +83,48 @@ class DisputeExplanationServiceTest {
         assertTrue(draft.text().contains("Checklist Gaps and Actions"));
     }
 
+    @Test
+    void buildDraftIncludesEvidenceAnchorReviewAndNarrativeSpine() {
+        CaseReportResponse report = new CaseReportResponse(
+                UUID.randomUUID(),
+                "case_test_explanation_3",
+                Platform.STRIPE,
+                ProductScope.STRIPE_DISPUTE,
+                "13.1",
+                null,
+                CaseState.READY,
+                Instant.now(),
+                null,
+                List.of(
+                        file(EvidenceType.ORDER_RECEIPT, "invoice_order_A-2042.pdf", FileFormat.PDF, 1200, 1),
+                        file(EvidenceType.CUSTOMER_COMMUNICATION, "support_order_A-2042_email_buyer@example.com.pdf", FileFormat.PDF, 1800, 1),
+                        file(EvidenceType.FULFILLMENT_DELIVERY, "tracking_1Z999AA10123456784_order_A-2042.pdf", FileFormat.PDF, 2000, 1)
+                )
+        );
+
+        DisputeExplanationService.ExplanationDraft draft = service.buildDraft(report);
+
+        assertFalse(draft.evidenceAnchorReview().isEmpty());
+        assertFalse(draft.narrativeSpine().isEmpty());
+        assertTrue(draft.text().contains("Evidence Anchor Review"));
+        assertTrue(draft.text().contains("Suggested Narrative Spine"));
+    }
+
     private EvidenceFileReportResponse file(EvidenceType type, FileFormat format, long sizeBytes, int pageCount) {
+        return file(type, type.name().toLowerCase() + "." + format.name().toLowerCase(), format, sizeBytes, pageCount);
+    }
+
+    private EvidenceFileReportResponse file(
+            EvidenceType type,
+            String originalName,
+            FileFormat format,
+            long sizeBytes,
+            int pageCount
+    ) {
         return new EvidenceFileReportResponse(
                 UUID.randomUUID(),
                 type,
-                type.name().toLowerCase() + "." + format.name().toLowerCase(),
+                originalName,
                 format,
                 sizeBytes,
                 pageCount,

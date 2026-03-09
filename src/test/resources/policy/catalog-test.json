@@ -5,7 +5,8 @@
       "required": ["OTHER_SUPPORTING"],
       "recommended": []
     },
-    "limits": {
+    "rules": {
+      "allowedFormats": ["PDF"],
       "totalSizeLimitBytes": 1000
     }
   },
@@ -14,7 +15,8 @@
       "coverage": {
         "required": ["ORDER_RECEIPT"]
       },
-      "limits": {
+      "rules": {
+        "singleFilePerEvidenceType": true,
         "totalSizeLimitBytes": 2000
       }
     }
@@ -24,7 +26,8 @@
       "coverage": {
         "required": ["CUSTOMER_DETAILS"]
       },
-      "limits": {
+      "rules": {
+        "externalLinksAllowed": false,
         "totalSizeLimitBytes": 3000
       }
     }
@@ -34,7 +37,8 @@
       "coverage": {
         "required": ["POLICIES"]
       },
-      "limits": {
+      "rules": {
+        "totalPagesLimit": 49,
         "totalSizeLimitBytes": 4000
       }
     }
@@ -44,7 +48,8 @@
       "coverage": {
         "required": ["FULFILLMENT_DELIVERY"]
       },
-      "limits": {
+      "rules": {
+        "perPdfPageLimit": 10,
         "totalSizeLimitBytes": 5000
       }
     }
