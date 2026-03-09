@@ -34,10 +34,12 @@
         </div>
     @endif
 
-    <div class="mb-8 flex flex-col md:flex-row md:items-start justify-between gap-4">
-        <div>
-            <div class="flex items-center gap-3 mb-2">
-                <h1 class="text-3xl font-bold text-neutral-900 tracking-tight">Case ${report.caseToken()}</h1>
+    <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div class="min-w-0">
+            <div class="mb-2 flex flex-wrap items-center gap-3">
+                <h1 class="min-w-0 text-3xl font-bold text-neutral-900 tracking-tight">
+                    Case <span class="cb-break-anywhere">${report.caseToken()}</span>
+                </h1>
                 <span class="cb-badge ${displayCaseStateBadgeClass}">
                     ${displayCaseState}
                 </span>
@@ -45,7 +47,7 @@
                     <span class="cb-badge cb-badge-amber">PAID</span>
                 @endif
             </div>
-            <div class="flex gap-2 text-sm text-gray-500">
+            <div class="flex flex-wrap gap-2 text-sm text-gray-500">
                 <span class="font-medium text-gray-700">${report.platform()}</span> &bull;
                 <span>Dispute Explanation Draft</span>
             </div>
@@ -97,7 +99,7 @@
             <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Policy Sources</h3>
             <div class="flex flex-wrap gap-2 text-xs">
                 @for(var url : explanationDraft.sourceUrls())
-                    <a href="${url}" target="_blank" rel="noreferrer noopener" class="inline-flex items-center px-2 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">${url}</a>
+                    <a href="${url}" target="_blank" rel="noreferrer noopener" class="cb-break-anywhere inline-flex items-center px-2 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">${url}</a>
                 @endfor
             </div>
         </div>

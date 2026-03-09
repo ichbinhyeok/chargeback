@@ -223,7 +223,7 @@
                         <p class="mb-4 max-w-3xl text-base leading-7 text-gray-700">Double-check current platform rules here. Use Chargeback Builder to handle validation and packaging around those rules.</p>
                         <ul class="list-disc pl-5 space-y-3 text-base leading-8 text-gray-700">
                             @for(String sourceUrl : guide.sourceUrls())
-                                <li><a href="${sourceUrl}" target="_blank" rel="nofollow noopener noreferrer" class="text-primary-600 hover:underline">${sourceUrl}</a></li>
+                                <li><a href="${sourceUrl}" target="_blank" rel="nofollow noopener noreferrer" class="cb-break-anywhere text-primary-600 hover:underline">${sourceUrl}</a></li>
                             @endfor
                         </ul>
                     </section>

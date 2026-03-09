@@ -87,6 +87,7 @@
         .cb-badge-red { background-color: #fee2e2; color: #991b1b; }
         .cb-badge-blue { background-color: #dbeafe; color: #1e40af; }
         .cb-badge-amber { background-color: #fef3c7; color: #92400e; }
+        .cb-break-anywhere { overflow-wrap: anywhere; word-break: break-word; }
         /* table */
         .cb-table { width: 100%; border-collapse: separate; border-spacing: 0; }
         .cb-table th { background-color: #f9fafb; text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e5e7eb; border-top: 1px solid #e5e7eb; }

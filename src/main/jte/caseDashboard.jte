@@ -49,10 +49,12 @@
     @endif
 
     <!-- Header Section -->
-    <div class="mb-8 flex flex-col md:flex-row md:items-start justify-between gap-4">
-        <div>
-            <div class="flex items-center gap-3 mb-2">
-                <h1 class="text-3xl font-bold text-neutral-900 tracking-tight">Case ${report.caseToken()}</h1>
+    <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div class="min-w-0">
+            <div class="mb-2 flex flex-wrap items-center gap-3">
+                <h1 class="min-w-0 text-3xl font-bold text-neutral-900 tracking-tight">
+                    Case <span class="cb-break-anywhere">${report.caseToken()}</span>
+                </h1>
                 <span class="cb-badge ${displayCaseStateBadgeClass}">
                     ${displayCaseState}
                 </span>
@@ -60,14 +62,14 @@
                     <span class="cb-badge cb-badge-amber">PAID</span>
                 @endif
             </div>
-            <div class="flex gap-2 text-sm text-gray-500">
+            <div class="flex flex-wrap gap-2 text-sm text-gray-500">
                 <span class="font-medium text-gray-700">${report.platform()}</span> &bull; 
                 <span>${report.productScope()}</span>
             </div>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3 self-start">
             <form method="post" action="/c/${report.caseToken()}/delete" onsubmit="return confirm('Delete this case and all files now?');">
-                <button type="submit" class="cb-btn cb-btn-danger text-sm max-h-[38px] shadow-sm">
+                <button type="submit" class="cb-btn cb-btn-danger whitespace-nowrap text-sm shadow-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     Delete Case
                 </button>
