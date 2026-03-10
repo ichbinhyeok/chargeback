@@ -3,8 +3,8 @@
 @param String checkoutPriceDisplay
 
 @template.layout(
-    title = "Upload-Ready Dispute Evidence Packs",
-    metaDescription = "Validate Stripe and Shopify evidence for free, auto-fix supported issues, and unlock an upload-ready dispute evidence pack when it is ready.",
+    title = "Free Stripe/Shopify Evidence Preflight",
+    metaDescription = "Run free Stripe and Shopify evidence preflight checks, fix supported file blockers, and unlock a beta export only when you want clean downloads.",
     content = @`
     @if(message != null && !message.isBlank())
         <div class="mb-6 p-4 rounded-lg bg-green-50 text-green-800 border-l-4 border-green-500 flex items-center gap-3">
@@ -25,15 +25,15 @@
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
               <span class="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
             </span>
-            Upload-Ready Evidence Packs
+            Free Evidence Preflight
         </div>
         
         <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-neutral-800 tracking-tight leading-tight mb-6">
-            Turn raw dispute files into an <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-indigo-600">upload-ready evidence pack</span>
+            Find and fix <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-indigo-600">supported evidence-file blockers</span> before you resubmit
         </h1>
         
         <p class="text-lg md:text-xl text-gray-600 mb-10 max-w-2xl leading-relaxed">
-            Validate Stripe and Shopify evidence for free, auto-fix supported issues, and unlock the ZIP, summary PDF, and explanation draft merchants actually submit.
+            Run free validation for Stripe and Shopify disputes, auto-fix documented file blockers, and unlock the beta export only if you want the clean ZIP, PDF, and TXT downloads.
         </p>
 
         <div class="mb-8 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm">
@@ -64,36 +64,36 @@
 
         <div class="flex flex-col sm:flex-row gap-4">
             <a href="/new" class="cb-btn cb-btn-secondary px-8 py-4 text-base w-full sm:w-auto justify-center">
-                Start Free Validation
+                Start Free Preflight
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </a>
         </div>
 
         <div class="mt-6 flex flex-wrap gap-3 text-sm">
-            <span class="inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-3 py-1 font-medium text-blue-800">Validation is free</span>
-            <span class="inline-flex items-center rounded-full border border-green-100 bg-green-50 px-3 py-1 font-medium text-green-800">${checkoutPriceDisplay} to unlock downloads</span>
-            <span class="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1 font-medium text-gray-700">ZIP + PDF + TXT outputs</span>
+            <span class="inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-3 py-1 font-medium text-blue-800">Free preflight</span>
+            <span class="inline-flex items-center rounded-full border border-green-100 bg-green-50 px-3 py-1 font-medium text-green-800">${checkoutPriceDisplay} beta export</span>
+            <span class="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1 font-medium text-gray-700">7-day retention</span>
         </div>
 
         <div class="mt-8 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm">
-            <div class="text-sm font-semibold text-gray-900">Already proven on real failed uploads</div>
-            <p class="mt-1 text-sm text-gray-600">The current auto-fix flow already cleared these live beta scenarios end-to-end.</p>
+            <div class="text-sm font-semibold text-gray-900">Best-fit blockers in the current beta</div>
+            <p class="mt-1 text-sm text-gray-600">These are the clearest documented file blockers the current engine handles best. Final platform acceptance still depends on the payment platform and your evidence.</p>
             <div class="mt-4 flex flex-wrap gap-2 text-sm">
                 <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Shopify PDF/A required</span>
                 <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Shopify PDF portfolio</span>
                 <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Shopify 2MB receipt photo</span>
                 <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Shopify external-link PDF</span>
-                <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Stripe Mastercard 19-page packet</span>
+                <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Stripe duplicate evidence type</span>
                 <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-800">Scanner TIFF to JPEG</span>
             </div>
             <div class="mt-4 grid gap-3 md:grid-cols-2 text-sm">
                 <div class="rounded-xl border border-blue-100 bg-blue-50 p-3 text-blue-950">
-                    <p class="font-semibold">Stripe size-limit note</p>
-                    <p class="mt-1 leading-6">Some Stripe docs mention a 5MB file-upload ceiling, but dispute dashboard guidance is stricter at 4.5MB for the evidence pack. Validation uses the safer 4.5MB rule.</p>
+                    <p class="font-semibold">Supported today</p>
+                    <p class="mt-1 leading-6">PDF/A conversion, portfolio flattening, hidden-link cleanup, duplicate evidence merge, and supported image normalization are the strongest current file-rule fixes.</p>
                 </div>
                 <div class="rounded-xl border border-amber-100 bg-amber-50 p-3 text-amber-950">
-                    <p class="font-semibold">Shopify PDF note</p>
-                    <p class="mt-1 leading-6">The same Shopify PDF can fail on PDF/A, portfolio structure, and hidden links together. Auto-fix may clear more than one blocker in a single rerun.</p>
+                    <p class="font-semibold">Still conditional</p>
+                    <p class="mt-1 leading-6">Total pack overages, ambiguous evidence mapping, weak evidence quality, and hidden platform UI edge cases remain outside any guarantee.</p>
                 </div>
             </div>
         </div>
@@ -102,9 +102,9 @@
             <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
                     <div class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">How it works in 3 moves</div>
-                    <h2 class="mt-2 text-2xl font-bold tracking-tight">Cold traffic should understand the path in under a minute.</h2>
+                    <h2 class="mt-2 text-2xl font-bold tracking-tight">The product promise should be obvious in under a minute.</h2>
                 </div>
-                <a href="/new" class="cb-btn bg-white text-slate-950 hover:bg-slate-100">Start Free Validation</a>
+                <a href="/new" class="cb-btn bg-white text-slate-950 hover:bg-slate-100">Start Free Preflight</a>
             </div>
             <div class="mt-5 grid gap-4 md:grid-cols-3">
                 <div class="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -113,11 +113,11 @@
                 </div>
                 <div class="rounded-xl border border-white/10 bg-white/5 p-4">
                     <div class="text-xs font-semibold uppercase tracking-wide text-sky-200">2. Validate and fix the pack</div>
-                    <p class="mt-2 text-sm leading-6 text-slate-100">Upload evidence, run validation, and let auto-fix handle supported blockers before you retry the dashboard.</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-100">Upload evidence, run validation, and let auto-fix handle documented file blockers before you retry the dashboard.</p>
                 </div>
                 <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-                    <div class="text-xs font-semibold uppercase tracking-wide text-sky-200">3. Unlock the final download set</div>
-                    <p class="mt-2 text-sm leading-6 text-slate-100">When the pack is ready, unlock the ZIP, PDF guide, and explanation draft you actually submit.</p>
+                    <div class="text-xs font-semibold uppercase tracking-wide text-sky-200">3. Unlock the beta export only if needed</div>
+                    <p class="mt-2 text-sm leading-6 text-slate-100">Pay once for the clean ZIP, PDF guide, and explanation TXT after free preflight. Same documented blocker still failing on first retry can be reviewed for refund.</p>
                 </div>
             </div>
         </section>
@@ -128,22 +128,22 @@
             <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </div>
-            <h3 class="font-semibold text-neutral-800 mb-2">Free Validation First</h3>
-            <p class="text-sm text-gray-500 leading-relaxed">See readiness score, blocked issues, and required evidence gaps before you pay for downloads.</p>
+            <h3 class="font-semibold text-neutral-800 mb-2">Free Preflight First</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">See readiness score, blocked issues, and required evidence gaps before you pay for any clean downloads.</p>
         </div>
         <div>
             <div class="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center mb-4">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002 2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
             </div>
-            <h3 class="font-semibold text-neutral-800 mb-2">Auto-Fix Supported Blockers</h3>
-            <p class="text-sm text-gray-500 leading-relaxed">Fix PDF/A failures, flatten portfolio PDFs, compress oversized Shopify photos, remove hidden PDF links, trim duplicate PDF pages, and auto-convert scanner image formats.</p>
+            <h3 class="font-semibold text-neutral-800 mb-2">Fix Documented File Blockers</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">Fix PDF/A failures, flatten portfolio PDFs, compress oversized Shopify photos, remove hidden PDF links, merge duplicate evidence types, and auto-convert supported scanner image formats.</p>
         </div>
         <div>
             <div class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mb-4">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
             </div>
-            <h3 class="font-semibold text-neutral-800 mb-2">Unlock The Evidence Pack</h3>
-            <p class="text-sm text-gray-500 leading-relaxed">Download a merchant-ready submission ZIP, summary PDF, and explanation draft once the pack is ready.</p>
+            <h3 class="font-semibold text-neutral-800 mb-2">Unlock The Beta Export</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">Download the clean submission ZIP, summary PDF, and explanation TXT once the pack is structurally ready.</p>
         </div>
     </div>
 

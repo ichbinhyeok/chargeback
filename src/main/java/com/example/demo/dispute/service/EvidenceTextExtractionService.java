@@ -11,6 +11,8 @@ import javax.imageio.ImageIO;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,6 +24,24 @@ public class EvidenceTextExtractionService {
     private static final boolean WINDOWS = System.getProperty("os.name", "")
             .toLowerCase(Locale.ROOT)
             .contains("win");
+    private static final int MIN_OCR_DIMENSION = 500;
+
+    private final String ocrProvider;
+    private final String tesseractCommand;
+    private volatile Boolean tesseractAvailable;
+
+    public EvidenceTextExtractionService() {
+        this("auto", "tesseract");
+    }
+
+    @Autowired
+    public EvidenceTextExtractionService(
+            @Value("${app.ocr.provider:auto}") String ocrProvider,
+            @Value("${app.ocr.tesseract-command:tesseract}") String tesseractCommand
+    ) {
+        this.ocrProvider = ocrProvider == null ? "auto" : ocrProvider.trim();
+        this.tesseractCommand = tesseractCommand == null ? "tesseract" : tesseractCommand.trim();
+    }
 
     public String extractPdfPreview(MultipartFile file, int maxPages, int maxChars) {
         try {
@@ -43,7 +63,9 @@ public class EvidenceTextExtractionService {
     }
 
     public boolean shouldAttemptImageOcr(int width, int height) {
-        return WINDOWS && width >= 500 && height >= 500;
+        return width >= MIN_OCR_DIMENSION
+                && height >= MIN_OCR_DIMENSION
+                && resolvedProvider() != OcrProvider.NONE;
     }
 
     public String extractImageOcrText(MultipartFile file, String originalName, int maxChars) {
@@ -70,7 +92,11 @@ public class EvidenceTextExtractionService {
         if (dimensions == null || !shouldAttemptImageOcr(dimensions.width(), dimensions.height())) {
             return null;
         }
-        return runWindowsOcr(path, maxChars);
+        return switch (resolvedProvider()) {
+            case WINDOWS -> runWindowsOcr(path, maxChars);
+            case TESSERACT -> runTesseractOcr(path, maxChars);
+            case NONE -> null;
+        };
     }
 
     private String extractPdfPreview(byte[] pdfBytes, int maxPages, int maxChars) {
@@ -85,7 +111,7 @@ public class EvidenceTextExtractionService {
         }
     }
 
-    private String runWindowsOcr(Path path, int maxChars) {
+    protected String runWindowsOcr(Path path, int maxChars) {
         if (!WINDOWS) {
             return null;
         }
@@ -129,6 +155,87 @@ public class EvidenceTextExtractionService {
             }
             return null;
         }
+    }
+
+    protected String runTesseractOcr(Path path, int maxChars) {
+        if (!isTesseractAvailable()) {
+            return null;
+        }
+        try {
+            Process process = new ProcessBuilder(
+                    tesseractCommand,
+                    path.toAbsolutePath().toString(),
+                    "stdout",
+                    "--psm",
+                    "6",
+                    "-l",
+                    "eng"
+            ).start();
+            boolean finished = process.waitFor(12, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                return null;
+            }
+            byte[] stdout = process.getInputStream().readAllBytes();
+            process.getErrorStream().readAllBytes();
+            if (process.exitValue() != 0) {
+                return null;
+            }
+            return normalizeText(new String(stdout, StandardCharsets.UTF_8), maxChars);
+        } catch (IOException | InterruptedException ex) {
+            if (ex instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            return null;
+        }
+    }
+
+    protected boolean isTesseractAvailable() {
+        Boolean cached = tesseractAvailable;
+        if (cached != null) {
+            return cached;
+        }
+        boolean available = checkTesseractAvailability();
+        tesseractAvailable = available;
+        return available;
+    }
+
+    private boolean checkTesseractAvailability() {
+        if (tesseractCommand.isBlank()) {
+            return false;
+        }
+        try {
+            Process process = new ProcessBuilder(tesseractCommand, "--version")
+                    .redirectErrorStream(true)
+                    .start();
+            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                return false;
+            }
+            process.getInputStream().readAllBytes();
+            return process.exitValue() == 0;
+        } catch (IOException | InterruptedException ex) {
+            if (ex instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            return false;
+        }
+    }
+
+    private OcrProvider resolvedProvider() {
+        String normalizedProvider = ocrProvider.toLowerCase(Locale.ROOT);
+        return switch (normalizedProvider) {
+            case "none" -> OcrProvider.NONE;
+            case "windows" -> WINDOWS ? OcrProvider.WINDOWS : OcrProvider.NONE;
+            case "tesseract" -> isTesseractAvailable() ? OcrProvider.TESSERACT : OcrProvider.NONE;
+            default -> {
+                if (WINDOWS) {
+                    yield OcrProvider.WINDOWS;
+                }
+                yield isTesseractAvailable() ? OcrProvider.TESSERACT : OcrProvider.NONE;
+            }
+        };
     }
 
     private ImageDimensions readImageDimensions(Path path) {
@@ -181,5 +288,11 @@ public class EvidenceTextExtractionService {
     }
 
     private record ImageDimensions(int width, int height) {
+    }
+
+    private enum OcrProvider {
+        WINDOWS,
+        TESSERACT,
+        NONE
     }
 }

@@ -209,8 +209,121 @@ class WebExportPageIntegrationTest {
 
             mockMvc.perform(get("/c/{caseToken}/export", disputeCase.getCaseToken()))
                     .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("Export is locked because required evidence is still missing")))
+                    .andExpect(content().string(containsString("Go Back To Upload")))
+                    .andExpect(content().string(containsString("Review Validation")))
                     .andExpect(content().string(containsString("Required evidence missing:")))
-                    .andExpect(content().string(not(containsString("Pay via Stripe to Unlock"))));
+                    .andExpect(content().string(containsString("Current file checks passed, but beta checkout is still gated by evidence coverage or beta scope.")))
+                    .andExpect(content().string(not(containsString("Unlock beta export for"))));
+        } finally {
+            caseService.deleteCase(disputeCase.getId());
+        }
+    }
+
+    @Test
+    void exportPageHidesCheckoutButtonWhenCaseIsOutsideBetaScope() throws Exception {
+        DisputeCase disputeCase = createReadyCase("manual_only_beta_scope_case");
+        try {
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.ORDER_RECEIPT,
+                    new MockMultipartFile("file", "receipt.pdf", "application/pdf", simplePdf("manual-only"))
+            );
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.CUSTOMER_DETAILS,
+                    new MockMultipartFile("file", "customer.pdf", "application/pdf", simplePdf("manual-only-customer"))
+            );
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.CUSTOMER_COMMUNICATION,
+                    new MockMultipartFile("file", "chat.pdf", "application/pdf", simplePdf("manual-only-chat"))
+            );
+            moveCaseToReady(disputeCase);
+
+            var inputs = evidenceFileService.listAsValidationInputs(disputeCase.getId());
+            var response = validationService.validate(disputeCase, inputs, false);
+            validationHistoryService.record(disputeCase, response, ValidationSource.STORED_FILES, false, inputs);
+
+            mockMvc.perform(get("/c/{caseToken}/export", disputeCase.getCaseToken()))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("Beta scope only:")))
+                    .andExpect(content().string(containsString("limited to cases that pass after an in-app supported auto-fix run or supported upload normalization")))
+                    .andExpect(content().string(not(containsString("Unlock beta export for $9"))));
+        } finally {
+            caseService.deleteCase(disputeCase.getId());
+        }
+    }
+
+    @Test
+    void payEndpointRejectsCasesOutsideCurrentBetaScope() throws Exception {
+        DisputeCase disputeCase = createReadyCase("manual_only_beta_scope_pay_case");
+        try {
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.ORDER_RECEIPT,
+                    new MockMultipartFile("file", "receipt.pdf", "application/pdf", simplePdf("manual-beta-pay"))
+            );
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.CUSTOMER_DETAILS,
+                    new MockMultipartFile("file", "customer.pdf", "application/pdf", simplePdf("manual-beta-pay-customer"))
+            );
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.CUSTOMER_COMMUNICATION,
+                    new MockMultipartFile("file", "chat.pdf", "application/pdf", simplePdf("manual-beta-pay-chat"))
+            );
+            moveCaseToReady(disputeCase);
+
+            var inputs = evidenceFileService.listAsValidationInputs(disputeCase.getId());
+            var response = validationService.validate(disputeCase, inputs, false);
+            validationHistoryService.record(disputeCase, response, ValidationSource.STORED_FILES, false, inputs);
+
+            mockMvc.perform(post("/c/{caseToken}/pay", disputeCase.getCaseToken()))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrlPattern("/c/" + disputeCase.getCaseToken() + "/export?error=*supported*auto-fix*run*upload*normalization*"));
+        } finally {
+            caseService.deleteCase(disputeCase.getId());
+        }
+    }
+
+    @Test
+    void exportPageShowsCheckoutButtonForSupportedAutoConvertedUpload() throws Exception {
+        DisputeCase disputeCase = caseService.createCase(new CreateCaseRequest(
+                Platform.STRIPE,
+                ProductScope.STRIPE_DISPUTE,
+                "PRODUCT_NOT_RECEIVED",
+                null,
+                null
+        ));
+        try {
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.ORDER_RECEIPT,
+                    new MockMultipartFile("file", "receipt_capture.gif", "image/gif", tinyGif())
+            );
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.FULFILLMENT_DELIVERY,
+                    new MockMultipartFile("file", "delivery.pdf", "application/pdf", simplePdf("gif-delivery"))
+            );
+            evidenceFileService.upload(
+                    disputeCase.getId(),
+                    EvidenceType.CUSTOMER_DETAILS,
+                    new MockMultipartFile("file", "customer.pdf", "application/pdf", simplePdf("gif-customer"))
+            );
+            moveCaseToReady(disputeCase);
+
+            var inputs = evidenceFileService.listAsValidationInputs(disputeCase.getId());
+            var response = validationService.validate(disputeCase, inputs, false);
+            validationHistoryService.record(disputeCase, response, ValidationSource.STORED_FILES, false, inputs);
+
+            mockMvc.perform(get("/c/{caseToken}/export", disputeCase.getCaseToken()))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("Checkout-ready state reached. The pack passed current file checks and beta scope checks.")))
+                    .andExpect(content().string(containsString("Setup required:")))
+                    .andExpect(content().string(not(containsString("Beta scope only:"))));
         } finally {
             caseService.deleteCase(disputeCase.getId());
         }
@@ -330,10 +443,10 @@ class WebExportPageIntegrationTest {
                     .andExpect(content().string(containsString("Since previous scan")))
                     .andExpect(content().string(containsString("1 fewer actionable than previous scan")))
                     .andExpect(content().string(containsString("Previous scan #1 had 1 actionable issue(s).")))
-                    .andExpect(content().string(containsString("Current unlock state")))
-                    .andExpect(content().string(containsString("Unlock upload-ready evidence pack")))
-                    .andExpect(content().string(containsString("one-time after free validation")))
-                    .andExpect(content().string(containsString("Free Validation")));
+                    .andExpect(content().string(containsString("Current beta export state")))
+                    .andExpect(content().string(containsString("Unlock beta export")))
+                    .andExpect(content().string(containsString("one-time after free preflight")))
+                    .andExpect(content().string(containsString("Free Preflight")));
         } finally {
             caseService.deleteCase(disputeCase.getId());
         }
@@ -402,7 +515,9 @@ class WebExportPageIntegrationTest {
                 null,
                 null,
                 null,
-                FixStrategy.NONE
+                FixStrategy.NONE,
+                null,
+                null
         );
     }
 
@@ -418,6 +533,10 @@ class WebExportPageIntegrationTest {
                 + "trailer << /Root 1 0 R >>\n"
                 + "%%EOF\n";
         return content.getBytes(java.nio.charset.StandardCharsets.ISO_8859_1);
+    }
+
+    private byte[] tinyGif() {
+        return java.util.Base64.getDecoder().decode("R0lGODdhAQABAIABAP///wAAACwAAAAAAQABAAACAkQBADs=");
     }
 }
 

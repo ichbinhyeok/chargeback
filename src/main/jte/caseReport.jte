@@ -2,6 +2,7 @@
 @import com.example.demo.dispute.api.CaseReportResponse
 @import com.example.demo.dispute.domain.EvidenceType
 @import com.example.demo.dispute.persistence.PaymentEntity
+@import com.example.demo.dispute.web.CaseUiLabels
 @param DisputeCase disputeCase
 @param CaseReportResponse report
 @param EvidenceType[] evidenceTypes
@@ -21,7 +22,7 @@
         <div class="mb-6">
             <a href="/c/${report.caseToken()}" class="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                Back to Dashboard
+                Back to Overview
             </a>
         </div>
 
@@ -32,7 +33,7 @@
                     <p class="text-gray-500 text-sm mt-1 uppercase tracking-wider font-mono">${report.caseToken()}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="cb-badge cb-badge-gray">${report.platform()}</span>
+                    <span class="cb-badge cb-badge-gray">${CaseUiLabels.platformLabel(report.platform())}</span>
                     <span class="cb-badge ${displayCaseStateBadgeClass}">${displayCaseState}</span>
                     @if(isPaid)
                         <span class="cb-badge cb-badge-amber">PAID</span>
@@ -52,7 +53,7 @@
                         @if(report.latestValidation().issues().isEmpty())
                             <div class="p-4 bg-green-50 rounded-lg border border-green-200 text-green-800 text-sm flex gap-3">
                                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                No format issues detected for ${report.latestValidation().source()}.
+                                No format issues detected for ${CaseUiLabels.validationSourceLabel(report.latestValidation().source())}.
                             </div>
                         @else
                             <ul class="space-y-3">
@@ -81,7 +82,7 @@
                         <ul class="space-y-2">
                             @for(var file : report.files())
                                 <li class="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 flex justify-between items-center">
-                                    <div class="font-medium">${file.evidenceType()}</div>
+                                    <div class="font-medium">${CaseUiLabels.evidenceTypeLabel(file.evidenceType())}</div>
                                     <div class="flex gap-3 text-xs text-gray-500">
                                         <span class="uppercase font-semibold tracking-wider">${file.fileFormat()}</span>
                                         <span class="font-mono">${String.format("%.1f", file.sizeBytes() / 1024.0)} KB</span>

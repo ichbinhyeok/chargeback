@@ -101,12 +101,13 @@ class PrelaunchSandboxSmokeIntegrationTest {
                     .andReturn();
 
             Map<String, byte[]> entries = unzip(zipResult.getResponse().getContentAsByteArray());
-            assertTrue(entries.containsKey("01_ORDER_RECEIPT.pdf"));
-            assertTrue(entries.containsKey("02_CUSTOMER_DETAILS.pdf"));
-            assertTrue(entries.containsKey("03_FULFILLMENT_DELIVERY.pdf"));
-            assertTrue(entries.containsKey("manifest.json"));
+            assertTrue(entries.containsKey("upload_to_platform/01_ORDER_RECEIPT.pdf"));
+            assertTrue(entries.containsKey("upload_to_platform/02_CUSTOMER_DETAILS.pdf"));
+            assertTrue(entries.containsKey("upload_to_platform/03_FULFILLMENT_DELIVERY.pdf"));
+            assertTrue(entries.containsKey("README_FIRST.txt"));
+            assertTrue(entries.containsKey("reference/manifest.json"));
 
-            String manifest = new String(entries.get("manifest.json"), StandardCharsets.UTF_8);
+            String manifest = new String(entries.get("reference/manifest.json"), StandardCharsets.UTF_8);
             assertTrue(manifest.contains("\"canonicalReasonKey\" : \"PRODUCT_NOT_RECEIVED\""));
             assertTrue(manifest.contains("\"policyContextKey\" : \"platform=STRIPE|scope=STRIPE_DISPUTE|reason=PRODUCT_NOT_RECEIVED|network=VISA\""));
         } finally {
@@ -165,12 +166,13 @@ class PrelaunchSandboxSmokeIntegrationTest {
                     .andReturn();
 
             Map<String, byte[]> entries = unzip(zipResult.getResponse().getContentAsByteArray());
-            assertTrue(entries.containsKey("01_ORDER_RECEIPT.jpg"));
-            assertTrue(entries.containsKey("02_CUSTOMER_DETAILS.jpg"));
-            assertTrue(entries.containsKey("03_FULFILLMENT_DELIVERY.jpg"));
-            assertTrue(entries.containsKey("manifest.json"));
+            assertTrue(entries.containsKey("upload_to_platform/01_ORDER_RECEIPT.jpg"));
+            assertTrue(entries.containsKey("upload_to_platform/02_CUSTOMER_DETAILS.jpg"));
+            assertTrue(entries.containsKey("upload_to_platform/03_FULFILLMENT_DELIVERY.jpg"));
+            assertTrue(entries.containsKey("README_FIRST.txt"));
+            assertTrue(entries.containsKey("reference/manifest.json"));
 
-            String manifest = new String(entries.get("manifest.json"), StandardCharsets.UTF_8);
+            String manifest = new String(entries.get("reference/manifest.json"), StandardCharsets.UTF_8);
             assertTrue(manifest.contains("\"canonicalReasonKey\" : \"FRAUDULENT\""));
             assertTrue(manifest.contains("\"policyContextKey\" : \"platform=SHOPIFY|scope=SHOPIFY_PAYMENTS_CHARGEBACK|reason=FRAUDULENT|network=-\""));
         } finally {

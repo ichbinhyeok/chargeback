@@ -3,6 +3,7 @@
 @import com.example.demo.dispute.domain.EvidenceType
 @import com.example.demo.dispute.persistence.PaymentEntity
 @import com.example.demo.dispute.service.ReasonCodeChecklistService
+@import com.example.demo.dispute.web.CaseUiLabels
 @import java.util.List
 @param DisputeCase disputeCase
 @param CaseReportResponse report
@@ -33,6 +34,7 @@
     caseTokenForVault = report.caseToken(),
     casePlatformForVault = report.platform().name(),
     caseStateForVault = displayCaseState,
+    caseStage = "overview",
     content = @`
     <!-- Alerts -->
     @if(message != null && !message.isBlank())
@@ -63,8 +65,8 @@
                 @endif
             </div>
             <div class="flex flex-wrap gap-2 text-sm text-gray-500">
-                <span class="font-medium text-gray-700">${report.platform()}</span> &bull; 
-                <span>${report.productScope()}</span>
+                <span class="font-medium text-gray-700">${CaseUiLabels.platformLabel(report.platform())}</span> &bull; 
+                <span>${CaseUiLabels.productScopeLabel(report.productScope())}</span>
             </div>
         </div>
         <div class="flex flex-wrap items-center gap-3 self-start">
@@ -80,11 +82,11 @@
     <!-- Navigation Tabs -->
     <div class="border-b border-gray-200 mb-8 overflow-x-auto shrink-0">
         <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-            <a href="/c/${report.caseToken()}" class="border-primary-600 text-primary-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" aria-current="page">Dashboard</a>
-            <a href="/c/${report.caseToken()}/upload" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Upload Evidence</a>
-            <a href="/c/${report.caseToken()}/validate" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Validate & Fix</a>
-            <a href="/c/${report.caseToken()}/explanation" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Explanation Draft</a>
-            <a href="/c/${report.caseToken()}/export" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Export Pack</a>
+            <a href="/c/${report.caseToken()}" class="border-primary-600 text-primary-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" aria-current="page">Overview</a>
+            <a href="/c/${report.caseToken()}/upload" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Upload</a>
+            <a href="/c/${report.caseToken()}/validate" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Review &amp; Fix</a>
+            <a href="/c/${report.caseToken()}/explanation" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Draft Response</a>
+            <a href="/c/${report.caseToken()}/export" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Export</a>
         </nav>
     </div>
 
@@ -123,10 +125,10 @@
                 <div>Missing Recommended: <strong class="text-gray-900">${missingRecommendedEvidenceTypes.size()}</strong></div>
             </div>
             @if(!missingRequiredEvidenceTypes.isEmpty())
-                <p class="mt-3 text-xs text-red-700">Required: ${String.join(", ", missingRequiredEvidenceTypes.subList(0, Math.min(4, missingRequiredEvidenceTypes.size())))}@if(missingRequiredEvidenceTypes.size() > 4), ...@endif</p>
+                <p class="mt-3 text-xs text-red-700">Required: ${CaseUiLabels.joinEvidenceTypeLabels(missingRequiredEvidenceTypes.subList(0, Math.min(4, missingRequiredEvidenceTypes.size())))}@if(missingRequiredEvidenceTypes.size() > 4), ...@endif</p>
             @endif
             @if(!missingRecommendedEvidenceTypes.isEmpty())
-                <p class="mt-2 text-xs text-gray-500">Recommended: ${String.join(", ", missingRecommendedEvidenceTypes.subList(0, Math.min(4, missingRecommendedEvidenceTypes.size())))}@if(missingRecommendedEvidenceTypes.size() > 4), ...@endif</p>
+                <p class="mt-2 text-xs text-gray-500">Recommended: ${CaseUiLabels.joinEvidenceTypeLabels(missingRecommendedEvidenceTypes.subList(0, Math.min(4, missingRecommendedEvidenceTypes.size())))}@if(missingRecommendedEvidenceTypes.size() > 4), ...@endif</p>
             @endif
         </section>
 
@@ -279,7 +281,7 @@
                         <tbody>
                             @for(var file : report.files())
                                 <tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                                    <td class="px-4 py-3 font-medium text-gray-900">${file.evidenceType()}</td>
+                                    <td class="px-4 py-3 font-medium text-gray-900">${CaseUiLabels.evidenceTypeLabel(file.evidenceType())}</td>
                                     <td class="px-4 py-3 text-center">
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-600 uppercase tracking-wider">
                                             ${file.fileFormat()}
@@ -334,7 +336,7 @@
                                 <svg class="w-5 h-5 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 <div>
                                     <p class="font-semibold text-amber-950">Format checks passed, but required evidence is still missing.</p>
-                                    <p class="mt-1">Still needed: <strong>${String.join(", ", reasonChecklist.missingRequiredEvidence())}</strong>.</p>
+                                    <p class="mt-1">Still needed: <strong>${CaseUiLabels.joinEvidenceTypeLabels(reasonChecklist.missingRequiredEvidence())}</strong>.</p>
                                 </div>
                             </div>
                         @endif

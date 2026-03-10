@@ -3,6 +3,7 @@
 @import com.example.demo.dispute.domain.EvidenceType
 @import com.example.demo.dispute.persistence.PaymentEntity
 @import com.example.demo.dispute.service.ExportMetricsService.ExportMetrics
+@import com.example.demo.dispute.web.CaseUiLabels
 @import java.util.List
 @param DisputeCase disputeCase
 @param CaseReportResponse report
@@ -24,6 +25,8 @@
 @param boolean minimumCoreEvidenceCoverageReached
 @param int minimumCoreEvidenceReadyCount
 @param int minimumCoreEvidenceTargetCount
+@param boolean betaExportEligible
+@param String betaExportEligibilityMessage
 
 @template.layout(
     title = "Export | " + report.caseToken(),
@@ -31,6 +34,7 @@
     caseTokenForVault = report.caseToken(),
     casePlatformForVault = report.platform().name(),
     caseStateForVault = displayCaseState,
+    caseStage = "export",
     content = @`
     <!-- Alerts -->
     @if(message != null && !message.isBlank())
@@ -51,6 +55,40 @@
             <span class="font-medium">Validation is stale (${validationFreshness}). Run validation again before payment/export.</span>
         </div>
     @endif
+    @if(!isPaid && !missingRequiredEvidenceTypes.isEmpty())
+        <div class="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="max-w-2xl">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-amber-800">Why export is locked</div>
+                    <h2 class="mt-1 text-lg font-bold text-amber-950">Export is locked because required evidence is still missing</h2>
+                    <p class="mt-2 text-sm leading-6 text-amber-900">
+                        This case still needs <strong>${CaseUiLabels.joinEvidenceTypeLabels(missingRequiredEvidenceTypes)}</strong>.
+                        Go back to Upload, add the missing file, then return here to unlock ZIP, PDF, and TXT downloads.
+                    </p>
+                </div>
+                <div class="flex flex-col gap-3 sm:flex-row">
+                    <a href="/c/${report.caseToken()}/upload" class="cb-btn cb-btn-primary">Go Back To Upload</a>
+                    <a href="/c/${report.caseToken()}/validate" class="cb-btn cb-btn-secondary">Review Validation</a>
+                </div>
+            </div>
+        </div>
+    @elseif(!isPaid && !exportReady)
+        <div class="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="max-w-2xl">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-amber-800">Why export is locked</div>
+                    <h2 class="mt-1 text-lg font-bold text-amber-950">Export is still locked behind validation blockers</h2>
+                    <p class="mt-2 text-sm leading-6 text-amber-900">
+                        This is not a checkout bug. Review the current blockers, clear them in Review &amp; Fix, then come back here when the pack is validation-ready.
+                    </p>
+                </div>
+                <div class="flex flex-col gap-3 sm:flex-row">
+                    <a href="/c/${report.caseToken()}/validate" class="cb-btn cb-btn-primary">Go To Review &amp; Fix</a>
+                    <a href="/c/${report.caseToken()}/upload" class="cb-btn cb-btn-secondary">Upload More Files</a>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <!-- Header Section -->
     <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -67,8 +105,9 @@
                 @endif
             </div>
             <div class="flex flex-wrap gap-2 text-sm text-gray-500">
-                <span class="font-medium text-gray-700">${report.platform()}</span> &bull; 
-                <span>Evidence Pack Checkout</span>
+                <span class="font-medium text-gray-700">${CaseUiLabels.platformLabel(report.platform())}</span> &bull;
+                <span>${CaseUiLabels.productScopeLabel(report.productScope())}</span> &bull;
+                <span>Beta export review</span>
             </div>
         </div>
     </div>
@@ -76,11 +115,11 @@
     <!-- Navigation Tabs -->
     <div class="border-b border-gray-200 mb-8 overflow-x-auto shrink-0">
         <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-            <a href="/c/${report.caseToken()}" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Dashboard</a>
-            <a href="/c/${report.caseToken()}/upload" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Upload Evidence</a>
-            <a href="/c/${report.caseToken()}/validate" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Validate & Fix</a>
-            <a href="/c/${report.caseToken()}/explanation" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Explanation Draft</a>
-            <a href="/c/${report.caseToken()}/export" class="border-primary-600 text-primary-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" aria-current="page">Export Pack</a>
+            <a href="/c/${report.caseToken()}" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Overview</a>
+            <a href="/c/${report.caseToken()}/upload" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Upload</a>
+            <a href="/c/${report.caseToken()}/validate" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Review &amp; Fix</a>
+            <a href="/c/${report.caseToken()}/explanation" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Draft Response</a>
+            <a href="/c/${report.caseToken()}/export" class="border-primary-600 text-primary-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" aria-current="page">Export</a>
         </nav>
     </div>
 
@@ -147,8 +186,8 @@
         @if(isPaid)
             <div class="cb-card bg-green-50 border-green-200 border text-center p-8 mb-8 rounded-xl shadow-sm">
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4 shadow"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>
-                <h2 class="text-2xl font-bold text-green-900 mb-2">Evidence Pack Unlocked</h2>
-                <p class="text-green-800 mb-6 text-sm max-w-lg mx-auto leading-relaxed">Your upload-ready dispute evidence pack is ready. Download the ZIP, summary guide, and explanation draft, then submit them in your payment dashboard.</p>
+                <h2 class="text-2xl font-bold text-green-900 mb-2">Beta Export Unlocked</h2>
+                <p class="text-green-800 mb-6 text-sm max-w-lg mx-auto leading-relaxed">Your clean export is ready. The ZIP now separates <strong>upload_to_platform/</strong> from <strong>reference/</strong> so you know exactly which files to submit.</p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
                     <a href="/c/${report.caseToken()}/download/submission.zip" class="cb-btn cb-btn-primary bg-green-600 hover:bg-green-700 shadow border-green-600 hover:border-green-700 focus:ring-green-500" data-seo-event="guide_export_click">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
@@ -166,16 +205,18 @@
             </div>
             
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs text-gray-500 mt-4 leading-relaxed">
-                <p><strong>Disclaimer:</strong> This tool improves evidence formatting and consolidates assets. Passing validation means current automated checks passed for ${report.platform()}, but it <strong>does not</strong> guarantee favorable dispute outcomes or provide legal advice.</p>
+                <p><strong>Disclaimer:</strong> This beta export improves evidence formatting and consolidates assets. Passing validation means current automated file checks passed for ${CaseUiLabels.platformLabel(report.platform())}, but it <strong>does not</strong> guarantee platform acceptance, favorable dispute outcomes, or legal advice.</p>
             </div>
         @else
             <div class="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-slate-950">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-700">Current unlock state</div>
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-700">Current beta export state</div>
                 <div class="mt-4 grid gap-4 md:grid-cols-3 text-sm">
                     <div class="rounded-lg border border-slate-200 bg-white p-4">
                         <div class="font-semibold text-slate-900">Validation and blockers</div>
-                        @if(exportReady)
-                            <p class="mt-2 text-green-800">Export-ready state reached. The pack is structurally ready for checkout.</p>
+                        @if(exportReady && missingRequiredEvidenceTypes.isEmpty() && betaExportEligible)
+                            <p class="mt-2 text-green-800">Checkout-ready state reached. The pack passed current file checks and beta scope checks.</p>
+                        @elseif(exportReady)
+                            <p class="mt-2 text-blue-900">Current file checks passed, but beta checkout is still gated by evidence coverage or beta scope.</p>
                         @else
                             <p class="mt-2 text-amber-900">Still locked behind remaining blockers. Clear validation issues first, then return here.</p>
                         @endif
@@ -191,11 +232,17 @@
                         @endif
                     </div>
                     <div class="rounded-lg border border-slate-200 bg-white p-4">
-                        <div class="font-semibold text-slate-900">Paid download pack</div>
-                        @if(exportReady && missingRequiredEvidenceTypes.isEmpty())
+                        <div class="font-semibold text-slate-900">Paid beta export</div>
+                        @if(exportReady && missingRequiredEvidenceTypes.isEmpty() && betaExportEligible)
                             <p class="mt-2 text-green-800">Ready to unlock for <strong>${checkoutPriceDisplay}</strong> once checkout is available.</p>
                         @elseif(exportReady)
-                            <p class="mt-2 text-amber-900">Blocked by missing required evidence: <strong>${String.join(", ", missingRequiredEvidenceTypes)}</strong>.</p>
+                            @if(!missingRequiredEvidenceTypes.isEmpty())
+                                <p class="mt-2 text-amber-900">Blocked by missing required evidence: <strong>${CaseUiLabels.joinEvidenceTypeLabels(missingRequiredEvidenceTypes)}</strong>.</p>
+                            @elseif(!betaExportEligible)
+                                <p class="mt-2 text-amber-900">${betaExportEligibilityMessage}</p>
+                            @else
+                                <p class="mt-2 text-green-800">Ready to unlock for <strong>${checkoutPriceDisplay}</strong> once checkout is available.</p>
+                            @endif
                         @else
                             <p class="mt-2 text-slate-700">ZIP, PDF, and TXT stay locked until the pack is validated and required evidence is complete.</p>
                         @endif
@@ -209,21 +256,25 @@
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold cb-badge-blue bg-blue-100 text-blue-800">RECOMMENDED</span>
                     </div>
                     
-                    <h2 class="text-xl font-bold text-gray-900 mb-1">Unlock upload-ready evidence pack</h2>
-                    <p class="text-sm text-gray-500 mb-6 pb-6 border-b border-gray-100"><strong>${checkoutPriceDisplay}</strong> one-time after free validation. Download the merchant-ready ZIP, filing guide, and explanation draft.</p>
+                    <h2 class="text-xl font-bold text-gray-900 mb-1">Unlock beta export</h2>
+                    <p class="text-sm text-gray-500 mb-6 pb-6 border-b border-gray-100"><strong>${checkoutPriceDisplay}</strong> one-time after free preflight. Best fit for documented file blockers when you want clean ZIP, PDF, and TXT downloads.</p>
                     
                     <ul class="space-y-4 mb-8">
                         <li class="flex items-start">
                             <div class="flex-shrink-0 h-5 w-5 text-green-500 mr-3"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg></div>
-                            <span class="text-sm text-gray-700">Structured <code class="bg-gray-100 px-1 rounded text-xs">submission.zip</code> package with normalized filenames and manifest</span>
+                            <span class="text-sm text-gray-700">Structured <code class="bg-gray-100 px-1 rounded text-xs">submission.zip</code> with <code class="bg-gray-100 px-1 rounded text-xs">upload_to_platform/</code>, <code class="bg-gray-100 px-1 rounded text-xs">reference/</code>, and <code class="bg-gray-100 px-1 rounded text-xs">README_FIRST.txt</code></span>
                         </li>
                         <li class="flex items-start">
                             <div class="flex-shrink-0 h-5 w-5 text-green-500 mr-3"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg></div>
-                            <span class="text-sm text-gray-700">Downloadable explanation TXT and one-page summary PDF for final filing</span>
+                            <span class="text-sm text-gray-700">Only files inside <code class="bg-gray-100 px-1 rounded text-xs">upload_to_platform/</code> should be uploaded to Shopify or Stripe</span>
                         </li>
                         <li class="flex items-start">
                             <div class="flex-shrink-0 h-5 w-5 text-green-500 mr-3"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg></div>
-                            <span class="text-sm text-gray-700">Readiness score, issue counts, and required evidence coverage before you pay</span>
+                            <span class="text-sm text-gray-700">Use <code class="bg-gray-100 px-1 rounded text-xs">reference/dispute_explanation_draft.txt</code> only as a writing aid, not as an upload file</span>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 h-5 w-5 text-green-500 mr-3"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg></div>
+                            <span class="text-sm text-gray-700">If the same documented file blocker still fails on the first retry, email <code class="bg-gray-100 px-1 rounded text-xs">shinhyeok22@gmail.com</code> for review</span>
                         </li>
                     </ul>
                     
@@ -234,14 +285,19 @@
                             </div>
                         @elseif(!missingRequiredEvidenceTypes.isEmpty())
                             <div class="p-3 bg-amber-50 border-l-4 border-amber-400 text-amber-800 text-xs rounded shadow-sm">
-                                <strong>Required evidence missing:</strong> ${String.join(", ", missingRequiredEvidenceTypes)}. Upload these before checkout.
+                                <strong>Required evidence missing:</strong> ${CaseUiLabels.joinEvidenceTypeLabels(missingRequiredEvidenceTypes)}. Upload these before checkout.
+                            </div>
+                        @elseif(!betaExportEligible)
+                            <div class="p-3 bg-amber-50 border-l-4 border-amber-400 text-amber-800 text-xs rounded shadow-sm">
+                                <strong>Beta scope only:</strong> ${betaExportEligibilityMessage}
                             </div>
                         @elseif(paymentConfigured)
                             <form method="post" action="/c/${report.caseToken()}/pay">
                                 <button type="submit" class="flex justify-center items-center w-full px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                                    Unlock for ${checkoutPriceDisplay} via ${paymentProviderLabel}
+                                    Unlock beta export for ${checkoutPriceDisplay} via ${paymentProviderLabel}
                                 </button>
                             </form>
+                            <p class="mt-3 text-xs leading-5 text-gray-500">Best fit for documented file blockers. This fee unlocks clean downloads for this case. It does not guarantee final platform acceptance.</p>
                         @else
                             <div class="p-3 bg-red-50 border-l-4 border-red-400 text-red-700 text-xs rounded shadow-sm">
                                 <strong>Setup required:</strong> Checkout is not configured. Set billing environment variables (provider and credentials) to enable payment.
@@ -256,7 +312,7 @@
                 
                 <!-- Free version panel -->
                 <div class="cb-card border border-gray-200">
-                    <h2 class="text-lg font-bold text-gray-900 mb-1">Free Validation</h2>
+                    <h2 class="text-lg font-bold text-gray-900 mb-1">Free Preflight</h2>
                     <p class="text-sm text-gray-500 mb-6 pb-6 border-b border-gray-100">Run validation, see readiness metrics, and download a watermarked summary guide at no cost.</p>
                     
                     <ul class="space-y-4 mb-8 opacity-75">
@@ -307,9 +363,40 @@
                 </div>
                 
             </div>
+
+            <section class="mt-6 grid gap-4 md:grid-cols-3">
+                <div class="rounded-xl border border-green-200 bg-green-50 p-4">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-green-800">Supported Today</div>
+                    <ul class="mt-3 space-y-2 text-sm leading-6 text-green-950">
+                        <li>PDF/A conversion</li>
+                        <li>PDF portfolio flattening</li>
+                        <li>Hidden PDF link cleanup</li>
+                        <li>Duplicate evidence merge</li>
+                        <li>Supported image normalization</li>
+                    </ul>
+                </div>
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-amber-800">Conditional</div>
+                    <ul class="mt-3 space-y-2 text-sm leading-6 text-amber-950">
+                        <li>Total pack size and page overages</li>
+                        <li>Ambiguous evidence mapping</li>
+                        <li>Weak or missing evidence quality</li>
+                        <li>Platform UI edge cases outside documented rules</li>
+                    </ul>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-slate-700">Not Promised</div>
+                    <ul class="mt-3 space-y-2 text-sm leading-6 text-slate-900">
+                        <li>Final platform acceptance</li>
+                        <li>Chargeback win rate</li>
+                        <li>Legal strategy or legal advice</li>
+                        <li>Broad compatibility outside Stripe and Shopify evidence rules</li>
+                    </ul>
+                </div>
+            </section>
             
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs text-gray-500 mt-6 leading-relaxed">
-                <p><strong>Disclaimer:</strong> This tool helps safely navigate evidence formatting and consolidates assets. It <strong>does not</strong> guarantee favorable legal outcomes or provide legal advice.</p>
+                <p><strong>Disclaimer:</strong> This tool helps safely navigate evidence formatting and consolidate assets. It <strong>does not</strong> guarantee final platform acceptance, favorable legal outcomes, or legal advice. Support: <a href="mailto:shinhyeok22@gmail.com" class="underline">shinhyeok22@gmail.com</a>.</p>
             </div>
         @endif
     </div>

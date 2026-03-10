@@ -34,12 +34,13 @@ public class PaymentService {
 
     private static final String STRIPE_PROVIDER = "stripe";
     private static final String LEMON_PROVIDER = "lemonsqueezy";
-    private static final String CHECKOUT_PRODUCT_NAME = "Upload-ready dispute evidence pack";
+    private static final String CHECKOUT_PRODUCT_NAME = "Supported blocker beta export";
 
     private final CaseService caseService;
     private final PaymentRepository paymentRepository;
     private final WebhookEventReceiptRepository webhookEventReceiptRepository;
     private final AuditLogService auditLogService;
+    private final BetaExportEligibilityService betaExportEligibilityService;
     private final StripeWebhookVerifier stripeWebhookVerifier;
     private final LemonWebhookVerifier lemonWebhookVerifier;
     private final ValidationFreshnessService validationFreshnessService;
@@ -67,20 +68,21 @@ public class PaymentService {
             PaymentRepository paymentRepository,
             WebhookEventReceiptRepository webhookEventReceiptRepository,
             AuditLogService auditLogService,
+            BetaExportEligibilityService betaExportEligibilityService,
             StripeWebhookVerifier stripeWebhookVerifier,
             LemonWebhookVerifier lemonWebhookVerifier,
             ValidationFreshnessService validationFreshnessService,
             CaseReportService caseReportService,
             ReadinessService readinessService,
             PolicyCatalogService policyCatalogService,
-            @Value("${app.billing.provider:stripe}") String billingProvider,
+            @Value("${app.billing.provider:lemonsqueezy}") String billingProvider,
             @Value("${app.billing.stripe.secret-key:}") String stripeSecretKey,
             @Value("${app.billing.stripe.webhook-secret:}") String stripeWebhookSecret,
             @Value("${app.billing.lemonsqueezy.api-key:}") String lemonApiKey,
             @Value("${app.billing.lemonsqueezy.webhook-secret:}") String lemonWebhookSecret,
             @Value("${app.billing.lemonsqueezy.store-id:}") String lemonStoreId,
             @Value("${app.billing.lemonsqueezy.variant-id:}") String lemonVariantId,
-            @Value("${app.billing.amount-cents:1900}") long amountCents,
+            @Value("${app.billing.amount-cents:900}") long amountCents,
             @Value("${app.billing.currency:usd}") String currency,
             @Value("${app.billing.success-url-template:http://localhost:8080/c/{caseToken}/export?payment=success}") String successUrlTemplate,
             @Value("${app.billing.cancel-url-template:http://localhost:8080/c/{caseToken}/export?payment=cancelled}") String cancelUrlTemplate
@@ -89,6 +91,7 @@ public class PaymentService {
         this.paymentRepository = paymentRepository;
         this.webhookEventReceiptRepository = webhookEventReceiptRepository;
         this.auditLogService = auditLogService;
+        this.betaExportEligibilityService = betaExportEligibilityService;
         this.stripeWebhookVerifier = stripeWebhookVerifier;
         this.lemonWebhookVerifier = lemonWebhookVerifier;
         this.validationFreshnessService = validationFreshnessService;
@@ -130,6 +133,10 @@ public class PaymentService {
             throw new IllegalArgumentException(
                     "Missing required evidence before payment: " + String.join(", ", missingRequiredEvidenceTypes)
             );
+        }
+        BetaExportEligibilityService.BetaExportEligibility eligibility = betaExportEligibilityService.evaluate(disputeCase.getId());
+        if (!eligibility.eligible()) {
+            throw new IllegalArgumentException(eligibility.message());
         }
         PolicyCatalogService.ResolvedPolicy policy = policyCatalogService.resolve(
                 disputeCase.getPlatform(),

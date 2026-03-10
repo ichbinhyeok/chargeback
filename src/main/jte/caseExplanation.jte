@@ -3,6 +3,7 @@
 @import com.example.demo.dispute.domain.EvidenceType
 @import com.example.demo.dispute.persistence.PaymentEntity
 @import com.example.demo.dispute.service.DisputeExplanationService
+@import com.example.demo.dispute.web.CaseUiLabels
 @param DisputeCase disputeCase
 @param CaseReportResponse report
 @param EvidenceType[] evidenceTypes
@@ -20,6 +21,7 @@
     caseTokenForVault = report.caseToken(),
     casePlatformForVault = report.platform().name(),
     caseStateForVault = displayCaseState,
+    caseStage = "review",
     content = @`
     @if(message != null && !message.isBlank())
         <div class="mb-6 p-4 rounded-lg bg-green-50 text-green-800 border border-green-200 flex items-center gap-3">
@@ -48,7 +50,8 @@
                 @endif
             </div>
             <div class="flex flex-wrap gap-2 text-sm text-gray-500">
-                <span class="font-medium text-gray-700">${report.platform()}</span> &bull;
+                <span class="font-medium text-gray-700">${CaseUiLabels.platformLabel(report.platform())}</span> &bull;
+                <span>${CaseUiLabels.productScopeLabel(report.productScope())}</span> &bull;
                 <span>Dispute Explanation Draft</span>
             </div>
         </div>
@@ -56,11 +59,11 @@
 
     <div class="border-b border-gray-200 mb-8 overflow-x-auto shrink-0">
         <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-            <a href="/c/${report.caseToken()}" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Dashboard</a>
-            <a href="/c/${report.caseToken()}/upload" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Upload Evidence</a>
-            <a href="/c/${report.caseToken()}/validate" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Validate & Fix</a>
-            <a href="/c/${report.caseToken()}/explanation" class="border-primary-600 text-primary-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" aria-current="page">Explanation Draft</a>
-            <a href="/c/${report.caseToken()}/export" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Export Pack</a>
+            <a href="/c/${report.caseToken()}" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Overview</a>
+            <a href="/c/${report.caseToken()}/upload" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Upload</a>
+            <a href="/c/${report.caseToken()}/validate" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Review &amp; Fix</a>
+            <a href="/c/${report.caseToken()}/explanation" class="border-primary-600 text-primary-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" aria-current="page">Draft Response</a>
+            <a href="/c/${report.caseToken()}/export" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Export</a>
         </nav>
     </div>
 

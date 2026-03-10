@@ -98,6 +98,7 @@ public class AutoFixService {
     private final DocumentNormalizationService documentNormalizationService;
     private final boolean inlineProcessingEnabled;
     private final boolean workerEnabled;
+    private final long staleRunningRecoveryMs;
 
     public AutoFixService(
             CaseService caseService,
@@ -111,7 +112,8 @@ public class AutoFixService {
             PolicyCatalogService policyCatalogService,
             DocumentNormalizationService documentNormalizationService,
             @Value("${app.autofix.inline-processing:false}") boolean inlineProcessingEnabled,
-            @Value("${app.autofix.worker.enabled:true}") boolean workerEnabled
+            @Value("${app.autofix.worker.enabled:true}") boolean workerEnabled,
+            @Value("${app.autofix.recover-running-after-ms:300000}") long staleRunningRecoveryMs
     ) {
         this.caseService = caseService;
         this.fixJobRepository = fixJobRepository;
@@ -125,12 +127,16 @@ public class AutoFixService {
         this.documentNormalizationService = documentNormalizationService;
         this.inlineProcessingEnabled = inlineProcessingEnabled;
         this.workerEnabled = workerEnabled;
+        this.staleRunningRecoveryMs = staleRunningRecoveryMs;
     }
 
     public FixJobResponse requestAutoFix(UUID caseId) {
         DisputeCase disputeCase = caseService.getCase(caseId);
         FixJobEntity activeJob = existingActiveJob(caseId);
         if (activeJob != null) {
+            if (inlineProcessingEnabled && activeJob.getStatus() == FixJobStatus.QUEUED) {
+                return toResponse(processFixJob(activeJob.getId()));
+            }
             return toResponse(activeJob);
         }
         caseService.transitionState(disputeCase, CaseState.FIXING);
@@ -167,6 +173,9 @@ public class AutoFixService {
     public void drainQueuedJobs() {
         if (!workerEnabled || inlineProcessingEnabled) {
             return;
+        }
+        for (FixJobEntity runningJob : fixJobRepository.findTop5ByStatusOrderByCreatedAtAsc(FixJobStatus.RUNNING)) {
+            recoverStaleRunningJob(runningJob);
         }
         for (FixJobEntity queuedJob : fixJobRepository.findTop5ByStatusOrderByCreatedAtAsc(FixJobStatus.QUEUED)) {
             processFixJob(queuedJob.getId());
@@ -895,7 +904,39 @@ public class AutoFixService {
                         caseId,
                         List.of(FixJobStatus.QUEUED, FixJobStatus.RUNNING)
                 )
+                .map(this::recoverStaleRunningJob)
                 .orElse(null);
+    }
+
+    private FixJobEntity recoverStaleRunningJob(FixJobEntity job) {
+        if (job.getStatus() != FixJobStatus.RUNNING || !isStaleRunningJob(job)) {
+            return job;
+        }
+        job.setStatus(FixJobStatus.QUEUED);
+        job.setStartedAt(null);
+        job.setFinishedAt(null);
+        job.setFailCode(null);
+        job.setFailMessage(null);
+        job.setSummary("Recovered a stale auto-fix job after interruption. Re-queued.");
+        FixJobEntity saved = fixJobRepository.save(job);
+        auditLogService.log(
+                saved.getDisputeCase(),
+                "SYSTEM",
+                "AUTO_FIX_REQUEUED",
+                "jobId=" + saved.getId() + ",reason=stale_running"
+        );
+        return saved;
+    }
+
+    private boolean isStaleRunningJob(FixJobEntity job) {
+        if (staleRunningRecoveryMs <= 0) {
+            return false;
+        }
+        Instant reference = job.getStartedAt() != null ? job.getStartedAt() : job.getCreatedAt();
+        if (reference == null) {
+            return true;
+        }
+        return reference.isBefore(Instant.now().minusMillis(staleRunningRecoveryMs));
     }
 
     private PageFingerprint fingerprintPage(PDDocument document, PDFRenderer renderer, int pageIndex) throws IOException {

@@ -17,6 +17,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -27,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class EvidenceFactsService {
 
+    private static final int MAX_CASE_CACHE_ENTRIES = 256;
     private static final String OPTIONAL_REFERENCE_SUFFIX = "(?:\\s*(?:id|number|no\\.?|#|ref(?:erence)?|code))?";
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
@@ -59,6 +61,7 @@ public class EvidenceFactsService {
     private final Pattern trackingSpacedPattern;
     private final Pattern refundPattern;
     private final Pattern refundSpacedPattern;
+    private final Map<UUID, CachedCaseEvidenceFacts> caseCache = new ConcurrentHashMap<>();
 
     public EvidenceFactsService(
             EvidenceFileRepository evidenceFileRepository,
@@ -92,6 +95,13 @@ public class EvidenceFactsService {
         if (files == null || files.isEmpty()) {
             return new CaseEvidenceFacts(List.of(), List.of(), List.of(), List.of(), 0);
         }
+        String fingerprint = buildFingerprint(files);
+        if (caseId != null) {
+            CachedCaseEvidenceFacts cached = caseCache.get(caseId);
+            if (cached != null && cached.fingerprint().equals(fingerprint)) {
+                return cached.facts();
+            }
+        }
 
         Map<UUID, EvidenceFileEntity> storedFiles = loadStoredFiles(caseId);
         List<FileEvidenceFacts> fileFacts = files.stream()
@@ -103,13 +113,18 @@ public class EvidenceFactsService {
         List<String> narrativeSpine = buildNarrativeSpine(fileFacts, sharedAnchors);
         int coherenceScore = computeCoherenceScore(fileFacts, sharedAnchors);
 
-        return new CaseEvidenceFacts(
+        CaseEvidenceFacts facts = new CaseEvidenceFacts(
                 fileFacts,
                 sharedAnchors,
                 coherenceHighlights,
                 narrativeSpine,
                 coherenceScore
         );
+        if (caseId != null) {
+            caseCache.put(caseId, new CachedCaseEvidenceFacts(fingerprint, facts, System.nanoTime()));
+            trimCacheIfNeeded();
+        }
+        return facts;
     }
 
     private Map<UUID, EvidenceFileEntity> loadStoredFiles(UUID caseId) {
@@ -496,6 +511,39 @@ public class EvidenceFactsService {
         return value == null ? "" : value;
     }
 
+    private String buildFingerprint(List<EvidenceFileReportResponse> files) {
+        return files.stream()
+                .sorted(Comparator.comparing(EvidenceFileReportResponse::fileId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(file -> String.join("|",
+                        file.fileId() == null ? "-" : file.fileId().toString(),
+                        file.evidenceType() == null ? "-" : file.evidenceType().name(),
+                        defaultString(file.originalName()),
+                        file.fileFormat() == null ? "-" : file.fileFormat().name(),
+                        Long.toString(file.sizeBytes()),
+                        Integer.toString(file.pageCount()),
+                        Boolean.toString(file.externalLinkDetected()),
+                        Boolean.toString(file.pdfACompliant()),
+                        Boolean.toString(file.pdfPortfolio()),
+                        file.createdAt() == null ? "-" : file.createdAt().toString()
+                ))
+                .collect(Collectors.joining("||"));
+    }
+
+    private void trimCacheIfNeeded() {
+        if (caseCache.size() <= MAX_CASE_CACHE_ENTRIES) {
+            return;
+        }
+        UUID oldestCaseId = caseCache.entrySet().stream()
+                .min(Comparator.comparingLong(entry -> entry.getValue().cachedAtNanos()))
+                .map(Map.Entry::getKey)
+                .orElse(null);
+        if (oldestCaseId != null) {
+            caseCache.remove(oldestCaseId);
+        } else {
+            caseCache.clear();
+        }
+    }
+
     public record CaseEvidenceFacts(
             List<FileEvidenceFacts> fileFacts,
             List<AnchorCoverage> sharedAnchors,
@@ -547,5 +595,12 @@ public class EvidenceFactsService {
         private Set<EvidenceType> evidenceTypes() {
             return evidenceTypes;
         }
+    }
+
+    private record CachedCaseEvidenceFacts(
+            String fingerprint,
+            CaseEvidenceFacts facts,
+            long cachedAtNanos
+    ) {
     }
 }

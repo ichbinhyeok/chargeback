@@ -2,7 +2,7 @@
     const STORAGE_KEY = "cb_recent_cases_v1";
     const OPT_IN_KEY = "cb_recent_cases_opt_in_v1";
     const LIMIT = 30;
-    const TTL_DAYS = 30;
+    const TTL_DAYS = 7;
     const TTL_MS = TTL_DAYS * 24 * 60 * 60 * 1000;
 
     function canUseStorage() {

@@ -15,8 +15,10 @@ import com.example.demo.dispute.domain.ProductScope;
 import com.example.demo.dispute.domain.ValidationFreshness;
 import com.example.demo.dispute.domain.ValidationSource;
 import com.example.demo.dispute.persistence.DisputeCase;
+import com.example.demo.dispute.persistence.FixJobEntity;
 import com.example.demo.dispute.persistence.FixJobRepository;
 import com.example.demo.dispute.service.AutoFixService;
+import com.example.demo.dispute.service.BetaExportEligibilityService;
 import com.example.demo.dispute.service.CaseReportService;
 import com.example.demo.dispute.service.CaseService;
 import com.example.demo.dispute.service.CheckoutStartResult;
@@ -73,6 +75,12 @@ public class WebCaseController {
     private static final Pattern ATTRIBUTION_VALUE_PATTERN = Pattern.compile("^[a-z0-9_-]{1,80}$");
     private static final String SOURCE_GUIDE = "guide";
     private static final String SOURCE_GUIDE_ROUTER_NOMATCH = "guide_router_nomatch";
+    private static final String CASE_ACCESS_ERROR_MESSAGE =
+            "Case not found or expired. Start a new case or reopen with a valid access link.";
+    private static final String UPLOAD_FILES_FIRST_MESSAGE =
+            "Upload files before running validation or auto-fix.";
+    private static final String AUTO_FIX_NEEDS_VALIDATION_MESSAGE =
+            "Run validation after upload before using auto-fix.";
 
     private final CaseService caseService;
     private final CaseReportService caseReportService;
@@ -83,6 +91,7 @@ public class WebCaseController {
     private final SubmissionExportService submissionExportService;
     private final ExportMetricsService exportMetricsService;
     private final PaymentService paymentService;
+    private final BetaExportEligibilityService betaExportEligibilityService;
     private final TailTrimSuggestionService tailTrimSuggestionService;
     private final ValidationFreshnessService validationFreshnessService;
     private final ReadinessService readinessService;
@@ -104,6 +113,7 @@ public class WebCaseController {
             SubmissionExportService submissionExportService,
             ExportMetricsService exportMetricsService,
             PaymentService paymentService,
+            BetaExportEligibilityService betaExportEligibilityService,
             TailTrimSuggestionService tailTrimSuggestionService,
             ValidationFreshnessService validationFreshnessService,
             ReadinessService readinessService,
@@ -124,6 +134,7 @@ public class WebCaseController {
         this.submissionExportService = submissionExportService;
         this.exportMetricsService = exportMetricsService;
         this.paymentService = paymentService;
+        this.betaExportEligibilityService = betaExportEligibilityService;
         this.tailTrimSuggestionService = tailTrimSuggestionService;
         this.validationFreshnessService = validationFreshnessService;
         this.readinessService = readinessService;
@@ -226,7 +237,7 @@ public class WebCaseController {
             );
             return "redirect:/c/" + disputeCase.getCaseToken() + buildGuideAttributionQuery(source, sourcePlatform, guide, query);
         } catch (RuntimeException ex) {
-            return "redirect:/new?error=" + encode(ex.getMessage());
+            return "redirect:/new?error=" + encode(toUserFacingErrorMessage(ex.getMessage()));
         }
     }
 
@@ -267,7 +278,7 @@ public class WebCaseController {
             evidenceFileService.upload(disputeCase.getId(), evidenceType, file);
             return "redirect:/c/" + caseToken + "/upload?message=" + encode("File uploaded.");
         } catch (RuntimeException ex) {
-            return "redirect:/c/" + caseToken + "/upload?error=" + encode(ex.getMessage());
+            return "redirect:/c/" + caseToken + "/upload?error=" + encode(toUserFacingErrorMessage(ex.getMessage()));
         }
     }
 
@@ -293,7 +304,10 @@ public class WebCaseController {
             String message = response.passed() ? "Validation passed." : "Validation completed with issues.";
             return "redirect:/c/" + caseToken + "/validate?message=" + encode(message);
         } catch (RuntimeException ex) {
-            return "redirect:/c/" + caseToken + "/validate?error=" + encode(ex.getMessage());
+            if (requiresUploadFirst(ex.getMessage())) {
+                return "redirect:/c/" + caseToken + "/upload?error=" + encode(UPLOAD_FILES_FIRST_MESSAGE);
+            }
+            return "redirect:/c/" + caseToken + "/validate?error=" + encode(toUserFacingErrorMessage(ex.getMessage()));
         }
     }
 
@@ -313,7 +327,7 @@ public class WebCaseController {
                     : "Approved trim applied. Validation completed with issues.";
             return "redirect:/c/" + caseToken + "/validate?message=" + encode(message);
         } catch (RuntimeException ex) {
-            return "redirect:/c/" + caseToken + "/validate?error=" + encode(ex.getMessage());
+            return "redirect:/c/" + caseToken + "/validate?error=" + encode(toUserFacingErrorMessage(ex.getMessage()));
         }
     }
 
@@ -332,7 +346,7 @@ public class WebCaseController {
                     : "Stronger image compression applied. Validation completed with issues.";
             return "redirect:/c/" + caseToken + "/validate?message=" + encode(message);
         } catch (RuntimeException ex) {
-            return "redirect:/c/" + caseToken + "/validate?error=" + encode(ex.getMessage());
+            return "redirect:/c/" + caseToken + "/validate?error=" + encode(toUserFacingErrorMessage(ex.getMessage()));
         }
     }
 
@@ -351,7 +365,7 @@ public class WebCaseController {
                     : "Stronger PDF compression applied. Validation completed with issues.";
             return "redirect:/c/" + caseToken + "/validate?message=" + encode(message);
         } catch (RuntimeException ex) {
-            return "redirect:/c/" + caseToken + "/validate?error=" + encode(ex.getMessage());
+            return "redirect:/c/" + caseToken + "/validate?error=" + encode(toUserFacingErrorMessage(ex.getMessage()));
         }
     }
 
@@ -366,13 +380,20 @@ public class WebCaseController {
                         : "Auto-fix failed. Please review the files and try again.";
                 return "redirect:/c/" + caseToken + "/validate?error=" + encode(failMessage);
             }
-            String message = "Auto-fix status: " + job.status();
+            String message = switch (job.status()) {
+                case QUEUED -> "Auto-fix queued. Refresh validation in a moment to see the updated result.";
+                case RUNNING -> "Auto-fix is running now. Refresh validation shortly.";
+                default -> "Auto-fix status: " + job.status();
+            };
             if (job.failCode() != null) {
                 message += " (" + job.failCode() + ")";
             }
             return "redirect:/c/" + caseToken + "/validate?message=" + encode(message);
         } catch (RuntimeException ex) {
-            return "redirect:/c/" + caseToken + "/validate?error=" + encode(ex.getMessage());
+            if (requiresUploadFirst(ex.getMessage())) {
+                return "redirect:/c/" + caseToken + "/upload?error=" + encode(UPLOAD_FILES_FIRST_MESSAGE);
+            }
+            return "redirect:/c/" + caseToken + "/validate?error=" + encode(toUserFacingErrorMessage(ex.getMessage()));
         }
     }
 
@@ -441,6 +462,9 @@ public class WebCaseController {
         model.addAttribute("paymentConfigured", paymentService.isCheckoutConfigured());
         model.addAttribute("paymentProviderLabel", paymentService.checkoutProviderDisplayName());
         model.addAttribute("checkoutPriceDisplay", paymentService.checkoutPriceDisplay());
+        BetaExportEligibilityService.BetaExportEligibility eligibility = betaExportEligibilityService.evaluate(disputeCase.getId());
+        model.addAttribute("betaExportEligible", eligibility.eligible());
+        model.addAttribute("betaExportEligibilityMessage", eligibility.message());
         return "caseExport";
     }
 
@@ -453,7 +477,7 @@ public class WebCaseController {
             }
             return "redirect:" + checkout.redirectUrl();
         } catch (RuntimeException ex) {
-            return "redirect:/c/" + caseToken + "/export?error=" + encode(ex.getMessage());
+            return "redirect:/c/" + caseToken + "/export?error=" + encode(toUserFacingErrorMessage(ex.getMessage()));
         }
     }
 
@@ -560,7 +584,7 @@ public class WebCaseController {
             DisputeCase rotated = caseService.rotateCaseToken(caseToken);
             return "redirect:/c/" + rotated.getCaseToken() + "?message=" + encode("Access token rotated. Save the new link now.");
         } catch (RuntimeException ex) {
-            return "redirect:/?error=" + encode(ex.getMessage());
+            return "redirect:/?error=" + encode(toUserFacingErrorMessage(ex.getMessage()));
         }
     }
 
@@ -577,6 +601,7 @@ public class WebCaseController {
         ReadinessService.ReadinessSummary readiness = readinessService.summarize(report);
         Instant expiresAt = retentionPolicyService.resolveExpiry(disputeCase);
         int uploadedFileCount = report.files().size();
+        boolean hasUploadedFiles = uploadedFileCount > 0;
         EnumSet<EvidenceType> presentEvidenceTypes = EnumSet.noneOf(EvidenceType.class);
         report.files().forEach(file -> presentEvidenceTypes.add(file.evidenceType()));
         int remainingFileSlots = Math.max(0, caseMaxFiles - uploadedFileCount);
@@ -599,6 +624,17 @@ public class WebCaseController {
                 report.cardNetwork(),
                 List.copyOf(presentEvidenceTypes)
         );
+        boolean canRunAutoFix = hasUploadedFiles
+                && report.latestValidation() != null
+                && report.latestValidation().issues().stream().anyMatch(issue -> supportsAutoFix(issue.fixStrategy()));
+        String autoFixDisabledReason = null;
+        if (!hasUploadedFiles) {
+            autoFixDisabledReason = UPLOAD_FILES_FIRST_MESSAGE;
+        } else if (report.latestValidation() == null) {
+            autoFixDisabledReason = AUTO_FIX_NEEDS_VALIDATION_MESSAGE;
+        } else if (!canRunAutoFix) {
+            autoFixDisabledReason = "No supported auto-fix issue is available right now.";
+        }
 
         model.addAttribute("disputeCase", disputeCase);
         model.addAttribute("report", report);
@@ -621,6 +657,9 @@ public class WebCaseController {
         model.addAttribute("exportReady", isExportableState(report.state()));
         model.addAttribute("caseMaxFiles", caseMaxFiles);
         model.addAttribute("uploadedFileCount", uploadedFileCount);
+        model.addAttribute("hasUploadedFiles", uploadedFileCount > 0);
+        model.addAttribute("canRunAutoFix", canRunAutoFix);
+        model.addAttribute("autoFixDisabledReason", autoFixDisabledReason);
         model.addAttribute("remainingFileSlots", remainingFileSlots);
         model.addAttribute("uploadedSizeBytes", uploadedSizeBytes);
         model.addAttribute("totalSizeLimitBytes", totalSizeLimitBytes);
@@ -677,6 +716,34 @@ public class WebCaseController {
 
     private String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private boolean requiresUploadFirst(String message) {
+        if (message == null || message.isBlank()) {
+            return false;
+        }
+        String normalized = message.toLowerCase(Locale.ROOT);
+        return normalized.contains("no uploaded files found")
+                || normalized.contains("illegal state transition: case_created -> validating")
+                || normalized.contains("illegal state transition: case_created -> fixing");
+    }
+
+    private String toUserFacingErrorMessage(String message) {
+        if (message == null || message.isBlank()) {
+            return "Request failed.";
+        }
+
+        String normalized = message.toLowerCase(Locale.ROOT);
+        if (normalized.contains("case not found")
+                || normalized.contains("invalid case token")
+                || normalized.contains("missing x-case-token")) {
+            return CASE_ACCESS_ERROR_MESSAGE;
+        }
+        if (normalized.contains("illegal state transition")
+                || normalized.contains("no uploaded files found")) {
+            return UPLOAD_FILES_FIRST_MESSAGE;
+        }
+        return message;
     }
 
     private String trimTrailingSlash(String value) {
@@ -1270,6 +1337,18 @@ public class WebCaseController {
     private String latestAutoFixProgressNote(UUID caseId) {
         if (caseId == null) {
             return null;
+        }
+        var activeJob = fixJobRepository.findFirstByDisputeCaseIdAndStatusInOrderByCreatedAtDesc(
+                caseId,
+                List.of(FixJobStatus.RUNNING, FixJobStatus.QUEUED)
+        );
+        if (activeJob.isPresent()) {
+            FixJobEntity job = activeJob.get();
+            return switch (job.getStatus()) {
+                case RUNNING -> "Auto-fix is running for the current files.";
+                case QUEUED -> "Auto-fix is queued for the current files.";
+                default -> null;
+            };
         }
         return fixJobRepository.findFirstByDisputeCaseIdAndStatusOrderByCreatedAtDesc(caseId, FixJobStatus.SUCCEEDED)
                 .map(job -> firstSentence(job.getSummary()))

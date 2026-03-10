@@ -69,10 +69,12 @@ class SampleZipHarnessIntegrationTest {
         assertTrue(Files.exists(shopifyZip));
         assertTrue(Files.size(stripeZip) > 0);
         assertTrue(Files.size(shopifyZip) > 0);
-        assertTrue(hasEntry(stripeZip, "manifest.json"));
-        assertTrue(hasEntry(stripeZip, "dispute_explanation_draft.txt"));
-        assertTrue(hasEntry(shopifyZip, "manifest.json"));
-        assertTrue(hasEntry(shopifyZip, "dispute_explanation_draft.txt"));
+        assertTrue(hasEntry(stripeZip, "README_FIRST.txt"));
+        assertTrue(hasEntry(stripeZip, "reference/manifest.json"));
+        assertTrue(hasEntry(stripeZip, "reference/dispute_explanation_draft.txt"));
+        assertTrue(hasEntry(shopifyZip, "README_FIRST.txt"));
+        assertTrue(hasEntry(shopifyZip, "reference/manifest.json"));
+        assertTrue(hasEntry(shopifyZip, "reference/dispute_explanation_draft.txt"));
     }
 
     private Path generateStripeSampleZip(Path outputDir) throws Exception {

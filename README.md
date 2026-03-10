@@ -1,17 +1,17 @@
-# Chargeback Evidence Pack Builder
+# Chargeback Evidence Preflight
 
-Spring Boot SaaS MVP for Stripe/Shopify dispute evidence packaging.
+Spring Boot SaaS MVP for Stripe/Shopify dispute evidence preflight and beta export.
 
 ## Project Identity (Current)
 
-- This product is an `upload-failure recovery and submission-readiness engine` for dispute evidence.
+- This product is an `evidence-file preflight and blocker-recovery engine` for dispute evidence.
 - It helps merchants who failed (or are likely to fail) evidence upload due to formatting and policy constraints.
 - It is not a dispute-outcome predictor and does not promise win-rate improvement.
 - It does not provide legal advice.
 
 ## Current Positioning
 
-- Primary promise: `turn messy merchant uploads into an upload-ready dispute evidence pack`.
+- Primary promise: `detect and fix supported evidence-file blockers before submission`.
 - Practical scope:
   - Collect and organize evidence files
   - Auto-convert supported image uploads into platform-safe JPEG when direct format is not accepted
@@ -19,9 +19,9 @@ Spring Boot SaaS MVP for Stripe/Shopify dispute evidence packaging.
   - Provide platform-aware reason preset input at case creation
   - Validate against platform constraints
   - Auto-fix supported formatting issues
-  - Export structured submission artifacts
+  - Export structured submission artifacts in beta
 - Positioning line:
-  - `Upload-ready dispute evidence pack builder for Stripe/Shopify merchants`
+  - `Free preflight plus beta export for Stripe/Shopify evidence-file blockers`
 
 Core flow:
 1. Create case
@@ -32,7 +32,7 @@ Core flow:
 5. Validate against platform rules
 6. Generate dispute explanation draft (editable)
 7. Run auto-fix (per-type merge + Shopify oversized image compression + Shopify PDF/A conversion + PDF portfolio flatten + Stripe oversized PDF compression + PDF external-link removal)
-8. Pay (Stripe Checkout) only when validation is fresh and required evidence coverage is complete
+8. Pay only when validation is fresh and required evidence coverage is complete
 9. Download submission ZIP (same required-evidence gate), explanation TXT, and one-page guide PDF
 
 ## Policy Baseline (as implemented)
@@ -62,7 +62,7 @@ Core flow:
 
 No-login access model:
 - Access control is case-token based (`/c/{caseToken}`).
-- Recent case links are stored only when users opt in on trusted devices (browser localStorage, 30-day TTL).
+- Recent case links are stored only when users opt in on trusted devices (browser localStorage, 7-day TTL).
 - Users can download an access key text file and rotate token if a link is exposed.
 
 ## Local Run (Dev Profile)
@@ -91,7 +91,7 @@ Synthetic messy demo cases:
 Dev defaults:
 - H2 in-memory DB
 - evidence storage: `./data/evidence`
-- retention: 30 days default (extended to due date + buffer when later)
+- retention: 7 days default (extended to due date + buffer when later)
 
 ## Frontend Assets (Tailwind)
 
@@ -115,7 +115,7 @@ Output:
 General:
 - `APP_STORAGE_ROOT` (default `./data/evidence`)
 - `APP_CASE_MAX_FILES` (default `100`)
-- `APP_RETENTION_DAYS` (default `30`)
+- `APP_RETENTION_DAYS` (default `7`)
 - `APP_RETENTION_DUE_DATE_BUFFER_DAYS` (default `7`)
 - `APP_RETENTION_CRON` (default `0 30 3 * * *`)
 - `APP_API_ENFORCE_CASE_TOKEN` (default `true`)
@@ -124,11 +124,11 @@ General:
 - `APP_SEO_GUIDES_PATH` (default `seo/guides-v1.json`)
 
 Billing:
-- `APP_BILLING_AMOUNT_CENTS` (default `1900`)
+- `APP_BILLING_AMOUNT_CENTS` (default `900`)
 - `APP_BILLING_CURRENCY` (default `usd`)
 - `APP_BILLING_SUCCESS_URL_TEMPLATE` (default `http://localhost:8080/c/{caseToken}/export?payment=success`)
 - `APP_BILLING_CANCEL_URL_TEMPLATE` (default `http://localhost:8080/c/{caseToken}/export?payment=cancelled`)
-- `APP_BILLING_PROVIDER` (default `stripe`, allowed: `stripe`, `lemonsqueezy`)
+- `APP_BILLING_PROVIDER` (default `lemonsqueezy`, allowed: `stripe`, `lemonsqueezy`)
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `LEMONSQUEEZY_API_KEY`
@@ -183,7 +183,7 @@ Prod defaults:
 - `/c/{caseToken}/validate` validation result
 - `/c/{caseToken}/explanation` dispute explanation draft editor
 - `/c/{caseToken}/report` case report
-- `/c/{caseToken}/export` paywall + download
+- `/c/{caseToken}/export` beta export + download
 - `POST /c/{caseToken}/pay` start provider checkout (Stripe/Lemon Squeezy)
 - `/c/{caseToken}/download/submission.zip` paid only
 - `/c/{caseToken}/download/summary.pdf` free with watermark, paid without watermark
@@ -247,9 +247,10 @@ KPI additions:
 
 ## Retention / Privacy
 
-- Default retention is 30 days.
+- Default retention is 7 days.
 - If due date is set, expiry extends to `due date + APP_RETENTION_DUE_DATE_BUFFER_DAYS` when that is later than created+retention.
 - User can delete case immediately from dashboard.
+- Support email: `shinhyeok22@gmail.com`
 
 ## Manual QA Checklist
 

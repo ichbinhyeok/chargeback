@@ -288,6 +288,11 @@ class CaseControllerIntegrationTest {
                 .andExpect(jsonPath("$.issues[0].code").value("ERR_STRIPE_LINK_DETECTED"))
                 .andExpect(jsonPath("$.issues[0].fixStrategy").value("REMOVE_EXTERNAL_LINKS_PDF"));
 
+        mockMvc.perform(get("/c/{caseToken}/validate", caseToken))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Open exact fix guide")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/guides/stripe/upload-failed-no-external-links")));
+
         mockMvc.perform(post("/api/cases/{caseId}/fix", caseId)
                         .header("X-Case-Token", caseToken))
                 .andExpect(status().isOk())
@@ -810,7 +815,8 @@ class CaseControllerIntegrationTest {
 
         mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
                         .header("X-Case-Token", caseToken))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Case not found or access expired. Reopen the case from its original link and try again."));
     }
 
     @Test
@@ -820,7 +826,25 @@ class CaseControllerIntegrationTest {
 
         mockMvc.perform(get("/api/cases/{caseId}/report", caseId))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("missing X-Case-Token header"));
+                .andExpect(jsonPath("$.error").value("Case not found or access expired. Reopen the case from its original link and try again."));
+    }
+
+    @Test
+    void caseApiHidesRawTokenMismatchDetails() throws Exception {
+        CaseRef caseRef = createStripeCase();
+        UUID caseId = caseRef.caseId();
+
+        mockMvc.perform(get("/api/cases/{caseId}/report", caseId)
+                        .header("X-Case-Token", "case_missing_or_stale"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Case not found or access expired. Reopen the case from its original link and try again."));
+    }
+
+    @Test
+    void missingCaseUploadPageRedirectsHomeWithFriendlyError() throws Exception {
+        mockMvc.perform(get("/c/{caseToken}/upload", "case_missing_or_expired"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/?error=Case+not+found+or+expired.")));
     }
 
     @Test
@@ -1316,21 +1340,21 @@ class CaseControllerIntegrationTest {
     void homePageHighlightsUploadReadyEvidencePackPositioning() throws Exception {
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Turn raw dispute files into an")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("upload-ready evidence pack")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Find and fix")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("supported evidence-file blockers")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Start From The Platform Error")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Paste the exact Stripe or Shopify upload error")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Find My Fix Flow")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Validation is free")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("to unlock downloads")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Already proven on real failed uploads")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Free preflight")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("beta export")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Best-fit blockers in the current beta")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("How it works in 3 moves")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Returning to an existing case?")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Some Stripe docs mention a 5MB file-upload ceiling, but dispute dashboard guidance is stricter at 4.5MB")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("The same Shopify PDF can fail on PDF/A, portfolio structure, and hidden links together")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Supported today")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Still conditional")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Shopify PDF/A required")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Mastercard 19-page packet")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Validation")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe duplicate evidence type")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Preflight")));
     }
 
     @Test
@@ -1338,16 +1362,16 @@ class CaseControllerIntegrationTest {
         mockMvc.perform(get("/new"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Privacy & Trust")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Validation is free. Unlock the downloadable evidence pack for")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Preflight is free. Unlock the beta export for")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("What happens next")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("No files are uploaded on this page.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Validation runs automatically after upload.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Start From The Platform Error")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Load the closest fix flow before case setup")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Load Error-Specific Flow")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Create New Evidence Pack")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Evidence Preflight")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Reason Code Preset")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Continue to Free Validation")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Continue to Free Preflight")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"reasonPreset\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"errorPreset\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-platform=\"STRIPE\"")))
@@ -1373,6 +1397,9 @@ class CaseControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("How upload works")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Selection needs attention")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Choose Files To Upload")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Click anywhere in this box")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Drag files in or open the file picker")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Nothing uploads until you confirm in the mapping modal.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("auto-converted to")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("PDF preview")))
@@ -1381,6 +1408,15 @@ class CaseControllerIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Preview signal")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Needed for this case")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Suggested: <strong>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("You do not need clean filenames")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("High confidence")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Review before upload")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Manual check required")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("I reviewed this file and the selected type is correct.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Why this needs review:")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Why this was suggested:")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Review ")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Order receipt / invoice")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Analyzing preview text and metadata")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Validation starts automatically after each confirmed upload.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("HEIC / HEIF from iPhone Photos is converted to JPEG in your browser before upload")))
@@ -1390,6 +1426,32 @@ class CaseControllerIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Browser HEIC -> JPEG")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Re-run Validation")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Still needed for this reason")));
+    }
+
+    @Test
+    void validatePageRedirectsBackToUploadWithFriendlyErrorWhenNoFilesExist() throws Exception {
+        CaseRef caseRef = createStripeCase();
+
+        mockMvc.perform(post("/c/{caseToken}/validate", caseRef.caseToken()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/c/" + caseRef.caseToken() + "/upload?error=Upload+files+before+running+validation+or+auto-fix.")));
+    }
+
+    @Test
+    void validatePageShowsUploadFirstStateAndFixEndpointDoesNotLeakServerError() throws Exception {
+        CaseRef caseRef = createStripeCase();
+
+        mockMvc.perform(get("/c/{caseToken}/validate", caseRef.caseToken()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Upload Files First")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Upload files before review")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Go To Upload Files")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Upload files before running validation or auto-fix.")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("illegal state transition"))));
+
+        mockMvc.perform(post("/c/{caseToken}/fix", caseRef.caseToken()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/c/" + caseRef.caseToken() + "/upload?error=Upload+files+before+running+validation+or+auto-fix.")));
     }
 
     @Test
@@ -1863,15 +1925,22 @@ class CaseControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Error Fixes &amp; Evidence Checklists")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Upload/Error Fixes")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Validation")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Preflight")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("See checklist &amp; steps")));
 
         mockMvc.perform(get("/guides/stripe/fraudulent"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Stripe Fraudulent Evidence Checklist for Upload Recovery")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Stop Trial-And-Error Uploads")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Validation")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Reason-specific evidence focus")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Digital usage or access logs")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Where this reason usually gets weak")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Current workflow guardrails")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Keep the full evidence package at or under 4.5 MB.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("https://docs.stripe.com/api/disputes/object")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Preflight")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Official platform sources")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Search terms this page is meant to answer"))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"@type\": \"FAQPage\"")));
 
         mockMvc.perform(get("/guides/stripe/evidence-file-size-limit-4-5mb"))
@@ -1882,8 +1951,22 @@ class CaseControllerIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("What you get when you start here")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Search Phrases This Page Solves"))));
 
+        mockMvc.perform(get("/guides/stripe/total-pages-over-limit"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Observed in beta workflow")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stayed blocked in beta")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("ERR_STRIPE_TOTAL_PAGES")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("delivery dump stayed 52 pages")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("No preview artifact is shown here because the case never unlocked a downloadable summary.")));
+
         mockMvc.perform(get("/guides/shopify/pdf-a-format-required-error"))
                 .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Observed in beta workflow")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Resolved in beta")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("ERR_SHPFY_PDF_NOT_PDFA")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/proof/beta/shopify-pdfa-summary-page-1.png")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/proof/beta/shopify-pdfa-summary.pdf")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Synthetic beta artifact preview generated after the PDF/A blocker cleared.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Shopify PDF blockers can stack")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("The same Shopify file can also carry portfolio structure or hidden external links")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("portfolio structure or hidden links")))
@@ -1896,7 +1979,7 @@ class CaseControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Get the manual checklist fast")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Find My Fix Flow")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Validation")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Start Free Preflight")));
     }
 
     @Test
@@ -1904,6 +1987,14 @@ class CaseControllerIntegrationTest {
         mockMvc.perform(get("/guides/router")
                         .param("q", "shopify pdf a format required error")
                         .param("platform", "shopify"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/new?src=guide&platform=shopify&guide=pdf-a-format-required-error")));
+    }
+
+    @Test
+    void guidesRouterInfersPlatformForGenericPdfaQuery() throws Exception {
+        mockMvc.perform(get("/guides/router")
+                        .param("q", "pdf/a format required"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/new?src=guide&platform=shopify&guide=pdf-a-format-required-error")));
     }
@@ -1953,6 +2044,17 @@ class CaseControllerIntegrationTest {
                         .param("platform", "stripe"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(header().string("Location", "/guides/stripe/fraudulent"));
+    }
+
+    @Test
+    void legacyGuideSlugRedirectsToCurrentDetailOrPlatformHub() throws Exception {
+        mockMvc.perform(get("/guides/shopify-pdf-a-format-required-error"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", "/guides/shopify/pdf-a-format-required-error"));
+
+        mockMvc.perform(get("/guides/stripe-evidence-upload-error"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", "/guides/stripe"));
     }
 
     @Test

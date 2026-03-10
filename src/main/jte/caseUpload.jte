@@ -3,6 +3,7 @@
 @import com.example.demo.dispute.domain.EvidenceType
 @import com.example.demo.dispute.persistence.PaymentEntity
 @import com.example.demo.dispute.service.ReasonCodeChecklistService
+@import com.example.demo.dispute.web.CaseUiLabels
 @import java.util.List
 @param DisputeCase disputeCase
 @param CaseReportResponse report
@@ -33,6 +34,7 @@
     caseTokenForVault = report.caseToken(),
     casePlatformForVault = report.platform().name(),
     caseStateForVault = displayCaseState,
+    caseStage = "upload",
     content = @`
     @if(message != null && !message.isBlank())
         <div class="mb-6 p-4 rounded-lg bg-green-50 text-green-800 border border-green-200 flex items-center gap-3">
@@ -62,7 +64,8 @@
                 </span>
             </div>
             <div class="flex flex-wrap gap-2 text-sm text-gray-500">
-                <span class="font-medium text-gray-700">${report.platform()}</span> &bull;
+                <span class="font-medium text-gray-700">${CaseUiLabels.platformLabel(report.platform())}</span> &bull;
+                <span>${CaseUiLabels.productScopeLabel(report.productScope())}</span> &bull;
                 <span>Upload and classify evidence files</span>
             </div>
         </div>
@@ -70,10 +73,11 @@
 
     <div class="border-b border-gray-200 mb-8 overflow-x-auto shrink-0">
         <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-            <a href="/c/${report.caseToken()}" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Dashboard</a>
-            <a href="/c/${report.caseToken()}/upload" class="border-primary-600 text-primary-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" aria-current="page">Upload Evidence</a>
-            <a href="/c/${report.caseToken()}/explanation" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Explanation Draft</a>
-            <a href="/c/${report.caseToken()}/export" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Export Pack</a>
+            <a href="/c/${report.caseToken()}" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Overview</a>
+            <a href="/c/${report.caseToken()}/upload" class="border-primary-600 text-primary-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" aria-current="page">Upload</a>
+            <a href="/c/${report.caseToken()}/validate" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Review &amp; Fix</a>
+            <a href="/c/${report.caseToken()}/explanation" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Draft Response</a>
+            <a href="/c/${report.caseToken()}/export" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Export</a>
         </nav>
     </div>
 
@@ -143,8 +147,8 @@
             <div>
                 <h2 class="text-sm font-semibold uppercase tracking-wide">How upload works</h2>
                 <ol class="mt-3 space-y-2 pl-5 text-sm leading-6 list-decimal">
-                    <li>Click <strong>Browse Files</strong> or drag files here. Nothing uploads until you confirm in the mapping modal.</li>
-                    <li>Review the guessed evidence type for each file and change it if needed.</li>
+                    <li>Click <strong>Choose Files To Upload</strong> or drag files here. Nothing uploads until you confirm in the mapping modal.</li>
+                    <li>Review the guessed evidence type for each file and change it if needed. Weird filenames are okay: preview analysis also uses PDF text, OCR, and image metadata when available.</li>
                     <li>Unsupported but decodable image files can be auto-converted to <strong>JPEG</strong> during upload before validation. HEIC / HEIF from iPhone Photos is converted to JPEG in your browser before upload, but AVIF still needs manual conversion to JPG or PNG first.</li>
                     <li>Click <strong>Upload Files</strong>. Validation starts automatically after each confirmed upload.</li>
                     <li>Format checks can pass before export is ready. Export review stays locked until required evidence is complete.</li>
@@ -153,7 +157,7 @@
             @if(reasonChecklist.hasReasonCode() && !reasonChecklist.missingRequiredEvidence().isEmpty())
                 <div class="rounded-lg border border-sky-300 bg-white/80 p-4 text-sm shadow-sm lg:max-w-sm">
                     <div class="font-semibold text-sky-950">Still needed for this reason</div>
-                    <div class="mt-2 text-sky-900">${String.join(", ", reasonChecklist.missingRequiredEvidence())}</div>
+                    <div class="mt-2 text-sky-900">${CaseUiLabels.joinEvidenceTypeLabels(reasonChecklist.missingRequiredEvidence())}</div>
                 </div>
             @endif
         </div>
@@ -215,17 +219,22 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div class="lg:col-span-1 border border-dashed border-gray-300 rounded-xl bg-gray-50 flex flex-col items-center justify-center p-8 text-center"
+        <div class="lg:col-span-1 border border-dashed border-gray-300 rounded-xl bg-gray-50 flex flex-col items-center justify-center p-8 text-center cursor-pointer"
              id="dropzone"
+             role="button"
+             tabindex="0"
+             aria-label="Choose files to upload or drag files here"
              style="min-height: 400px; transition: all 0.2s;">
             <svg class="w-16 h-16 text-primary-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
             <h3 class="text-xl font-bold text-gray-900 mb-2">Drag & Drop files here</h3>
-            <p class="text-gray-500 text-sm mb-6 max-w-xs">After you choose files, a mapping modal opens first. Upload starts only after you confirm.</p>
+            <p class="text-gray-500 text-sm mb-3 max-w-xs">Click anywhere in this box or use the button below. A mapping modal opens first, and upload starts only after you confirm.</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-primary-700 mb-6">Drag files in or open the file picker</p>
 
             <input type="file" id="file-input" multiple class="hidden" accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.heif,.avif,image/*">
-            <button onclick="document.getElementById('file-input').click()" class="cb-btn cb-btn-primary shadow-sm">
-                Browse Files
+            <button type="button" id="browse-files-btn" class="cb-btn cb-btn-primary px-6 py-3 text-base shadow-sm">
+                Choose Files To Upload
             </button>
+            <p class="mt-3 text-xs text-gray-500">You can still drag files here if that is easier.</p>
 
             <div id="upload-progress-container" class="w-full mt-6 hidden">
                 <div class="text-xs font-semibold text-gray-600 mb-1 text-left" id="upload-status-text">Uploading...</div>
@@ -257,7 +266,7 @@
                                         </div>
                                         <div>
                                             <div class="font-semibold text-gray-900 flex items-center gap-2">
-                                                ${file.evidenceType()}
+                                                ${CaseUiLabels.evidenceTypeLabel(file.evidenceType())}
                                                 <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600 font-mono">${String.format("%.1f", file.sizeBytes() / 1024.0)} KB</span>
                                             </div>
                                             <div class="text-xs text-gray-500 mt-1">Pages: ${file.pageCount()}</div>
@@ -303,10 +312,10 @@
 
     <div id="mapping-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden">
-            <div class="p-5 border-b border-gray-200 flex items-center justify-between">
+            <div class="p-5 border-b border-gray-200 flex flex-col gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
                 <div>
                     <h3 class="text-lg font-bold text-gray-900">Map Files to Evidence Types</h3>
-                    <p class="text-sm text-gray-500 mt-1">Set the right type for each file before upload.</p>
+                    <p class="text-sm text-gray-500 mt-1">Set the right type for each file before upload. You do not need clean filenames: use the examples and confidence badges below.</p>
                 </div>
                 <button id="mapping-close-btn" type="button" class="cb-btn cb-btn-secondary px-3 py-2 text-xs">Close</button>
             </div>
@@ -315,7 +324,7 @@
                 <div id="mapping-analysis-status" class="mb-3 text-xs text-gray-500"></div>
                 <div id="mapping-list" class="space-y-3 max-h-[48vh] overflow-y-auto"></div>
             </div>
-            <div class="p-5 border-t border-gray-200 flex items-center justify-end gap-2">
+            <div class="p-5 border-t border-gray-200 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
                 <button id="mapping-cancel-btn" type="button" class="cb-btn cb-btn-secondary">Cancel</button>
                 <button id="mapping-start-upload-btn" type="button" class="cb-btn cb-btn-primary">Upload Files</button>
             </div>
@@ -323,7 +332,7 @@
     </div>
 
     <template id="evidence-type-select-template">
-        <select class="cb-input text-sm evidence-type-select min-w-[260px]">
+        <select class="cb-input text-sm evidence-type-select w-full max-w-full sm:min-w-[260px] sm:w-auto">
             @for(EvidenceType type : evidenceTypes)
                 <option value="${type.name()}">${type.name()}</option>
             @endfor
@@ -334,6 +343,7 @@
     <script>
         const dropzone = document.getElementById('dropzone');
         const fileInput = document.getElementById('file-input');
+        const browseFilesButton = document.getElementById('browse-files-btn');
         const progressBar = document.getElementById('upload-progress-bar');
         const progressContainer = document.getElementById('upload-progress-container');
         const statusText = document.getElementById('upload-status-text');
@@ -353,6 +363,7 @@
         const budgetFilesRemainingElement = document.getElementById('budget-files-remaining');
         const budgetSizeElement = document.getElementById('budget-size');
         const budgetSizeRemainingElement = document.getElementById('budget-size-remaining');
+        const CASE_ACCESS_ERROR_MESSAGE = 'Case not found or access expired. Reopen the case from its original link and try again.';
         const caseId = '${report.caseId().toString()}';
         const caseToken = '${report.caseToken()}';
         const caseMaxFiles = ${caseMaxFiles};
@@ -380,6 +391,10 @@
         let remoteSuggestionCache = new Map();
         let suggestionAnalysisRun = 0;
 
+        function openFilePicker() {
+            fileInput.click();
+        }
+
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropzone.addEventListener(eventName, preventDefaults, false);
             document.body.addEventListener(eventName, preventDefaults, false);
@@ -406,6 +421,27 @@
             void handleFiles(e.dataTransfer.files);
         });
 
+        browseFilesButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            openFilePicker();
+        });
+
+        dropzone.addEventListener('click', (event) => {
+            if (event.target instanceof HTMLElement
+                    && event.target.closest('a, button, input, select, textarea, label')) {
+                return;
+            }
+            openFilePicker();
+        });
+
+        dropzone.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openFilePicker();
+            }
+        });
+
         fileInput.addEventListener('change', function() {
             void handleFiles(this.files);
             this.value = '';
@@ -426,6 +462,17 @@
 
         mappingStartUploadBtn.addEventListener('click', async () => {
             if (pendingFiles.length === 0) {
+                return;
+            }
+            const suggestionPlan = buildSuggestionPlan(pendingFiles);
+            const pendingReviews = unresolvedManualReviews(suggestionPlan);
+            if (pendingReviews.length > 0) {
+                showClientAlert(
+                    'warning',
+                    'Review weak matches before upload',
+                    'Confirm these lower-confidence files first:\n- ' + pendingReviews.join('\n- ')
+                );
+                renderMappingRows();
                 return;
             }
             mappingStartUploadBtn.disabled = true;
@@ -554,7 +601,6 @@
             const suggestionPlan = buildSuggestionPlan(pendingFiles);
             pendingFiles.forEach((file, index) => {
                 const row = document.createElement('div');
-                row.className = 'border border-gray-200 rounded-lg p-3 flex flex-col md:flex-row md:items-start gap-3 justify-between';
                 row.setAttribute('data-row-index', index.toString());
 
                 const left = document.createElement('div');
@@ -581,34 +627,75 @@
                             : suggestion.source === 'recommended'
                                 ? '<span class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-900">Recommended next</span>'
                                 : suggestion.source === 'keyword'
-                                    ? '<span class="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-900">Name match</span>'
+                                ? '<span class="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-900">Name match</span>'
                                     : '<span class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-semibold text-gray-700">Fallback</span>';
+                const confidenceBadge = confidenceBadgeHtml(suggestion);
+                syncReviewState(file, suggestion);
+                const needsReview = suggestionNeedsManualReview(suggestion);
+                const reviewPending = needsReview && !file._reviewAcknowledged;
+                row.className = reviewPending
+                    ? 'border border-amber-300 rounded-lg p-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between bg-amber-50/40'
+                    : 'border border-gray-200 rounded-lg p-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between';
                 const sourceHint = file._convertedFromHeic
                     ? 'Converted locally from ' + (file._sourceName || 'HEIC / HEIF') + ' to ' + file.name + ' before upload'
                     : isConvertibleImageSelection(file)
                         ? 'Uploaded as image, stored as JPEG after conversion'
                         : kb + ' KB';
                 const displayName = file._sourceName || file.name;
+                const exampleHint = evidenceTypeExample(suggestion.evidenceType);
+                const whyThisMatch = whyThisMatchText(suggestion);
+                const ambiguityNote = suggestionNeedsManualReview(suggestion)
+                    ? '<div class="mt-2 text-xs text-gray-600"><strong>Why this needs review:</strong> ' + escapeHtml(ambiguityExplanation(suggestion)) + '</div>'
+                    : '<div class="mt-2 text-xs text-gray-600"><strong>Why this was suggested:</strong> ' + escapeHtml(whyThisMatch) + '</div>';
+                const reviewHint = needsReview
+                    ? '<div class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"><strong>Manual check required:</strong> this guess is weaker. Either change the type yourself or tick the review checkbox before upload.</div>'
+                    : '<div class="mt-2 text-xs text-emerald-900">This looks like a stronger match. Keep it unless the preview clearly shows a different document type.</div>';
                 info.innerHTML =
-                    '<div class="font-medium text-gray-900 truncate flex items-center gap-2 flex-wrap">' + escapeHtml(displayName) + autoConvertBadge + suggestionBadge + '</div>' +
+                    '<div class="font-medium text-gray-900 truncate flex items-center gap-2 flex-wrap">' + escapeHtml(displayName) + autoConvertBadge + suggestionBadge + confidenceBadge + '</div>' +
                     '<div class="text-xs text-gray-500 mt-1">' + escapeHtml(sourceHint) + '</div>' +
-                    '<div class="mt-2 text-xs text-sky-900">Suggested: <strong>' + escapeHtml(humanizeEvidenceTypeName(suggestion.evidenceType)) + '</strong> - ' + escapeHtml(suggestion.reason) + '</div>';
+                    '<div class="mt-2 text-xs text-sky-900">Suggested: <strong>' + escapeHtml(humanizeEvidenceTypeName(suggestion.evidenceType)) + '</strong> - ' + escapeHtml(suggestion.reason) + '</div>' +
+                    '<div class="mt-2 text-xs text-gray-600">Example matches: ' + escapeHtml(exampleHint) + '</div>' +
+                    ambiguityNote +
+                    reviewHint;
                 left.appendChild(preview);
                 left.appendChild(info);
 
                 const right = document.createElement('div');
-                right.className = 'flex items-center gap-2 md:pl-4';
+                right.className = 'flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center md:w-auto md:flex-nowrap md:justify-end md:pl-4';
 
                 const select = evidenceTypeSelectTemplate.content.firstElementChild.cloneNode(true);
+                applyFriendlyEvidenceTypeLabels(select);
                 select.value = file._selectedEvidenceType || suggestion.evidenceType;
                 select.addEventListener('change', () => {
                     file._selectedEvidenceType = select.value;
+                    file._reviewAcknowledged = true;
+                    file._manualReviewTouched = true;
+                    renderMappingRows();
                 });
                 right.appendChild(select);
 
+                if (needsReview) {
+                    const reviewWrap = document.createElement('label');
+                    reviewWrap.className = 'flex w-full items-start gap-2 rounded-md border border-amber-200 bg-white px-3 py-2 text-xs text-amber-900 sm:max-w-[260px]';
+                    const reviewCheckbox = document.createElement('input');
+                    reviewCheckbox.type = 'checkbox';
+                    reviewCheckbox.className = 'mt-0.5';
+                    reviewCheckbox.checked = !!file._reviewAcknowledged;
+                    reviewCheckbox.addEventListener('change', () => {
+                        file._reviewAcknowledged = reviewCheckbox.checked;
+                        file._manualReviewTouched = reviewCheckbox.checked;
+                        updateMappingActionState(buildSuggestionPlan(pendingFiles));
+                    });
+                    const reviewText = document.createElement('span');
+                    reviewText.textContent = 'I reviewed this file and the selected type is correct.';
+                    reviewWrap.appendChild(reviewCheckbox);
+                    reviewWrap.appendChild(reviewText);
+                    right.appendChild(reviewWrap);
+                }
+
                 const removeBtn = document.createElement('button');
                 removeBtn.type = 'button';
-                removeBtn.className = 'cb-btn cb-btn-secondary text-xs px-3 py-2';
+                removeBtn.className = 'cb-btn cb-btn-secondary text-xs px-3 py-2 w-full sm:w-auto';
                 removeBtn.textContent = 'Remove';
                 removeBtn.addEventListener('click', () => {
                     setPendingFiles(pendingFiles.filter((_, i) => i !== index));
@@ -622,7 +709,7 @@
                 mappingList.appendChild(row);
             });
 
-            mappingStartUploadBtn.disabled = pendingFiles.length === 0;
+            updateMappingActionState(suggestionPlan);
         }
 
         function buildSuggestionPlan(files) {
@@ -709,7 +796,10 @@
                     return;
                 }
                 if (!response.ok) {
-                    mappingAnalysisStatus.textContent = 'Preview analysis is unavailable right now. Using filename-based suggestions.';
+                    mappingAnalysisStatus.textContent = await readApiErrorMessage(
+                        response,
+                        'Preview analysis is unavailable right now. Using filename-based suggestions.'
+                    );
                     return;
                 }
 
@@ -717,12 +807,11 @@
                 remoteSuggestionCache = new Map(
                     suggestions.map((suggestion) => [Number(suggestion.index), suggestion])
                 );
-                const strongCount = suggestions.filter((suggestion) =>
-                    suggestion.source === 'content' || suggestion.source === 'ocr' || suggestion.source === 'metadata'
-                ).length;
+                const strongCount = suggestions.filter((suggestion) => isHighConfidenceSource(suggestion.source)).length;
+                const reviewCount = suggestions.length - strongCount;
                 mappingAnalysisStatus.textContent = strongCount > 0
-                    ? 'Preview analysis found ' + strongCount + ' stronger content, OCR, or metadata matches.'
-                    : 'Preview analysis finished. No stronger content clues were found.';
+                    ? 'Preview analysis found ' + strongCount + ' stronger match(es). ' + reviewCount + ' file(s) still need manual review.'
+                    : 'Preview analysis finished. No strong content clues were found, so confirm the examples manually.';
                 renderMappingRows();
             } catch (_) {
                 if (runId !== suggestionAnalysisRun) {
@@ -768,6 +857,141 @@
                 reason: 'No strong clue detected yet. Use the preview to confirm the right type.',
                 source: 'fallback'
             };
+        }
+
+        function isHighConfidenceSource(source) {
+            return source === 'content' || source === 'ocr' || source === 'metadata';
+        }
+
+        function suggestionNeedsManualReview(suggestion) {
+            return !isHighConfidenceSource(suggestion.source);
+        }
+
+        function syncReviewState(file, suggestion) {
+            const selectedType = file._selectedEvidenceType || suggestion.evidenceType;
+            const reviewKey = suggestion.source + '|' + suggestion.evidenceType + '|' + selectedType;
+            if (!suggestionNeedsManualReview(suggestion)) {
+                file._reviewKey = reviewKey;
+                file._reviewAcknowledged = true;
+                return;
+            }
+            if (file._reviewKey !== reviewKey) {
+                file._reviewKey = reviewKey;
+                file._reviewAcknowledged = !!file._manualReviewTouched;
+            }
+        }
+
+        function unresolvedManualReviews(suggestionPlan) {
+            return pendingFiles
+                .map((file, index) => {
+                    const suggestion = suggestionPlan.get(index) || fallbackSuggestion();
+                    syncReviewState(file, suggestion);
+                    if (!suggestionNeedsManualReview(suggestion) || file._reviewAcknowledged) {
+                        return null;
+                    }
+                    return file._sourceName || file.name || ('File ' + (index + 1));
+                })
+                .filter((name) => name);
+        }
+
+        function updateMappingActionState(suggestionPlan) {
+            const pendingReviews = unresolvedManualReviews(suggestionPlan);
+            mappingStartUploadBtn.disabled = pendingFiles.length === 0 || pendingReviews.length > 0;
+            mappingStartUploadBtn.textContent = pendingReviews.length > 0
+                ? 'Review ' + pendingReviews.length + ' file(s) before upload'
+                : defaultUploadBtnText;
+        }
+
+        function confidenceBadgeHtml(suggestion) {
+            if (isHighConfidenceSource(suggestion.source)) {
+                return '<span class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-900">High confidence</span>';
+            }
+            if (suggestion.source === 'keyword' || suggestion.source === 'required' || suggestion.source === 'recommended') {
+                return '<span class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900">Review before upload</span>';
+            }
+            return '<span class="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-900">Low confidence</span>';
+        }
+
+        function whyThisMatchText(suggestion) {
+            switch (suggestion.source) {
+                case 'content':
+                    return 'The PDF or document preview text matched this evidence type directly.';
+                case 'ocr':
+                    return 'Recognized text inside the image matched this evidence type.';
+                case 'metadata':
+                    return 'The image looked like a screenshot batch and matched the remaining evidence gap.';
+                case 'keyword':
+                    return 'The filename contained keywords usually associated with this evidence type.';
+                case 'required':
+                    return 'This case still needs this required evidence type, so it was suggested as a gap-fill.';
+                case 'recommended':
+                    return 'This case would be stronger with this evidence type, so it was suggested as a gap-fill.';
+                default:
+                    return 'No strong clue was found, so this is only a fallback guess.';
+            }
+        }
+
+        function ambiguityExplanation(suggestion) {
+            switch (suggestion.source) {
+                case 'keyword':
+                    return 'This guess came from the filename only. If the filename is generic, reused, or misleading, the type can be wrong.';
+                case 'required':
+                    return 'This suggestion fills a missing required evidence slot for the case. That does not mean the file contents strongly matched that slot.';
+                case 'recommended':
+                    return 'This suggestion fills a recommended evidence slot. It is based on checklist needs more than on the file contents.';
+                case 'fallback':
+                    return 'No filename, text, OCR, or metadata clue was strong enough, so the system could not classify this file confidently.';
+                default:
+                    return 'This suggestion is not based on a strong direct content match, so check the preview before upload.';
+            }
+        }
+
+        function evidenceTypeExample(name) {
+            switch (name) {
+                case 'ORDER_RECEIPT':
+                    return 'checkout receipt, invoice, order confirmation';
+                case 'CUSTOMER_DETAILS':
+                    return 'billing profile, customer account page, shipping address';
+                case 'CUSTOMER_COMMUNICATION':
+                    return 'email thread, support chat, message screenshots';
+                case 'POLICIES':
+                    return 'refund policy, terms page, return policy';
+                case 'FULFILLMENT_DELIVERY':
+                    return 'tracking page, delivery scan, signed proof';
+                case 'DIGITAL_USAGE_LOGS':
+                    return 'login history, device activity, service access logs';
+                case 'REFUND_CANCELLATION':
+                    return 'refund confirmation, cancellation approval, credit issued';
+                default:
+                    return 'the clearest supporting file tied to this dispute';
+            }
+        }
+
+        function applyFriendlyEvidenceTypeLabels(select) {
+            Array.from(select.options).forEach((option) => {
+                option.textContent = friendlyEvidenceTypeLabel(option.value);
+            });
+        }
+
+        function friendlyEvidenceTypeLabel(name) {
+            switch (name) {
+                case 'ORDER_RECEIPT':
+                    return 'Order receipt / invoice';
+                case 'CUSTOMER_DETAILS':
+                    return 'Customer details / billing profile';
+                case 'CUSTOMER_COMMUNICATION':
+                    return 'Customer communication / chat';
+                case 'POLICIES':
+                    return 'Policy / terms';
+                case 'FULFILLMENT_DELIVERY':
+                    return 'Delivery proof / tracking';
+                case 'DIGITAL_USAGE_LOGS':
+                    return 'Usage logs / access records';
+                case 'REFUND_CANCELLATION':
+                    return 'Refund / cancellation';
+                default:
+                    return 'Other supporting evidence';
+            }
         }
 
         function matchesAny(text, keywords) {
@@ -972,6 +1196,9 @@
                     delete file._previewUrl;
                 }
                 delete file._selectedEvidenceType;
+                delete file._reviewAcknowledged;
+                delete file._reviewKey;
+                delete file._manualReviewTouched;
             });
             pendingFiles = [];
             mappingList.innerHTML = '';
@@ -1022,7 +1249,11 @@
                 });
 
                 if (!validateResponse.ok) {
-                    showClientAlert('danger', 'Validation request failed', 'Files uploaded, but validation failed. Please run manual check.');
+                    const reason = await readApiErrorMessage(
+                        validateResponse,
+                        'Files uploaded, but validation failed. Please run manual check.'
+                    );
+                    showClientAlert('danger', 'Validation request failed', reason);
                     statusText.innerText = 'Validation request failed.';
                     return;
                 }
@@ -1057,17 +1288,11 @@
                         return { ok: true };
                     }
 
-                    let reason = 'Upload failed';
-                    try {
-                        const json = await response.json();
-                        if (json && json.error) {
-                            reason = json.error;
-                        }
-                    } catch (_) {}
+                    const reason = await readApiErrorMessage(response, 'Upload failed');
 
                     const retryable = response.status >= 500 || response.status === 429;
                     if (!retryable || attempt >= maxAttempts) {
-                        return { ok: false, reason: reason + ' (status ' + response.status + ')' };
+                        return { ok: false, reason: reason };
                     }
                 } catch (error) {
                     if (attempt >= maxAttempts) {
@@ -1112,6 +1337,7 @@
                 clientErrorAlert.classList.add('bg-red-50', 'text-red-800', 'border-red-200');
             }
             clientErrorAlert.classList.remove('hidden');
+            clientErrorAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         function hideClientError() {
@@ -1129,5 +1355,36 @@
                 .replaceAll('"', '&quot;')
                 .replaceAll("'", '&#39;');
         }
+
+        async function readApiErrorMessage(response, fallback) {
+            let rawMessage = '';
+            const contentType = response.headers.get('content-type') || '';
+            try {
+                if (contentType.includes('application/json')) {
+                    const json = await response.json();
+                    rawMessage = json && typeof json.error === 'string' ? json.error : '';
+                } else {
+                    rawMessage = (await response.text() || '').trim();
+                }
+            } catch (_) {
+                rawMessage = '';
+            }
+            return sanitizeApiErrorMessage(rawMessage, response.status, fallback);
+        }
+
+        function sanitizeApiErrorMessage(rawMessage, status, fallback) {
+            const message = (rawMessage || '').trim();
+            const normalized = message.toLowerCase();
+            if (normalized.includes('case not found')
+                || normalized.includes('invalid case token')
+                || normalized.includes('missing x-case-token')) {
+                return CASE_ACCESS_ERROR_MESSAGE;
+            }
+            if (!message) {
+                return status === 404 ? CASE_ACCESS_ERROR_MESSAGE : fallback;
+            }
+            return message;
+        }
     </script>
 `)
+

@@ -7,7 +7,7 @@
         
         <div class="cb-card prose prose-indigo max-w-none">
             <h1 class="text-3xl font-bold tracking-tight text-neutral-900 mb-2">Privacy Policy</h1>
-            <p class="text-gray-500 text-sm mb-8 pb-4 border-b border-gray-100">Last updated: 2026-03-05</p>
+            <p class="text-gray-500 text-sm mb-8 pb-4 border-b border-gray-100">Last updated: 2026-03-09</p>
             
             <div class="space-y-8 text-gray-600 leading-relaxed">
                 <div>
@@ -17,7 +17,7 @@
                 
                 <div>
                     <h2 class="text-lg font-bold text-gray-900 mb-2">Retention and Deletion</h2>
-                    <p>Cases and uploaded evidence files are retained for <strong>30 days by default</strong>. If a due date is set, retention may extend to due date plus a safety buffer. After expiry, case files and metadata are automatically permanently deleted from our servers. Users can also manually delete their case immediately from the dashboard at any time.</p>
+                    <p>Cases and uploaded evidence files are retained for <strong>7 days by default</strong>. If a due date is set, retention may extend to due date plus a safety buffer. After expiry, case files and metadata are automatically permanently deleted from our servers. Users can also manually delete their case immediately from the dashboard at any time.</p>
                 </div>
                 
                 <div>
@@ -27,12 +27,17 @@
                 
                 <div>
                     <h2 class="text-lg font-bold text-gray-900 mb-2">Payment Data</h2>
-                    <p>All payments are processed by our configured payment provider (for example, Lemon Squeezy or Stripe). We do not process, parse, or store raw credit card details on our infrastructure.</p>
+                    <p>Payments are processed by our configured provider, currently Lemon Squeezy for production beta sales. We do not process, parse, or store raw credit card details on our infrastructure.</p>
                 </div>
                 
                 <div>
                     <h2 class="text-lg font-bold text-gray-900 mb-2">Security</h2>
                     <p>Access to individual case resources requires the exact case token verification. Service-level access controls are strictly applied to all underlying cloud storage bins.</p>
+                </div>
+
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900 mb-2">Contact</h2>
+                    <p>Privacy or deletion questions can be sent to <a href="mailto:shinhyeok22@gmail.com">shinhyeok22@gmail.com</a>.</p>
                 </div>
             </div>
         </div>

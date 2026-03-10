@@ -2,6 +2,11 @@ package com.example.demo.dispute.web;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
+import com.example.demo.dispute.domain.FileFormat;
+import com.example.demo.dispute.domain.Platform;
+import com.example.demo.dispute.domain.ProductScope;
+import com.example.demo.dispute.service.PolicyCatalogService;
+import com.example.demo.dispute.service.ReasonCodeChecklistService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.demo.dispute.service.SeoAnalyticsService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -34,6 +40,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class SeoController {
 
     private static final Map<String, FailureSnapshot> TOP_ERROR_FAILURE_SNAPSHOTS = createTopErrorFailureSnapshots();
+    private static final Map<String, GuideProductProof> TOP_ERROR_PRODUCT_PROOF = createTopErrorProductProof();
     private static final Map<String, GuideHeroCopy> TOP_ERROR_HERO_COPY = createTopErrorHeroCopy();
     private static final Map<String, IssueSupportCopy> TOP_ERROR_ISSUE_SUPPORT = createTopErrorIssueSupport();
     private static final Set<String> RELATED_TOKEN_STOPWORDS = Set.of(
@@ -59,16 +66,22 @@ public class SeoController {
 
     private final String publicBaseUrl;
     private final SeoAnalyticsService seoAnalyticsService;
+    private final ReasonCodeChecklistService reasonCodeChecklistService;
+    private final PolicyCatalogService policyCatalogService;
     private final List<GuidePageView> guides;
     private final Map<String, GuidePageView> guideBySlug;
     private final Map<String, List<GuidePageView>> guidesByPlatform;
 
     public SeoController(
             SeoAnalyticsService seoAnalyticsService,
+            ReasonCodeChecklistService reasonCodeChecklistService,
+            PolicyCatalogService policyCatalogService,
             @Value("${app.public-base-url:http://localhost:8080}") String publicBaseUrl,
             @Value("${app.seo.guides-path:seo/guides-v1.json}") String guidesPath
     ) {
         this.seoAnalyticsService = seoAnalyticsService;
+        this.reasonCodeChecklistService = reasonCodeChecklistService;
+        this.policyCatalogService = policyCatalogService;
         this.publicBaseUrl = trimTrailingSlash(publicBaseUrl);
         this.guides = List.copyOf(loadGuides(new ObjectMapper(), guidesPath));
 
@@ -193,6 +206,10 @@ public class SeoController {
         String key = platform.toLowerCase(Locale.ROOT);
         List<GuidePageView> platformGuides = guidesByPlatform.get(key);
         if (platformGuides == null || platformGuides.isEmpty()) {
+            String legacyRedirect = resolveLegacyGuideRedirect(key);
+            if (legacyRedirect != null) {
+                return "redirect:" + legacyRedirect;
+            }
             throw new ResponseStatusException(NOT_FOUND, "guide platform not found");
         }
 
@@ -240,11 +257,16 @@ public class SeoController {
                 false
         );
         List<GuidePageView> keywordRelatedGuides = findRelatedGuides(guide, 8, null, true);
+        GuideReasonInsights reasonInsights = guide.isErrorGuide() ? null : buildReasonInsights(guide);
+        GuideProductProof productProof = TOP_ERROR_PRODUCT_PROOF.get(guide.slugKey());
 
         model.addAttribute("guide", guide);
         model.addAttribute("sameTypeRelatedGuides", sameTypeRelatedGuides);
         model.addAttribute("crossTypeRelatedGuides", crossTypeRelatedGuides);
         model.addAttribute("keywordRelatedGuides", keywordRelatedGuides);
+        model.addAttribute("reasonInsights", reasonInsights);
+        model.addAttribute("productProof", productProof);
+        model.addAttribute("officialSources", reasonInsights != null ? reasonInsights.officialSources() : guide.sourceUrls());
         model.addAttribute(
                 "relatedGuides",
                 mergeRelatedGuides(10, sameTypeRelatedGuides, crossTypeRelatedGuides, keywordRelatedGuides)
@@ -262,6 +284,62 @@ public class SeoController {
         model.addAttribute("issueSupportAutoFix", issueSupportCopy != null ? issueSupportCopy.autoFixScope() : null);
         model.addAttribute("issueSupportManual", issueSupportCopy != null ? issueSupportCopy.manualWork() : null);
         return "guideDetail";
+    }
+
+    private GuideReasonInsights buildReasonInsights(GuidePageView guide) {
+        Platform platform = platformForGuide(guide);
+        ProductScope workflowScope = workflowScopeForGuide(guide);
+        if (platform == null || workflowScope == null) {
+            return null;
+        }
+
+        ReasonCodeChecklistService.ReasonChecklist checklist = reasonCodeChecklistService.resolve(
+                platform,
+                workflowScope,
+                guide.reasonCodeSlug(),
+                null,
+                List.of()
+        );
+        PolicyCatalogService.ResolvedPolicy policy = policyCatalogService.resolve(
+                platform,
+                workflowScope,
+                guide.reasonCodeSlug(),
+                null
+        );
+
+        return new GuideReasonInsights(
+                checklist.requiredEvidence(),
+                checklist.recommendedEvidence(),
+                checklist.weakEvidenceWarnings(),
+                checklist.priorityActions(),
+                buildWorkflowGuardrails(policy),
+                mergeSources(guide.sourceUrls(), checklist.sourceUrls())
+        );
+    }
+
+    private String resolveLegacyGuideRedirect(String pathSegment) {
+        if (pathSegment == null || pathSegment.isBlank()) {
+            return null;
+        }
+        for (String platformSlug : guidesByPlatform.keySet()) {
+            String prefix = platformSlug + "-";
+            if (!pathSegment.startsWith(prefix)) {
+                continue;
+            }
+            String legacyGuideSlug = pathSegment.substring(prefix.length());
+            if (legacyGuideSlug.isBlank()
+                    || "evidence-upload-error".equals(legacyGuideSlug)
+                    || "upload-error".equals(legacyGuideSlug)
+                    || "evidence-upload-fix".equals(legacyGuideSlug)) {
+                return "/guides/" + platformSlug;
+            }
+            GuidePageView guide = guideBySlug.get(platformSlug + "/" + legacyGuideSlug);
+            if (guide != null) {
+                return guide.path();
+            }
+            return "/guides/" + platformSlug;
+        }
+        return null;
     }
 
     @GetMapping("/seo/kpi")
@@ -385,6 +463,92 @@ public class SeoController {
                 .limit(limit)
                 .map(GuideSimilarity::guide)
                 .toList();
+    }
+
+    private Platform platformForGuide(GuidePageView guide) {
+        return switch (guide.platformSlug()) {
+            case "stripe" -> Platform.STRIPE;
+            case "shopify" -> Platform.SHOPIFY;
+            default -> null;
+        };
+    }
+
+    private ProductScope workflowScopeForGuide(GuidePageView guide) {
+        return switch (guide.platformSlug()) {
+            case "stripe" -> ProductScope.STRIPE_DISPUTE;
+            case "shopify" -> ProductScope.SHOPIFY_PAYMENTS_CHARGEBACK;
+            default -> null;
+        };
+    }
+
+    private List<String> buildWorkflowGuardrails(PolicyCatalogService.ResolvedPolicy policy) {
+        if (policy == null) {
+            return List.of();
+        }
+
+        LinkedHashSet<String> notes = new LinkedHashSet<>();
+        if (!policy.allowedFormats().isEmpty()) {
+            notes.add("Only upload " + humanizeFormats(policy.allowedFormats()) + " files.");
+        }
+        if (Boolean.TRUE.equals(policy.singleFilePerEvidenceType())) {
+            notes.add("Keep one final file per evidence type in the exported pack.");
+        }
+        if (Boolean.FALSE.equals(policy.externalLinksAllowed())) {
+            notes.add("Remove clickable external links before final upload.");
+        }
+        if (policy.totalSizeLimitBytes() != null) {
+            notes.add("Keep the full evidence package at or under " + formatMegabytes(policy.totalSizeLimitBytes()) + ".");
+        }
+        if (policy.perFileSizeLimitBytes() != null) {
+            notes.add("Keep each uploaded file at or under " + formatMegabytes(policy.perFileSizeLimitBytes()) + ".");
+        }
+        if (policy.totalPagesLimit() != null) {
+            notes.add("Keep the combined packet at or under " + policy.totalPagesLimit() + " pages.");
+        }
+        if (policy.perPdfPageLimit() != null) {
+            notes.add("Keep each PDF at or under " + policy.perPdfPageLimit() + " pages.");
+        }
+        if (Boolean.TRUE.equals(policy.pdfARequired())) {
+            notes.add("Convert PDFs to PDF/A before upload.");
+        }
+        if (Boolean.FALSE.equals(policy.portfolioPdfAllowed())) {
+            notes.add("Flatten portfolio PDFs into a standard PDF before upload.");
+        }
+        return List.copyOf(notes);
+    }
+
+    private List<String> mergeSources(List<String> primary, List<String> secondary) {
+        LinkedHashSet<String> merged = new LinkedHashSet<>();
+        if (primary != null) {
+            merged.addAll(primary);
+        }
+        if (secondary != null) {
+            merged.addAll(secondary);
+        }
+        return List.copyOf(merged);
+    }
+
+    private String humanizeFormats(List<FileFormat> formats) {
+        List<String> labels = formats.stream()
+                .map(FileFormat::name)
+                .toList();
+        if (labels.size() == 1) {
+            return labels.get(0);
+        }
+        if (labels.size() == 2) {
+            return labels.get(0) + " or " + labels.get(1);
+        }
+        return String.join(", ", labels.subList(0, labels.size() - 1))
+                + ", or "
+                + labels.get(labels.size() - 1);
+    }
+
+    private String formatMegabytes(long bytes) {
+        double megabytes = bytes / (1024d * 1024d);
+        if (Math.abs(megabytes - Math.rint(megabytes)) < 0.01d) {
+            return (long) Math.rint(megabytes) + " MB";
+        }
+        return String.format(Locale.ROOT, "%.1f MB", megabytes);
     }
 
     @SafeVarargs
@@ -864,6 +1028,95 @@ public class SeoController {
                                 "Validation catches hidden URL annotations that merchants often miss in portal exports, help-center printouts, and statement appendices.",
                                 "Auto-fix can strip external-link annotations from supported PDFs and rerun the same Shopify checks immediately.",
                                 "You still need to replace link-only proof with attached screenshots, exports, or excerpts when the evidence depends on off-platform pages."
+                        )
+                )
+        );
+    }
+
+    private static Map<String, GuideProductProof> createTopErrorProductProof() {
+        return Map.ofEntries(
+                Map.entry(
+                        "shopify/pdf-a-format-required-error",
+                        new GuideProductProof(
+                                "Scanner-exported receipt PDF failed Shopify's PDF/A rule in a beta browser run.",
+                                "Observed on March 8, 2026",
+                                "Case was BLOCKED on ERR_SHPFY_PDF_NOT_PDFA.",
+                                "After AUTO_FIX, the case moved to READY and a free watermarked summary PDF downloaded successfully.",
+                                "Export stayed locked until the PDF/A blocker cleared.",
+                                true,
+                                "/proof/beta/shopify-pdfa-summary-page-1.png",
+                                "/proof/beta/shopify-pdfa-summary.pdf",
+                                "Synthetic beta artifact preview generated after the PDF/A blocker cleared."
+                        )
+                ),
+                Map.entry(
+                        "shopify/pdf-portfolio-not-accepted",
+                        new GuideProductProof(
+                                "Office-exported portfolio PDF hit stacked Shopify blockers in beta.",
+                                "Observed on March 8, 2026",
+                                "Case was BLOCKED on ERR_SHPFY_PDF_NOT_PDFA and ERR_SHPFY_PDF_PORTFOLIO.",
+                                "After AUTO_FIX, the case moved to READY and the normalized PDF replaced the original portfolio export.",
+                                "The workflow cleared both portfolio and PDF/A blockers before export unlocked.",
+                                true,
+                                "/proof/beta/shopify-portfolio-summary-page-1.png",
+                                "/proof/beta/shopify-portfolio-summary.pdf",
+                                "Synthetic beta artifact preview generated after portfolio and PDF/A cleanup."
+                        )
+                ),
+                Map.entry(
+                        "shopify/evidence-file-too-large-2mb",
+                        new GuideProductProof(
+                                "A real oversized receipt photo was reduced below Shopify's per-file limit during beta testing.",
+                                "Observed on March 8, 2026",
+                                "Case was BLOCKED on ERR_SHPFY_FILE_TOO_LARGE plus ERR_SHPFY_PDF_NOT_PDFA.",
+                                "After AUTO_FIX, the oversized PNG receipt became a 794013 B JPEG and the case moved to READY.",
+                                "The workflow reduced a real oversized image below Shopify's 2 MB per-file limit before export unlocked.",
+                                true,
+                                "/proof/beta/shopify-oversized-photo-summary-page-1.png",
+                                "/proof/beta/shopify-oversized-photo-summary.pdf",
+                                "Synthetic beta artifact preview generated after oversized-image compression and revalidation."
+                        )
+                ),
+                Map.entry(
+                        "shopify/external-links-not-allowed-error",
+                        new GuideProductProof(
+                                "A help-center export with hidden links was normalized successfully in beta.",
+                                "Observed on March 8, 2026",
+                                "Case was BLOCKED on ERR_SHPFY_LINK_DETECTED plus ERR_SHPFY_PDF_NOT_PDFA.",
+                                "After AUTO_FIX, the case moved to READY and the normalized PDF replaced the original link-bearing export.",
+                                "Export stayed locked until the link-bearing PDF was normalized.",
+                                true,
+                                "/proof/beta/shopify-links-summary-page-1.png",
+                                "/proof/beta/shopify-links-summary.pdf",
+                                "Synthetic beta artifact preview generated after hidden-link cleanup and PDF normalization."
+                        )
+                ),
+                Map.entry(
+                        "stripe/invalid-file-format-pdf-jpg-png-only",
+                        new GuideProductProof(
+                                "Scanner TIFF delivery proof was auto-normalized before stored validation in beta.",
+                                "Observed on March 8, 2026",
+                                "Upload flow showed Auto-convert to JPEG for a TIFF delivery proof.",
+                                "Stored file became scanner_delivery_proof_autoconvert.jpg and the case stayed READY on accepted final formats.",
+                                "The workflow normalized an unsupported scanner TIFF before stored validation.",
+                                true,
+                                "/proof/beta/stripe-tiff-summary-page-1.png",
+                                "/proof/beta/stripe-tiff-summary.pdf",
+                                "Synthetic beta artifact preview generated after TIFF-to-JPEG normalization."
+                        )
+                ),
+                Map.entry(
+                        "stripe/total-pages-over-limit",
+                        new GuideProductProof(
+                                "A genuinely overlong Stripe evidence packet stayed blocked even after auto-fix in beta.",
+                                "Observed on March 8, 2026",
+                                "Case was BLOCKED on ERR_STRIPE_TOTAL_PAGES with a 52-page delivery dump.",
+                                "After AUTO_FIX, the packet stayed BLOCKED, the delivery dump stayed 52 pages, and no free summary link appeared.",
+                                "The workflow correctly refuses to unlock output for unresolved Stripe page-limit violations.",
+                                false,
+                                null,
+                                null,
+                                "No preview artifact is shown here because the case never unlocked a downloadable summary."
                         )
                 )
         );

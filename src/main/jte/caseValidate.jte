@@ -4,6 +4,7 @@
 @import com.example.demo.dispute.persistence.PaymentEntity
 @import com.example.demo.dispute.service.ReasonCodeChecklistService
 @import com.example.demo.dispute.service.TailTrimSuggestion
+@import com.example.demo.dispute.web.CaseUiLabels
 @import com.example.demo.dispute.web.WebCaseController.ManualImageRescueAction
 @import com.example.demo.dispute.web.WebCaseController.ManualPdfRescueAction
 @import com.example.demo.dispute.web.WebCaseController.NextStepGuidance
@@ -17,6 +18,9 @@
 @param ReasonCodeChecklistService.ReasonChecklist reasonChecklist
 @param String displayCaseState
 @param String displayCaseStateBadgeClass
+@param boolean hasUploadedFiles
+@param boolean canRunAutoFix
+@param String autoFixDisabledReason
 @param NextStepGuidance nextStepGuidance
 @param TailTrimSuggestion tailTrimSuggestion
 @param ManualImageRescueAction manualImageRescueAction
@@ -33,6 +37,7 @@
     caseTokenForVault = report.caseToken(),
     casePlatformForVault = report.platform().name(),
     caseStateForVault = displayCaseState,
+    caseStage = "review",
     content = @`
     <!-- Alerts -->
     @if(message != null && !message.isBlank())
@@ -60,33 +65,52 @@
                 </span>
             </div>
             <div class="flex flex-wrap gap-2 text-sm text-gray-500">
-                <span class="font-medium text-gray-700">${report.platform()}</span> &bull; 
-                <span>Validation Results</span>
+                <span class="font-medium text-gray-700">${CaseUiLabels.platformLabel(report.platform())}</span> &bull;
+                <span>${CaseUiLabels.productScopeLabel(report.productScope())}</span> &bull;
+                <span>Review validation results</span>
             </div>
         </div>
-        <div class="flex flex-col sm:flex-row items-center gap-3 border-t md:border-t-0 pt-4 md:pt-0 border-gray-100">
-            <form method="post" action="/c/${report.caseToken()}/validate">
-                <button type="submit" class="cb-btn cb-btn-secondary text-sm shadow-sm transition-colors hover:bg-gray-50">
-                    Re-run Validation
-                </button>
-            </form>
-            <form method="post" action="/c/${report.caseToken()}/fix">
-                <button type="submit" class="cb-btn cb-btn-primary text-sm shadow-sm flex items-center gap-2 hover:bg-blue-700">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    Run Auto-Fix
-                </button>
-            </form>
+        <div class="flex flex-col items-stretch gap-2 border-t md:border-t-0 pt-4 md:pt-0 border-gray-100">
+            <div class="flex flex-col sm:flex-row items-center gap-3">
+                @if(hasUploadedFiles)
+                    <form method="post" action="/c/${report.caseToken()}/validate">
+                        <button type="submit" class="cb-btn cb-btn-secondary text-sm shadow-sm transition-colors hover:bg-gray-50">
+                            ${report.latestValidation() == null ? "Run First Validation" : "Re-run Validation"}
+                        </button>
+                    </form>
+                @else
+                    <a href="/c/${report.caseToken()}/upload" class="cb-btn cb-btn-primary text-sm shadow-sm">
+                        Upload Files First
+                    </a>
+                @endif
+
+                @if(canRunAutoFix)
+                    <form method="post" action="/c/${report.caseToken()}/fix">
+                        <button type="submit" class="cb-btn cb-btn-primary text-sm shadow-sm flex items-center gap-2 hover:bg-blue-700">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            Run Auto-Fix
+                        </button>
+                    </form>
+                @else
+                    <button type="button" class="cb-btn cb-btn-secondary text-sm shadow-sm opacity-60 cursor-not-allowed" disabled title="${autoFixDisabledReason != null ? autoFixDisabledReason : "Run validation first."}">
+                        Run Auto-Fix
+                    </button>
+                @endif
+            </div>
+            @if(autoFixDisabledReason != null && !autoFixDisabledReason.isBlank())
+                <p class="text-xs text-gray-500 sm:text-right">${autoFixDisabledReason}</p>
+            @endif
         </div>
     </div>
 
     <!-- Navigation Tabs -->
     <div class="border-b border-gray-200 mb-8 overflow-x-auto shrink-0">
         <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-            <a href="/c/${report.caseToken()}" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Dashboard</a>
-            <a href="/c/${report.caseToken()}/upload" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Upload Evidence</a>
-            <a href="/c/${report.caseToken()}/validate" class="border-primary-600 text-primary-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" aria-current="page">Validate & Fix</a>
-            <a href="/c/${report.caseToken()}/explanation" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Explanation Draft</a>
-            <a href="/c/${report.caseToken()}/export" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Export Pack</a>
+            <a href="/c/${report.caseToken()}" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Overview</a>
+            <a href="/c/${report.caseToken()}/upload" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Upload</a>
+            <a href="/c/${report.caseToken()}/validate" class="border-primary-600 text-primary-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" aria-current="page">Review &amp; Fix</a>
+            <a href="/c/${report.caseToken()}/explanation" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Draft Response</a>
+            <a href="/c/${report.caseToken()}/export" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Export</a>
         </nav>
     </div>
 
@@ -118,18 +142,24 @@
     @if(report.latestValidation() == null)
         <div class="cb-card flex-1 flex flex-col items-center justify-center text-center p-12 border-2 border-dashed border-gray-200 bg-gray-50">
             <svg class="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.957 11.957 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-            <h3 class="text-xl font-bold text-gray-900 mb-2">No Validation Scans Yet</h3>
-            <p class="text-gray-500 mb-6 max-w-md">Upload your evidence files and then run the validation engine to see if there are any format, size, or content issues.</p>
-            <form method="post" action="/c/${report.caseToken()}/validate">
-                <button type="submit" class="cb-btn cb-btn-primary px-6 shadow-sm hover:-translate-y-0.5 transition-transform">Run First Validation Scan</button>
-            </form>
+            @if(hasUploadedFiles)
+                <h3 class="text-xl font-bold text-gray-900 mb-2">No Validation Scans Yet</h3>
+                <p class="text-gray-500 mb-6 max-w-md">Your files are uploaded. Run the validation engine now to check for format, size, and blocker issues before export.</p>
+                <form method="post" action="/c/${report.caseToken()}/validate">
+                    <button type="submit" class="cb-btn cb-btn-primary px-6 shadow-sm hover:-translate-y-0.5 transition-transform">Run First Validation Scan</button>
+                </form>
+            @else
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Upload files before review</h3>
+                <p class="text-gray-500 mb-6 max-w-md">This step only works after at least one file is uploaded. Start in Upload, add your evidence, and then come back here to review blockers.</p>
+                <a href="/c/${report.caseToken()}/upload" class="cb-btn cb-btn-primary px-6 shadow-sm hover:-translate-y-0.5 transition-transform">Go To Upload Files</a>
+            @endif
         </div>
     @else
         <div class="cb-card border border-gray-100 shadow-sm mb-8">
             <div class="flex items-center justify-between mb-6 pb-6 border-b border-gray-100">
                 <div>
                     <h2 class="text-lg font-bold text-gray-900">Validation Results</h2>
-                    <p class="text-sm text-gray-500 mt-1">Run #${report.latestValidation().runNo()} &bull; Validated for ${report.latestValidation().source()}</p>
+                    <p class="text-sm text-gray-500 mt-1">Run #${report.latestValidation().runNo()} &bull; Validated against ${CaseUiLabels.validationSourceLabel(report.latestValidation().source())}</p>
                 </div>
                 <div>
                     @if(report.latestValidation().passed() && reasonChecklist.missingRequiredEvidence().isEmpty())
@@ -156,7 +186,7 @@
                     <div class="font-semibold mb-1">Required evidence is still missing</div>
                     <p class="text-sm leading-6">
                         Format checks do not unlock export by themselves. Still needed for this reason:
-                        <strong>${String.join(", ", reasonChecklist.missingRequiredEvidence())}</strong>.
+                        <strong>${CaseUiLabels.joinEvidenceTypeLabels(reasonChecklist.missingRequiredEvidence())}</strong>.
                     </p>
                 </div>
             @endif

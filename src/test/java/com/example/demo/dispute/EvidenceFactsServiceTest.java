@@ -1,5 +1,6 @@
 package com.example.demo.dispute;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -17,6 +18,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 class EvidenceFactsServiceTest {
@@ -242,6 +244,45 @@ class EvidenceFactsServiceTest {
                     .anyMatch(file -> file.trackingRefs().contains("FEDEX:123456789012")));
             assertTrue(facts.sharedAnchors().stream().anyMatch(anchor -> "FEDEX:123456789012".equals(anchor.value())));
             assertTrue(facts.coherenceHighlights().stream().anyMatch(line -> line.contains("FEDEX 123456789012")));
+        } finally {
+            Files.deleteIfExists(tempImage);
+        }
+    }
+
+    @Test
+    void analyzeCachesRepeatedCaseFingerprintLookups() throws Exception {
+        UUID caseId = UUID.randomUUID();
+        UUID imageFileId = UUID.randomUUID();
+        Path tempImage = Files.createTempFile("evidence-facts-cache-", ".png");
+        try {
+            EvidenceFileEntity storedImage = new EvidenceFileEntity();
+            storedImage.setId(imageFileId);
+            storedImage.setEvidenceType(EvidenceType.ORDER_RECEIPT);
+            storedImage.setOriginalName("receipt_capture.png");
+            storedImage.setStoragePath(tempImage.toString());
+            storedImage.setFileFormat(FileFormat.PNG);
+
+            EvidenceFileRepository repository = mock(EvidenceFileRepository.class);
+            when(repository.findByDisputeCaseId(caseId)).thenReturn(List.of(storedImage));
+
+            AtomicInteger extractionCalls = new AtomicInteger();
+            EvidenceTextExtractionService extractionService = new EvidenceTextExtractionService() {
+                @Override
+                public String extractImageOcrText(Path path, int maxChars) {
+                    extractionCalls.incrementAndGet();
+                    return "order receipt payment total 84.20 order number nw-9001";
+                }
+            };
+
+            EvidenceFactsService service = new EvidenceFactsService(repository, extractionService, aliasCatalogService);
+            List<EvidenceFileReportResponse> files = List.of(
+                    reportFile(imageFileId, EvidenceType.ORDER_RECEIPT, "receipt_capture.png", FileFormat.PNG)
+            );
+
+            service.analyze(caseId, files);
+            service.analyze(caseId, files);
+
+            assertEquals(1, extractionCalls.get());
         } finally {
             Files.deleteIfExists(tempImage);
         }
